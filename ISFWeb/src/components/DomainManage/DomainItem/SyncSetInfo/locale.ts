@@ -262,9 +262,9 @@ export default i18n([
         'New User Security Level: ',
     ],
     [
-        '同步周期 “${syncInterval}”；新建用户密级 “${csfLevel}”；用户配额空间 “${spaceSize}”；用户有效期限 “${validPeriod}”；用户默认状态 “${syncStatus}”；同步方式 “${syncMode}”',
-        '同步週期 “${syncInterval}”；新增使用者密級 “${csfLevel}”；使用者配額空間 “${spaceSize}”；使用者有效期限 “${validPeriod}”；使用者預設狀態 “${syncStatus}”；同步方式 “${syncMode}”',
-        'Sync Interval "${syncInterval}"; Security Level for New Users "${csfLevel}"; Quota "${spaceSize}"; Expires "${validPeriod}"; User Status "${syncStatus}"; Sync Method "${syncMode}"',
+        '同步周期 “${syncInterval}”；新建用户密级 “${csfLevel}”；用户有效期限 “${validPeriod}”；用户默认状态 “${syncStatus}”；同步方式 “${syncMode}”',
+        '同步週期 “${syncInterval}”；新增使用者密級 “${csfLevel}”；使用者有效期限 “${validPeriod}”；使用者預設狀態 “${syncStatus}”；同步方式 “${syncMode}”',
+        'Sync Interval "${syncInterval}"; Security Level for New Users "${csfLevel}"; Expires "${validPeriod}"; User Status "${syncStatus}"; Sync Method "${syncMode}"',
     ],
     [
         '由 ${oldText} 改为 ${newText}',

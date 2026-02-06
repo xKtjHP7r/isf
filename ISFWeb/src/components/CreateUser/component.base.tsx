@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { noop, trim } from 'lodash';
 import { mailAndLenth, phoneNum, isUserLoginName, isNormalName, variousIdCard,  isNormalCode, isNormalPosition, isUserNormalName } from '@/util/validators';
-import { formatSize, formatTime } from '@/util/formatters';
+import { formatTime } from '@/util/formatters';
 import { Message2 } from '@/sweet-ui';
 import session from '@/util/session';
 import { SystemRoleType } from '@/core/role/role';
@@ -165,7 +165,6 @@ export default class CreateUserBase extends WebComponent<CreateUserProps, Create
         showAddDirectSupervisorDialog: false,
     }
 
-    spaceStatus: boolean // 配额空间是否可用
     triSystemStatus: boolean // 是否开启三权分立
     isAdmin: boolean // 是否系统管理员
     isRequest: boolean // 是否在请求中
@@ -504,24 +503,6 @@ export default class CreateUserBase extends WebComponent<CreateUserProps, Create
                                     validateState: { ...validateState, displayName: ValidateState.DisplayNameExist },
                                 })
                                 break;
-
-                            case ErrorCode.LimitAssignUserSpace: {
-                                const userInfo = await getUserInfo([userid]);
-                                const remainSpace = Math.max(0, userInfo.user.limitSpaceInfo.limitUserSpace - userInfo.user.limitSpaceInfo.allocatedLimitUserSpace);
-
-                                Message2.info({
-                                    message: !remainSpace ?
-                                        __('当前用户管理剩余可分配空间为${space}。', {
-                                            space: formatSize(remainSpace, 2, { minUnit: 'GB' }),
-                                        })
-                                        :
-                                        __('当前用户管理剩余可分配空间为${space}，请重新输入。', {
-                                            space: formatSize(remainSpace, 2, { minUnit: 'GB' }),
-                                        }),
-                                })
-
-                                break;
-                            }
 
                             case ErrorCode.UserNameDisabled:
                                 Message2.info({ message: __('该用户名不可用。') })

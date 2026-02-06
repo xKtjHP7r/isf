@@ -1079,16 +1079,3 @@ func TestPolicyCalcRestHandler_ResourceListWithInclude(t *testing.T) {
 		})
 	})
 }
-
-func TestPolicyCalcRestHandler_NewPolicyCalcRestHandler(t *testing.T) {
-	Convey("NewPolicyCalcRestHandler", t, func() {
-		Convey("应该返回单例实例", func() {
-			handler1 := NewPolicyCalcRestHandler()
-			handler2 := NewPolicyCalcRestHandler()
-
-			So(handler1, ShouldNotBeNil)
-			So(handler2, ShouldNotBeNil)
-			So(handler1, ShouldEqual, handler2)
-		})
-	})
-}

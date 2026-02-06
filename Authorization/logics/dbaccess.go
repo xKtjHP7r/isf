@@ -75,3 +75,10 @@ var dbObligation interfaces.DBObligation
 func SetDBObligation(i interfaces.DBObligation) {
 	dbObligation = i
 }
+
+var dbResourceTypeHierarchy interfaces.DBResourceTypeHierarchy
+
+// SetDBResourceTypeHierarchy 设置实例
+func SetDBResourceTypeHierarchy(i interfaces.DBResourceTypeHierarchy) {
+	dbResourceTypeHierarchy = i
+}

@@ -269,9 +269,28 @@ func (l *license) userAddAllProducts(ctx context.Context, userID string) (err er
 		return nil
 	}
 
+	// 获取用户已授权产品数量
+	// 预防消息多次消费
+	userAuthorizedProducts, err := l.db.GetAuthorizedProducts(ctx, []string{userID})
+	if err != nil {
+		l.log.Errorf("license userAddAllProducts get user authorized products err: %v", err)
+		return
+	}
+	mapCurProducts := make(map[string]bool)
+	if _, ok := userAuthorizedProducts[userID]; ok {
+		for _, product := range userAuthorizedProducts[userID].Product {
+			mapCurProducts[product] = true
+		}
+	}
+
 	// 判断新增授权是否会导致超过授权量
 	productes := make([]interfaces.ProductInfo, 0)
 	for k := range infos {
+		// 如果用户已授权产品中包含该产品，则跳过
+		if _, ok := mapCurProducts[k]; ok {
+			continue
+		}
+
 		var count int
 		count, err = l.db.GetProductsAuthorizedCount(ctx, k)
 		if err != nil {
@@ -318,13 +337,6 @@ func (l *license) userAddAllProducts(ctx context.Context, userID string) (err er
 			}
 		}
 	}()
-
-	// 先删除用户所有授权产品
-	err = l.db.DeleteUserAuthorizedProducts(ctx, userID, tx)
-	if err != nil {
-		l.log.Errorf("license userAddAllProducts delete user authorized products err: %v", err)
-		return
-	}
 
 	// 再新增用户产品
 	err = l.db.AddAuthorizedProducts(ctx, productes, tx)
@@ -443,7 +455,7 @@ func (l *license) GetAuthorizedProducts(ctx context.Context, visitor *interfaces
 		}
 
 		if _, ok := tempProducts[userIDs[k]]; ok {
-			temp.Product = tempProducts[userIDs[k]].Product
+			temp.Product = RemoveDuplicate(tempProducts[userIDs[k]].Product)
 		}
 		products[userIDs[k]] = temp
 	}

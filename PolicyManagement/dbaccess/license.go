@@ -3,6 +3,7 @@ package dbaccess
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"policy_mgnt/common"
 	"policy_mgnt/interfaces"
 	"sync"
@@ -71,9 +72,12 @@ func (d *license) getAuthorizedProducts(ctx context.Context, userIDs []string) (
 	}
 
 	userSet, userArgIDs := GetFindInSetSQL(userIDs)
-	query := "SELECT f_account_id, f_product FROM policy_mgnt.t_product_relation WHERE f_account_id IN ( "
+	query := "SELECT f_account_id, f_product FROM %s.t_product_relation WHERE f_account_id IN ( "
 	query += userSet
 	query += " )"
+
+	dbName := common.GetDBName("policy_mgnt")
+	query = fmt.Sprintf(query, dbName)
 	rows, err := d.db.QueryContext(ctx, query, userArgIDs...)
 	if err != nil {
 		d.log.Errorf("license GetAuthorizedProducts query err: %v", err)
@@ -156,10 +160,13 @@ func (d *license) deleteAuthorizedProductsSingle(ctx context.Context, product st
 
 	// 拼接用户id
 	userSet, userArgIDs := GetFindInSetSQL(userIDs)
-	query := "DELETE FROM policy_mgnt.t_product_relation WHERE f_account_id IN ( "
+	query := "DELETE FROM %s.t_product_relation WHERE f_account_id IN ( "
 	query += userSet
 	query += " ) AND f_product = ?"
 	userArgIDs = append(userArgIDs, product)
+
+	dbName := common.GetDBName("policy_mgnt")
+	query = fmt.Sprintf(query, dbName)
 	_, err = tx.ExecContext(ctx, query, userArgIDs...)
 	if err != nil {
 		d.log.Errorf("license DeleteAuthorizedProducts delete authorized products err: %v", err)
@@ -193,7 +200,10 @@ func (d *license) addAuthorizedProductsSingle(ctx context.Context, products []in
 
 	// 拼接用户id
 	args := make([]interface{}, 0)
-	query := "INSERT INTO policy_mgnt.t_product_relation (f_account_id, f_product, f_account_type) VALUES "
+	query := "INSERT INTO %s.t_product_relation (f_account_id, f_product, f_account_type) VALUES "
+
+	dbName := common.GetDBName("policy_mgnt")
+	query = fmt.Sprintf(query, dbName)
 	for i := 0; i < len(products); i++ {
 		query += "( ?, ?, ? ),"
 		args = append(args, products[i].AccountID, products[i].Product, 1)
@@ -208,7 +218,9 @@ func (d *license) addAuthorizedProductsSingle(ctx context.Context, products []in
 
 func (d *license) DeleteUserAuthorizedProducts(ctx context.Context, userID string, tx *sql.Tx) (err error) {
 	// 删除用户已授权产品
-	query := "DELETE FROM policy_mgnt.t_product_relation WHERE f_account_id = ?"
+	query := "DELETE FROM %s.t_product_relation WHERE f_account_id = ?"
+	dbName := common.GetDBName("policy_mgnt")
+	query = fmt.Sprintf(query, dbName)
 	_, err = tx.ExecContext(ctx, query, userID)
 	if err != nil {
 		d.log.Errorf("license DeleteUserAuthorizedProducts delete user authorized products err: %v", err)
@@ -219,7 +231,9 @@ func (d *license) DeleteUserAuthorizedProducts(ctx context.Context, userID strin
 
 func (d *license) GetProductsAuthorizedCount(ctx context.Context, product string) (count int, err error) {
 	// 查询已授权用户数量
-	query := "SELECT COUNT(f_account_id) FROM policy_mgnt.t_product_relation WHERE f_product = ?"
+	query := "SELECT COUNT(f_account_id) FROM %s.t_product_relation WHERE f_product = ?"
+	dbName := common.GetDBName("policy_mgnt")
+	query = fmt.Sprintf(query, dbName)
 	rows, err := d.db.QueryContext(ctx, query, product)
 	if err != nil {
 		d.log.Errorf("license GetProductsAuthorizedCount query err: %v", err)

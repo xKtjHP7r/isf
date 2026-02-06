@@ -197,10 +197,6 @@ declare namespace Core {
              */
             idcardNumber?: string;
             /**
-             *  配额空间，单位Bytes，默认5GB，最小1GB                       
-             */
-            space?: number;
-            /**
             * 用户类型
             * enum ncTUsrmUserType {
             *   NCT_USER_TYPE_LOCAL = 1,        // 本地用户
@@ -230,11 +226,6 @@ declare namespace Core {
             status?: number;
 
             /**
-             *  已使用配额空间,单位Bytes          
-             */
-            usedSize?: number;
-
-            /**
              *  排序优先级 
              */
             priority?: number;
@@ -253,11 +244,6 @@ declare namespace Core {
              *  归属站点信息   
              */
             ossInfo?: ncTUsrmOSSInfo;
-
-            /**
-             *  管理员限额信息
-             */
-            limitSpaceInfo?: ncTLimitSpaceInfo;
 
             /**
              *  用户创建时间
@@ -298,16 +284,6 @@ declare namespace Core {
              * 所属部门名称
              */
             departmentNames: Array<string>;
-
-            /**
-             * 用户限额
-             */
-            limitUserSpaceSize: number;
-
-            /**
-             * 文档库限额
-             */
-            limitDocSpaceSize: number;
         }
 
         /**
@@ -445,29 +421,6 @@ declare namespace Core {
              * 所属部门名称
              */
             departmentNames: Array<string>;
-        }
-
-        type ncTLimitSpaceInfo = {
-
-            /**
-             *  用户限额，默认为-1(无限制)
-             */
-            limitUserSpace: number;
-
-            /**
-             *  已分配的用户限额,默认0
-             */
-            allocatedLimitUserSpace: number;
-
-            /**
-             *  文档库限额，默认为-1(无限制)
-             */
-            limitDocSpace: number;
-
-            /**
-             *  已分配的文档库限额，默认0
-             */
-            allocatedLimitDocSpace: number;
         }
 
         /**
@@ -829,11 +782,6 @@ declare namespace Core {
              * 导入目的地
              */
             departmentId: string;
-
-            /**
-             * 用户的配额空间
-             */
-            spaceSize: number;
 
             /**
              * 用户密级
@@ -1327,11 +1275,6 @@ declare namespace Core {
              * 同步时间间隔
              */
             syncInterval: number;
-
-            /**
-             * 用户配额空间
-             */
-            spaceSize: number;
 
             /**
              * 同步方式
@@ -1969,14 +1912,6 @@ declare namespace Core {
             ous: ReadonlyArray<ncTUsrmDomainOU>,
             users: ReadonlyArray<ncTUsrmDomainUser>,
         }
-    >
-
-    /**
-     * 获取个人文档大小
-     */
-    type UsrmGetDefaulSpaceSize = Core.APIs.ThriftAPI<
-        void,
-        boolean
     >
 
     /**
@@ -2720,22 +2655,6 @@ declare namespace Core {
      */
     type GetFreezeStatus = Core.APIs.ThriftAPI<
         void,
-        boolean
-    >
-
-    /**
-     * 创建导出报表任务
-     */
-    type ExportSpaceReport = Core.APIs.ThriftAPI<
-        [string, number, string],
-        string
-    >
-
-    /**
-     * 获取导出报表任务状态
-     */
-    type GetGenSpaceReportStatus = Core.APIs.ThriftAPI<
-        string,
         boolean
     >
 

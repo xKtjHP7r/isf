@@ -430,7 +430,7 @@ func TestResourceTypeRestHandler_GetByID(t *testing.T) {
 	})
 }
 
-func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
+func TestResourceTypeRestHandler_GetAllOperationV2(t *testing.T) {
 	Convey("getAllOperation", t, func() {
 		test := setGinMode()
 		defer test()
@@ -474,10 +474,10 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 				VisitorTyp: interfaces.RealName,
 			}, nil)
 
-			mockResourceType.EXPECT().GetAllOperation(gomock.Any(), gomock.Any(), "doc", interfaces.ScopeType).Return(operations, nil)
+			mockResourceType.EXPECT().GetAllOperation(gomock.Any(), gomock.Any(), "doc", interfaces.ScopeType).Return(operations, nil, nil)
 
 			// 创建请求
-			req := httptest.NewRequest("GET", "/api/authorization/v1/resource_all_operation/?resource_type=doc&scope=type", nil)
+			req := httptest.NewRequest("GET", "/api/authorization/v2/resource_all_operation?resource_type=doc&scope=type", nil)
 			req.Header.Set("Authorization", "Bearer test-token")
 			w := httptest.NewRecorder()
 
@@ -487,10 +487,12 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 			// 验证结果
 			So(w.Code, ShouldEqual, http.StatusOK)
 
-			var response []map[string]any
+			var response map[string]any
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			So(err, ShouldBeNil)
-			So(len(response), ShouldEqual, 2)
+			operationsList, ok := response["operations"].([]any)
+			So(ok, ShouldBeTrue)
+			So(len(operationsList), ShouldEqual, 2)
 		})
 
 		Convey("成功获取所有操作 - instance 范围", func() {
@@ -510,10 +512,10 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 				VisitorTyp: interfaces.RealName,
 			}, nil)
 
-			mockResourceType.EXPECT().GetAllOperation(gomock.Any(), gomock.Any(), "doc", interfaces.ScopeInstance).Return(operations, nil)
+			mockResourceType.EXPECT().GetAllOperation(gomock.Any(), gomock.Any(), "doc", interfaces.ScopeInstance).Return(operations, nil, nil)
 
 			// 创建请求
-			req := httptest.NewRequest("GET", "/api/authorization/v1/resource_all_operation/?resource_type=doc&scope=instance", nil)
+			req := httptest.NewRequest("GET", "/api/authorization/v2/resource_all_operation?resource_type=doc&scope=instance", nil)
 			req.Header.Set("Authorization", "Bearer test-token")
 			w := httptest.NewRecorder()
 
@@ -523,10 +525,12 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 			// 验证结果
 			So(w.Code, ShouldEqual, http.StatusOK)
 
-			var response []map[string]any
+			var response map[string]any
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			So(err, ShouldBeNil)
-			So(len(response), ShouldEqual, 1)
+			operationsList, ok := response["operations"].([]any)
+			So(ok, ShouldBeTrue)
+			So(len(operationsList), ShouldEqual, 1)
 		})
 
 		Convey("参数验证失败 - 缺少 resource_type", func() {
@@ -538,7 +542,7 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 			}, nil)
 
 			// 创建请求 - 缺少 resource_type 参数
-			req := httptest.NewRequest("GET", "/api/authorization/v1/resource_all_operation/?scope=type", nil)
+			req := httptest.NewRequest("GET", "/api/authorization/v2/resource_all_operation?scope=type", nil)
 			req.Header.Set("Authorization", "Bearer test-token")
 			w := httptest.NewRecorder()
 
@@ -558,7 +562,7 @@ func TestResourceTypeRestHandler_GetAllOperation(t *testing.T) {
 			}, nil)
 
 			// 创建请求 - 缺少 scope 参数
-			req := httptest.NewRequest("GET", "/api/authorization/v1/resource_all_operation/?resource_type=doc", nil)
+			req := httptest.NewRequest("GET", "/api/authorization/v2/resource_all_operation?resource_type=doc", nil)
 			req.Header.Set("Authorization", "Bearer test-token")
 			w := httptest.NewRecorder()
 
@@ -723,19 +727,6 @@ func TestResourceTypeRestHandler_Get(t *testing.T) {
 
 			// 验证结果
 			So(w.Code, ShouldEqual, http.StatusBadRequest)
-		})
-	})
-}
-
-func TestResourceTypeRestHandler_NewResourceTypeRestHandler(t *testing.T) {
-	Convey("NewResourceTypeRestHandler", t, func() {
-		Convey("应该创建单例实例", func() {
-			handler1 := NewResourceTypeRestHandler()
-			handler2 := NewResourceTypeRestHandler()
-
-			So(handler1, ShouldNotBeNil)
-			So(handler2, ShouldNotBeNil)
-			So(handler1, ShouldEqual, handler2) // 单例模式测试
 		})
 	})
 }

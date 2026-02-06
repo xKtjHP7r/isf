@@ -1128,106 +1128,6 @@ func (d *department) GetAllOrgManagerIDsByDepartIDs(departIds []string) (orgMana
 	return
 }
 
-// GetUserSpaceQuota 获取用户个人文档库配额,每1w用户查找一次，
-func (d *department) GetUserSpaceQuota(scopeUserIDs []string) (quotas map[string]int, err error) {
-	quotas = make(map[string]int)
-	if len(scopeUserIDs) == 0 {
-		return quotas, nil
-	}
-
-	nCount := len(scopeUserIDs)
-	nStep := 10000
-	nStart := 0
-	nEnd := 0
-	for {
-		nEnd = nStart + nStep
-		if nEnd > nCount {
-			nEnd = nCount
-		}
-
-		quota, err := d.getUserSpaceQuotaSingle(scopeUserIDs[nStart:nEnd])
-		if err != nil {
-			return nil, err
-		}
-
-		for k, v := range quota {
-			quotas[k] = v
-		}
-
-		nStart = nEnd
-		if nStart >= nCount {
-			break
-		}
-	}
-
-	return quotas, nil
-}
-
-// getUserSpaceQuotaSingle 获取用户个人文档库配额
-//
-//nolint:misspell
-func (d *department) getUserSpaceQuotaSingle(scopeUserIDs []string) (quotas map[string]int, err error) {
-	quotas = make(map[string]int)
-	if len(scopeUserIDs) == 0 {
-		return quotas, nil
-	}
-
-	set, argIDs := GetFindInSetSQL(scopeUserIDs)
-	etsDB := common.GetDBName("ets")
-	anyshareDB := common.GetDBName("anyshare")
-	sqlStr := `select d.f_creater_id, s.quota
-	from %s.space_quota as s
-	inner join %s.t_acs_doc as d
-	on s.cid = d.f_doc_id and d.f_doc_type = 1 and d.f_creater_id in (`
-	sqlStr += set
-	sqlStr += ") and d.f_status = 1"
-	sqlStr = fmt.Sprintf(sqlStr, etsDB, anyshareDB)
-
-	rows, sqlErr := d.db.Query(sqlStr, argIDs...)
-	defer func() {
-		if rows != nil {
-			if rowsErr := rows.Err(); rowsErr != nil {
-				d.logger.Errorln(rowsErr)
-			}
-
-			// 1、判断是否为空再关闭，2、如果不关闭而数据行并没有被scan的话，连接一直会被占用直到超时断开
-			if closeErr := rows.Close(); closeErr != nil {
-				d.logger.Errorln(closeErr)
-			}
-		}
-	}()
-
-	if sqlErr != nil {
-		d.logger.Errorln(sqlErr, sqlStr, argIDs)
-		return nil, sqlErr
-	}
-
-	var quota int
-	var userID string
-	for rows.Next() {
-		if err = rows.Scan(&userID, &quota); err != nil {
-			d.logger.Errorln(err, sqlStr, argIDs)
-			return
-		}
-
-		quotas[userID] += quota
-	}
-	return quotas, nil
-}
-
-// UpdateOrgManagerSpaceQuota 根据管辖用户更新组织管理员配额
-func (d *department) UpdateOrgManagerSpaceQuota(orgManagerID string, spaceQuota int) (err error) {
-	dbName := common.GetDBName("sharemgnt_db")
-	sqlStr := `update %s.t_manager_limit_space set f_allocated_limit_user_space = ? where f_manager_id = ?`
-	sqlStr = fmt.Sprintf(sqlStr, dbName)
-
-	_, err = d.db.Exec(sqlStr, spaceQuota, orgManagerID)
-	if err != nil {
-		d.logger.Errorln(err, sqlStr, spaceQuota, orgManagerID)
-	}
-	return err
-}
-
 // GetAllOrgManagerIDs 获取所有的组织管理员ID
 func (d *department) GetAllOrgManagerIDs() (ids []string, err error) {
 	dbName := common.GetDBName("sharemgnt_db")
@@ -1265,26 +1165,6 @@ func (d *department) GetAllOrgManagerIDs() (ids []string, err error) {
 	return
 }
 
-// DeleteOrgManagerSpaceLimit 删除部门管理员的配额信息
-func (d *department) DeleteOrgManagerSpaceLimit(orgManagerIDs []string) (err error) {
-	if len(orgManagerIDs) == 0 {
-		return nil
-	}
-
-	set, argIDs := GetFindInSetSQL(orgManagerIDs)
-	dbName := common.GetDBName("sharemgnt_db")
-	sqlStr := `delete from %s.t_manager_limit_space where f_manager_id in (`
-	sqlStr += set
-	sqlStr += ")"
-	sqlStr = fmt.Sprintf(sqlStr, dbName)
-
-	_, err = d.db.Exec(sqlStr, argIDs...)
-	if err != nil {
-		d.logger.Errorln(err, sqlStr, argIDs)
-	}
-	return err
-}
-
 // DeleteDocAutoCleanStrategy 删除文档自动清理策略
 func (d *department) DeleteDocAutoCleanStrategy(obj string) (err error) {
 	dbName := common.GetDBName("sharemgnt_db")
@@ -1294,26 +1174,6 @@ func (d *department) DeleteDocAutoCleanStrategy(obj string) (err error) {
 	_, err = d.db.Exec(sqlStr, obj)
 	if err != nil {
 		d.logger.Errorln(err, sqlStr, obj)
-	}
-	return err
-}
-
-// DeleteDocDepartmentRelation 删除文档库关联信息
-func (d *department) DeleteDocDepartmentRelation(departID []string) (err error) {
-	if len(departID) == 0 {
-		return nil
-	}
-
-	set, argIDs := GetFindInSetSQL(departID)
-	dbName := common.GetDBName("anyshare")
-	sqlStr := `update %s.t_acs_doc set f_relate_depart_id = '' where f_relate_depart_id in (`
-	sqlStr += set
-	sqlStr += ")"
-	sqlStr = fmt.Sprintf(sqlStr, dbName)
-
-	_, err = d.db.Exec(sqlStr, argIDs...)
-	if err != nil {
-		d.logger.Errorln(err, sqlStr, argIDs)
 	}
 	return err
 }

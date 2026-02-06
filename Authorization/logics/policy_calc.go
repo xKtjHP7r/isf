@@ -80,8 +80,11 @@ func (d *policyCalc) Check(ctx context.Context, resource *interfaces.ResourceInf
 	if err != nil {
 		return
 	}
+
+	resources := d.createAncestorsResource(ctx, resource)
+
 	// 获取资源策略
-	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, []interfaces.ResourceInfo{*resource}, accessTokens)
+	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, resources, accessTokens)
 	if err != nil {
 		d.logger.Errorf("Check GetPoliciesByResourcesAndAccessToken  err:%v", err)
 		return checkResult, err
@@ -106,7 +109,7 @@ func (d *policyCalc) Check(ctx context.Context, resource *interfaces.ResourceInf
 	}
 
 	// 计算资源继承的权限
-	allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(resource, resourcePermMap)
+	allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(resources, resourcePermMap)
 	checkResult.Result = true
 	// 所有的操作 都被允许 返回true，否则返回false
 	for _, v := range operation {
@@ -212,8 +215,10 @@ func (d *policyCalc) GetResourceList(ctx context.Context, resourceTypeID string,
 	}
 
 	policyMap := make(map[string][]interfaces.PolicyInfo)
+	resourcesAncestorsMap := make(map[string][]interfaces.Ancestor)
 	for i := range policies {
 		policyMap[policies[i].ResourceID] = append(policyMap[policies[i].ResourceID], policies[i])
+		resourcesAncestorsMap[policies[i].ResourceID] = policies[i].Ancestors
 	}
 
 	// 计算每个单个资源ID的权限
@@ -233,7 +238,9 @@ func (d *policyCalc) GetResourceList(ctx context.Context, resourceTypeID string,
 	resources = make([]interfaces.ResourceInfo, 0, len(allResources))
 	resourceOperationObligationMap = make(map[string]map[string][]interfaces.PolicyObligationItem)
 	for _, resource := range allResources {
-		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(&resource, resourcePermMap)
+		resourceSingle := interfaces.ResourceInfo{ID: resource.ID, Type: resourceTypeID, Ancestors: resourcesAncestorsMap[resource.ID]}
+		resourcesTmp := d.createAncestorsResource(ctx, &resourceSingle)
+		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(resourcesTmp, resourcePermMap)
 		checkResult := true
 		// 所有的操作 都被允许 返回true，否则false
 		for _, v := range operation {
@@ -274,7 +281,14 @@ func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.
 		return nil, nil, nil, err
 	}
 
-	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, resources, accessTokens)
+	allResources := make([]interfaces.ResourceInfo, 0, len(resources))
+	resourceTmpMap := make(map[string][]interfaces.ResourceInfo)
+	for _, resource := range resources {
+		resourceTmp := d.createAncestorsResource(ctx, &resource)
+		resourceTmpMap[resource.ID] = resourceTmp
+		allResources = append(allResources, resourceTmp...)
+	}
+	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, allResources, accessTokens)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -298,7 +312,8 @@ func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.
 	// 过滤有权限的列表
 	resourceOperationObligationMap = make(map[string]map[string][]interfaces.PolicyObligationItem)
 	for _, resource := range resources {
-		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(&resource, resourcePermMap)
+		resourceTmp := resourceTmpMap[resource.ID]
+		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(resourceTmp, resourcePermMap)
 		hasOperation := true
 		// 所有的操作 都被允许 返回true，否则返回false
 		for _, v := range operation {
@@ -397,7 +412,14 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 		return nil, nil, err
 	}
 
-	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, resources, accessTokens)
+	allResources := make([]interfaces.ResourceInfo, 0, len(resources))
+	resourceTmpMap := make(map[string][]interfaces.ResourceInfo)
+	for _, resource := range resources {
+		resourceTmp := d.createAncestorsResource(ctx, &resource)
+		resourceTmpMap[resource.ID] = resourceTmp
+		allResources = append(allResources, resourceTmp...)
+	}
+	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, allResources, accessTokens)
 	if err != nil {
 		d.logger.Errorf("GetResourceOperation GetPoliciesByResourcesAndAccessToken resources:%v accessTokens:%v err:%v", resources, accessTokens, err)
 		return nil, nil, err
@@ -428,7 +450,8 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 	resourceOperationMap = make(map[string][]string)
 	resourceOperationObligationMap = make(map[string]map[string][]interfaces.PolicyObligationItem)
 	for _, resource := range resources {
-		allowMap, _, allowMapWithObligation := d.calcResourceInheritedOperation(&resource, resourcePermMap)
+		resourceTmp := resourceTmpMap[resource.ID]
+		allowMap, _, allowMapWithObligation := d.calcResourceInheritedOperation(resourceTmp, resourcePermMap)
 		resourceOperationMap[resource.ID] = make([]string, 0, len(allowMap))
 		resourceOperationObligationMap[resource.ID] = d.calcObligationWithPriority(ctx, allowMapWithObligation)
 		for key := range allowMap {
@@ -443,29 +466,40 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 
 /*
 获取本层和上层继承的权限, 就近原则，下层权限已配置，上层无效
+入参 resources 资源ID列表，元素顺序为 根节点 -> 父节点 -> 本层
 */
-func (d *policyCalc) calcResourceInheritedOperation(resource *interfaces.ResourceInfo, resourcePermMap map[string]resourcePerm) (
+func (d *policyCalc) calcResourceInheritedOperation(resources []interfaces.ResourceInfo, resourcePermMap map[string]resourcePerm) (
 	allowMap map[string]bool, denyMap map[string]bool, allowMapWithObligation map[string][]policyObligationCalcItem,
 ) {
-	d.logger.Debugf("calcResourceInheritedOperation start, resource.ID: %s, ParentIDPath: %s", resource.ID, resource.ParentIDPath)
-	idTmp := strings.Split(resource.ParentIDPath, "/")
-	idTmp = append(idTmp, resource.ID)
-	ids := make([]string, 0, len(idTmp))
-	if resource.ID != "*" {
-		ids = append(ids, "*")
+	// resourceID IDPath 用于打印日志
+	resourceID := ""
+	IDPath := ""
+	if len(resources) > 0 { // 防止程序崩溃
+		resourceID = resources[len(resources)-1].ID
 	}
-	ids = append(ids, idTmp...)
-	// 反转 ids, 反转后 第一个是本层，后面的元素是上层
-	reverseIds := make([]string, len(ids))
-	for i, id := range ids {
-		reverseIds[len(ids)-i-1] = id
+	for _, resource := range resources {
+		tmp := strings.Split(resource.ID, "/")
+		if len(tmp) > 0 { // 防止程序崩溃
+			IDPath += "/" + tmp[0]
+		}
 	}
 
+	// resourceIDs 用于控制决策策略的顺序， 本层 -> 父节点 -> 根节点
+	resourceIDs := make([]string, len(resources))
+	for i := len(resources) - 1; i >= 0; i-- {
+		resourceIDs = append(resourceIDs, resources[i].ID)
+	}
+	// 如果资源ID不是*，则添加*，*表示所有实例
+	if resourceID != "*" {
+		resourceIDs = append(resourceIDs, "*")
+	}
+
+	d.logger.Debugf("calcResourceInheritedOperation start, resourceID: %s, IDPath: %s", resourceID, IDPath)
 	allowMap = make(map[string]bool)
 	allowMapWithObligation = make(map[string][]policyObligationCalcItem)
 	denyMap = make(map[string]bool)
 	// 权限配置 就近原则，下层权限已配置，上层无效
-	for _, id := range reverseIds {
+	for _, id := range resourceIDs {
 		for v := range resourcePermMap[id].deny {
 			if !denyMap[v] && !allowMap[v] {
 				denyMap[v] = true
@@ -485,7 +519,7 @@ func (d *policyCalc) calcResourceInheritedOperation(resource *interfaces.Resourc
 			}
 		}
 	}
-	d.logger.Debugf("calcResourceInheritedOperation end, resource.ID: %s, allowMap: %v, denyMap: %v", resource.ID, allowMap, denyMap)
+	d.logger.Debugf("calcResourceInheritedOperation end, resourceID: %s, IDPath: %s, allowMap: %v, denyMap: %v", resourceID, IDPath, allowMap, denyMap)
 	return
 }
 
@@ -637,4 +671,20 @@ func (d *policyCalc) getTypeAndInstanceOperation(resourceType *interfaces.Resour
 		}
 	}
 	return
+}
+
+/*
+createAncestorsResource 创建祖先和本层资源信息数组，返回的数组顺序 根节点 -> 父节点 -> 本层
+1. 有层级关系的资源类型，父节点本身的配置无法继承到下级
+2. 策略配置为 { 资源实例ID:"父节点/*", 资源类型:"子节点资源类型"} 表示下层资源类型配置
+*/
+func (d *policyCalc) createAncestorsResource(_ context.Context, resource *interfaces.ResourceInfo) (resources []interfaces.ResourceInfo) {
+	for _, ancestor := range resource.Ancestors {
+		resources = append(resources, interfaces.ResourceInfo{
+			ID:   ancestor.ID + "/*",
+			Type: resource.Type,
+		})
+	}
+	resources = append(resources, *resource)
+	return resources
 }

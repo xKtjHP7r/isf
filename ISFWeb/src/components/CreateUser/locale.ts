@@ -102,11 +102,6 @@ export default i18n([
         'Expiration:',
     ],
     [
-        '配额空间：',
-        '配額空間：',
-        'Quota:',
-    ],
-    [
         '确定',
         '確定',
         'OK',
@@ -185,16 +180,6 @@ export default i18n([
         '存储位置：',
         '儲存位置：',
         'Location: ',
-    ],
-    [
-        '当前用户管理剩余可分配空间为${space}。',
-        '當前用戶管理剩餘可分配空間為${space}。',
-        'Remaining space allocated for user is ${space}.',
-    ],
-    [
-        '当前用户管理剩余可分配空间为${space}，请重新输入。',
-        '當前用戶管理剩餘可分配空間為${space}，請重新輸入。',
-        'Remaining space allocated for user is ${space}, please re-enter.',
     ],
     [
         '选择用户',

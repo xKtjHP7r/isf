@@ -67,12 +67,12 @@ ncEACThirdDepHandler::CreateDep (brpc::Controller* cntl, ncIntrospectInfo &info)
     if (requestJson["manager"].type() != JSON::NIL)
     {
         JSON::Object& managerInfo = requestJson["manager"].o ();
-        if (managerInfo["type"].s () != "user") 
+        if (managerInfo["type"].s () != "user")
         {
             THROW_E (EAC_HTTP_SERVER, EACHTTP_INVALID_PARAM_VALUE,
                 LOAD_STRING (_T("IDS_EACHTTP_ERR_MSG_AGR_ERR")));
         }
-        
+
         addDepInfo.__set_managerID(managerInfo["id"].s ());
     }
 
@@ -145,12 +145,12 @@ ncEACThirdDepHandler::EditDep (brpc::Controller* cntl, ncIntrospectInfo &info)
     if (requestJson["manager"].type() != JSON::NIL)
     {
         JSON::Object& managerInfo = requestJson["manager"].o ();
-        if (managerInfo["type"].s () != "user") 
+        if (managerInfo["type"].s () != "user")
         {
             THROW_E (EAC_HTTP_SERVER, EACHTTP_INVALID_PARAM_VALUE,
                 LOAD_STRING (_T("IDS_EACHTTP_ERR_MSG_AGR_ERR")));
         }
-        
+
         editDepInfo.__set_managerID(managerInfo["id"].s ());
     }
 
@@ -974,8 +974,6 @@ ncEACThirdDepHandler::SetManager (brpc::Controller* cntl, ncIntrospectInfo &info
         depIds.push_back(tempId.s());
     }
     string userId = requestJson["userId"].s();
-    int64 limitUserSpaceSize = -1;
-    int64 limitDocSpaceSize = -1;
 
     //调用sharemgnt服务
     ncTUsrmOrganizationInfo orgInfo;
@@ -1007,8 +1005,6 @@ ncEACThirdDepHandler::SetManager (brpc::Controller* cntl, ncIntrospectInfo &info
         memberInfo.userId = userId;
         memberInfo.manageDeptInfo = ncTManageDeptInfo();
         memberInfo.manageDeptInfo.departmentIds = std::move(depIds);
-        memberInfo.manageDeptInfo.limitUserSpaceSize = std::move(limitUserSpaceSize);
-        memberInfo.manageDeptInfo.limitDocSpaceSize = std::move(limitDocSpaceSize);
         shareMgntClient->UsrRolem_SetMember (userID,
                                              g_ShareMgnt_constants.NCT_SYSTEM_ROLE_ORG_MANAGER,
                                              memberInfo);

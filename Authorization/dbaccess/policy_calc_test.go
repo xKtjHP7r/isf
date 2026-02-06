@@ -16,113 +16,9 @@ import (
 	"Authorization/interfaces"
 )
 
-func TestPolicyCalcGetPoliciesByAccessToken(t *testing.T) {
-	Convey("TestPolicyCalcGetPoliciesByAccessToken", t, func() {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-		defer func(db *sqlx.DB) {
-			err := db.Close()
-			if err != nil {
-				return
-			}
-		}(db)
-
-		mockErr := errors.New("test error")
-		ctx := context.Background()
-
-		p := &policy{}
-		d := &policyCalc{
-			db:     db,
-			logger: common.NewLogger(),
-		}
-
-		resource := interfaces.ResourceInfo{
-			ID:           "resource-1",
-			Type:         "type-1",
-			Name:         "resource-name-1",
-			ParentIDPath: "parent1/parent2",
-		}
-		accessToken := []string{"token1", "token2"}
-
-		Convey("query error", func() {
-			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnError(mockErr)
-			policies, err := d.GetPoliciesByAccessToken(ctx, resource, accessToken)
-			assert.Equal(t, err, mockErr)
-			assert.Equal(t, len(policies), 0)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
-		Convey("scan error", func() {
-			rows := sqlmock.NewRows([]string{
-				"f_id", "f_resource_id",
-				"f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type",
-				"f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time",
-			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", 1234567890, 1234567890)
-			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
-			policies, err := d.GetPoliciesByAccessToken(ctx, resource, accessToken)
-			assert.NotEqual(t, err, nil)
-			assert.Equal(t, len(policies), 0)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
-		Convey("json unmarshal error", func() {
-			operationJSON := invalidJSON
-			rows := sqlmock.NewRows([]string{
-				"f_id", "f_resource_id", "f_resource_type",
-				"f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name",
-				"f_operation", "f_condition", "f_create_time", "f_modify_time",
-			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
-			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
-			policies, err := d.GetPoliciesByAccessToken(ctx, resource, accessToken)
-			assert.NotEqual(t, err, nil)
-			assert.Equal(t, len(policies), 0)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
-		Convey("Success", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1", Name: "operation1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{
-					{ID: "op2", Name: "operation2"},
-				},
-			}
-			operationJSON, _ := p.operationInfoToString(operation)
-
-			rows := sqlmock.NewRows([]string{
-				"f_id", "f_resource_id", "f_resource_type",
-				"f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation",
-				"f_condition", "f_create_time", "f_modify_time",
-			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
-			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
-			policies, err := d.GetPoliciesByAccessToken(ctx, resource, accessToken)
-			assert.Equal(t, err, nil)
-			assert.Equal(t, len(policies), 1)
-			assert.Equal(t, policies[0].ID, "policy-1")
-			assert.Equal(t, policies[0].ResourceID, "resource-1")
-			assert.Equal(t, policies[0].ResourceType, "type-1")
-			assert.Equal(t, policies[0].ResourceName, "name-1")
-			assert.Equal(t, policies[0].AccessorID, "accessor-1")
-			assert.Equal(t, policies[0].AccessorType, interfaces.AccessorUser)
-			assert.Equal(t, policies[0].AccessorName, "accessor-name-1")
-			assert.Equal(t, policies[0].Condition, "condition-1")
-			assert.Equal(t, policies[0].CreateTime, int64(1234567890))
-			assert.Equal(t, policies[0].ModifyTime, int64(1234567890))
-			assert.Equal(t, len(policies[0].Operation.Allow), 1)
-			assert.Equal(t, len(policies[0].Operation.Deny), 1)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-	})
-}
+const (
+	policyCalcTestResourceTypeID = "type-1"
+)
 
 func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 	Convey("TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken", t, func() {
@@ -145,7 +41,7 @@ func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 			logger: common.NewLogger(),
 		}
 
-		resourceTypeID := "type-1"
+		resourceTypeID := policyCalcTestResourceTypeID
 		accessToken := []string{"token1", "token2"}
 
 		Convey("query error", func() {
@@ -160,10 +56,10 @@ func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 			rows := sqlmock.NewRows([]string{
 				"f_id", "f_resource_id", "f_resource_type",
 				"f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation",
-				"f_condition", "f_create_time", "f_modify_time",
+				"f_condition", "f_end_time", "f_create_time", "f_modify_time",
 			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", 1234567890, 1234567890)
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1",
+					interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypeAndAccessToken(ctx, resourceTypeID, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -176,10 +72,10 @@ func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 			rows := sqlmock.NewRows([]string{
 				"f_id", "f_resource_id", "f_resource_type",
 				"f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name",
-				"f_operation", "f_condition", "f_create_time", "f_modify_time",
+				"f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time",
 			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1",
+					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypeAndAccessToken(ctx, resourceTypeID, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -201,17 +97,17 @@ func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 			rows := sqlmock.NewRows([]string{
 				"f_id", "f_resource_id",
 				"f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name",
-				"f_operation", "f_condition", "f_create_time", "f_modify_time",
+				"f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time",
 			}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
-					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1",
+					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypeAndAccessToken(ctx, resourceTypeID, accessToken)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ID, "policy-1")
 			assert.Equal(t, policies[0].ResourceID, "resource-1")
-			assert.Equal(t, policies[0].ResourceType, "type-1")
+			assert.Equal(t, policies[0].ResourceType, policyCalcTestResourceTypeID)
 			assert.Equal(t, policies[0].ResourceName, "name-1")
 			assert.Equal(t, policies[0].AccessorID, "accessor-1")
 			assert.Equal(t, policies[0].AccessorType, interfaces.AccessorUser)
@@ -221,6 +117,39 @@ func TestPolicyCalcGetPoliciesByResourceTypeAndAccessToken(t *testing.T) {
 			assert.Equal(t, policies[0].ModifyTime, int64(1234567890))
 			assert.Equal(t, len(policies[0].Operation.Allow), 1)
 			assert.Equal(t, len(policies[0].Operation.Deny), 1)
+		})
+
+		//nolint:dupl
+		Convey("filter expired policies", func() {
+			operation := interfaces.PolicyOperation{
+				Allow: []interfaces.PolicyOperationItem{
+					{ID: "op1", Name: "operation1"},
+				},
+			}
+			operationJSON, _ := p.operationInfoToString(operation)
+			curTime := common.GetCurrentMicrosecondTimestamp()
+			expiredTime := curTime - 1000000 // 过期时间（1秒前）
+			futureTime := curTime + 1000000  // 未来时间（1秒后）
+
+			rows := sqlmock.NewRows([]string{
+				"f_id", "f_resource_id",
+				"f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name",
+				"f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time",
+			}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1",
+					interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890). // 永不过期
+				AddRow("policy-2", "resource-1", policyCalcTestResourceTypeID, "name-2", "accessor-2",
+					interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", expiredTime, 1234567890, 1234567890). // 已过期
+				AddRow("policy-3", "resource-1", policyCalcTestResourceTypeID, "name-3", "accessor-3",
+					interfaces.AccessorUser, "accessor-name-3", operationJSON, "condition-3", futureTime, 1234567890, 1234567890) // 未过期
+			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
+			policies, err := d.GetPoliciesByResourceTypeAndAccessToken(ctx, resourceTypeID, accessToken)
+			assert.Equal(t, err, nil)
+			// 应该只返回2条：policy-1（永不过期）和 policy-3（未过期），policy-2（已过期）被过滤
+			assert.Equal(t, len(policies), 2)
+			assert.Equal(t, policies[0].ID, "policy-1")
+			assert.Equal(t, policies[1].ID, "policy-3")
+			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 	})
 }
@@ -248,16 +177,14 @@ func TestPolicyCalcGetPoliciesByResourcesAndAccessToken(t *testing.T) {
 
 		resourceInfo := []interfaces.ResourceInfo{
 			{
-				ID:           "resource-1",
-				Type:         "type-1",
-				Name:         "resource-name-1",
-				ParentIDPath: "parent1/parent2",
+				ID:   "resource-1",
+				Type: policyCalcTestResourceTypeID,
+				Name: "resource-name-1",
 			},
 			{
-				ID:           "resource-2",
-				Type:         "type-1",
-				Name:         "resource-name-2",
-				ParentIDPath: "parent1/parent3",
+				ID:   "resource-2",
+				Type: policyCalcTestResourceTypeID,
+				Name: "resource-name-2",
 			},
 		}
 		accessToken := []string{"token1", "token2"}
@@ -277,8 +204,8 @@ func TestPolicyCalcGetPoliciesByResourcesAndAccessToken(t *testing.T) {
 		})
 
 		Convey("scan error", func() {
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourcesAndAccessToken(ctx, resourceInfo, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -288,8 +215,8 @@ func TestPolicyCalcGetPoliciesByResourcesAndAccessToken(t *testing.T) {
 
 		Convey("json unmarshal error", func() {
 			operationJSON := invalidJSON
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourcesAndAccessToken(ctx, resourceInfo, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -308,9 +235,9 @@ func TestPolicyCalcGetPoliciesByResourcesAndAccessToken(t *testing.T) {
 			}
 			operationJSON, _ := p.operationInfoToString(operation)
 
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890).
-				AddRow("policy-2", "resource-2", "type-1", "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890).
+				AddRow("policy-2", "resource-2", policyCalcTestResourceTypeID, "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourcesAndAccessToken(ctx, resourceInfo, accessToken)
 			assert.Equal(t, err, nil)
@@ -319,6 +246,32 @@ func TestPolicyCalcGetPoliciesByResourcesAndAccessToken(t *testing.T) {
 			assert.Equal(t, policies[0].ResourceID, "resource-1")
 			assert.Equal(t, policies[1].ID, "policy-2")
 			assert.Equal(t, policies[1].ResourceID, "resource-2")
+			assert.Equal(t, mock.ExpectationsWereMet(), nil)
+		})
+
+		//nolint:dupl
+		Convey("filter expired policies", func() {
+			operation := interfaces.PolicyOperation{
+				Allow: []interfaces.PolicyOperationItem{
+					{ID: "op1", Name: "operation1"},
+				},
+			}
+			operationJSON, _ := p.operationInfoToString(operation)
+			curTime := common.GetCurrentMicrosecondTimestamp()
+			expiredTime := curTime - 1000000 // 过期时间（1秒前）
+			futureTime := curTime + 1000000  // 未来时间（1秒后）
+
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890).   // 永不过期
+				AddRow("policy-2", "resource-2", policyCalcTestResourceTypeID, "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", expiredTime, 1234567890, 1234567890). // 已过期
+				AddRow("policy-3", "resource-1", policyCalcTestResourceTypeID, "name-3", "accessor-3", interfaces.AccessorUser, "accessor-name-3", operationJSON, "condition-3", futureTime, 1234567890, 1234567890)   // 未过期
+			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
+			policies, err := d.GetPoliciesByResourcesAndAccessToken(ctx, resourceInfo, accessToken)
+			assert.Equal(t, err, nil)
+			// 应该只返回2条：policy-1（永不过期）和 policy-3（未过期），policy-2（已过期）被过滤
+			assert.Equal(t, len(policies), 2)
+			assert.Equal(t, policies[0].ID, "policy-1")
+			assert.Equal(t, policies[1].ID, "policy-3")
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 	})
@@ -345,7 +298,7 @@ func TestPolicyCalcGetPoliciesByResourceTypes(t *testing.T) {
 			logger: common.NewLogger(),
 		}
 
-		resourceTypes := []string{"type-1", "type-2"}
+		resourceTypes := []string{policyCalcTestResourceTypeID, "type-2"}
 		accessToken := []string{"token1", "token2"}
 
 		Convey("query error", func() {
@@ -357,8 +310,8 @@ func TestPolicyCalcGetPoliciesByResourceTypes(t *testing.T) {
 		})
 
 		Convey("scan error", func() {
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", "invalid-json", "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypes(ctx, resourceTypes, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -368,8 +321,8 @@ func TestPolicyCalcGetPoliciesByResourceTypes(t *testing.T) {
 
 		Convey("json unmarshal error", func() {
 			operationJSON := invalidJSON
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "resource-1", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypes(ctx, resourceTypes, accessToken)
 			assert.NotEqual(t, err, nil)
@@ -388,19 +341,44 @@ func TestPolicyCalcGetPoliciesByResourceTypes(t *testing.T) {
 			}
 			operationJSON, _ := p.operationInfoToString(operation)
 
-			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_create_time", "f_modify_time"}).
-				AddRow("policy-1", "*", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890).
-				AddRow("policy-2", "*", "type-2", "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", 1234567890, 1234567890)
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "*", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890).
+				AddRow("policy-2", "*", "type-2", "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", int64(-1), 1234567890, 1234567890)
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
 			policies, err := d.GetPoliciesByResourceTypes(ctx, resourceTypes, accessToken)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, len(policies), 2)
 			assert.Equal(t, policies[0].ID, "policy-1")
 			assert.Equal(t, policies[0].ResourceID, "*")
-			assert.Equal(t, policies[0].ResourceType, "type-1")
+			assert.Equal(t, policies[0].ResourceType, policyCalcTestResourceTypeID)
 			assert.Equal(t, policies[1].ID, "policy-2")
 			assert.Equal(t, policies[1].ResourceID, "*")
 			assert.Equal(t, policies[1].ResourceType, "type-2")
+			assert.Equal(t, mock.ExpectationsWereMet(), nil)
+		})
+
+		Convey("filter expired policies", func() {
+			operation := interfaces.PolicyOperation{
+				Allow: []interfaces.PolicyOperationItem{
+					{ID: "op1", Name: "operation1"},
+				},
+			}
+			operationJSON, _ := p.operationInfoToString(operation)
+			curTime := common.GetCurrentMicrosecondTimestamp()
+			expiredTime := curTime - 1000000 // 过期时间（1秒前）
+			futureTime := curTime + 1000000  // 未来时间（1秒后）
+
+			rows := sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
+				AddRow("policy-1", "*", policyCalcTestResourceTypeID, "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", int64(-1), 1234567890, 1234567890).   // 永不过期
+				AddRow("policy-2", "*", policyCalcTestResourceTypeID, "name-2", "accessor-2", interfaces.AccessorUser, "accessor-name-2", operationJSON, "condition-2", expiredTime, 1234567890, 1234567890). // 已过期
+				AddRow("policy-3", "*", "type-2", "name-3", "accessor-3", interfaces.AccessorUser, "accessor-name-3", operationJSON, "condition-3", futureTime, 1234567890, 1234567890)                       // 未过期
+			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(rows)
+			policies, err := d.GetPoliciesByResourceTypes(ctx, resourceTypes, accessToken)
+			assert.Equal(t, err, nil)
+			// 应该只返回2条：policy-1（永不过期）和 policy-3（未过期），policy-2（已过期）被过滤
+			assert.Equal(t, len(policies), 2)
+			assert.Equal(t, policies[0].ID, "policy-1")
+			assert.Equal(t, policies[1].ID, "policy-3")
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 	})

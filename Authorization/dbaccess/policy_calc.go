@@ -34,59 +34,6 @@ func NewPolicyCalc() *policyCalc {
 	return policyCalcService
 }
 
-func (d *policyCalc) GetPoliciesByAccessToken(ctx context.Context, resource interfaces.ResourceInfo, accessToken []string) (policies []interfaces.PolicyInfo, err error) {
-	accessorSet, accessorIDGroup := getFindInSetSQL(accessToken)
-	var paramList []any
-	idTmp := strings.Split(resource.ParentIDPath, "/")
-	ids := make([]string, 0, len(idTmp))
-	ids = append(ids, "*")
-	ids = append(ids, idTmp...)
-	ids = append(ids, resource.ID)
-	resourceIDSet, resourceIDGroup := getFindInSetSQL(ids)
-	paramList = append(paramList, resourceIDGroup...)
-	paramList = append(paramList, resource.Type)
-	paramList = append(paramList, accessorIDGroup...)
-	// 查询策略
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_create_time, f_modify_time from " +
-		common.GetDBName(databaseName) + ".t_policy where f_resource_id in (" + resourceIDSet + ") and f_resource_type = ? and f_accessor_id in (" + accessorSet + ") "
-	rows, err := d.db.Query(strSQL, paramList...)
-	if err != nil {
-		d.logger.Errorf("sql: %s, err: %v", strSQL, err)
-		return nil, err
-	}
-	defer func() {
-		if rows != nil {
-			if rowsErr := rows.Err(); rowsErr != nil {
-				d.logger.Errorln(rowsErr)
-			}
-
-			// 1、判断是否为空再关闭，2、如果不关闭而数据行并没有被scan的话，连接一直会被占用直到超时断开
-			if closeErr := rows.Close(); closeErr != nil {
-				d.logger.Errorln(closeErr)
-			}
-		}
-	}()
-
-	for rows.Next() {
-		var policy interfaces.PolicyInfo
-		var operationStr string
-		err = rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType,
-			&policy.ResourceName, &policy.AccessorID, &policy.AccessorType,
-			&policy.AccessorName, &operationStr, &policy.Condition, &policy.CreateTime, &policy.ModifyTime)
-		if err != nil {
-			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
-			return nil, err
-		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
-		if err != nil {
-			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
-			return nil, err
-		}
-		policies = append(policies, policy)
-	}
-	return
-}
-
 // 通过资源类型和访问令牌获取配置
 func (d *policyCalc) GetPoliciesByResourceTypeAndAccessToken(ctx context.Context, resourceTypeID string, accessToken []string) (policies []interfaces.PolicyInfo, err error) {
 	accessorSet, accessorIDGroup := getFindInSetSQL(accessToken)
@@ -95,7 +42,7 @@ func (d *policyCalc) GetPoliciesByResourceTypeAndAccessToken(ctx context.Context
 	paramList = append(paramList, accessorIDGroup...)
 
 	// 查询策略
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_create_time, f_modify_time from " +
+	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time from " +
 		common.GetDBName(databaseName) + ".t_policy where f_resource_type = ? and f_accessor_id in (" + accessorSet + ") "
 	rows, err := d.db.Query(strSQL, paramList...)
 	if err != nil {
@@ -116,16 +63,21 @@ func (d *policyCalc) GetPoliciesByResourceTypeAndAccessToken(ctx context.Context
 		}
 	}()
 
+	curTime := common.GetCurrentMicrosecondTimestamp()
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
 		err = rows.Scan(&policy.ID, &policy.ResourceID,
 			&policy.ResourceType, &policy.ResourceName,
 			&policy.AccessorID, &policy.AccessorType, &policy.AccessorName, &operationStr,
-			&policy.Condition, &policy.CreateTime, &policy.ModifyTime)
+			&policy.Condition, &policy.EndTime, &policy.CreateTime, &policy.ModifyTime)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
+		}
+		// 过滤已过期的策略：f_end_time != -1 且 f_end_time < 当前时间
+		if policy.EndTime != -1 && policy.EndTime < curTime {
+			continue
 		}
 		policy.Operation, err = d.operationStrToInfo(operationStr)
 		if err != nil {
@@ -146,11 +98,7 @@ func (d *policyCalc) GetPoliciesByResourcesAndAccessToken(ctx context.Context, r
 	resourceIDMap := make(map[string]bool)
 	resourceIDMap["*"] = true
 	for _, resource := range resourceInfo {
-		idTmp := strings.Split(resource.ParentIDPath, "/")
-		idTmp = append(idTmp, resource.ID)
-		for _, id := range idTmp {
-			resourceIDMap[id] = true
-		}
+		resourceIDMap[resource.ID] = true
 	}
 
 	resourceType := resourceInfo[0].Type
@@ -168,7 +116,7 @@ func (d *policyCalc) GetPoliciesByResourcesAndAccessToken(ctx context.Context, r
 	paramList = append(paramList, accessorIDGroup...)
 	time0 := common.GetCurrentMicrosecondTimestamp()
 	d.logger.Debugf("GetPoliciesByResourcesAndAccessToken, start, time: %d", time0)
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_create_time, f_modify_time from " +
+	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time from " +
 		common.GetDBName(databaseName) + ".t_policy where f_resource_id in (" + resourceIDSet + ") and f_resource_type = ?  and f_accessor_id in (" + accessorSet + ") "
 	rows, err := d.db.Query(strSQL, paramList...)
 	if err != nil {
@@ -192,15 +140,20 @@ func (d *policyCalc) GetPoliciesByResourcesAndAccessToken(ctx context.Context, r
 	}()
 
 	policies = make([]interfaces.PolicyInfo, 0)
+	curTime := common.GetCurrentMicrosecondTimestamp()
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
 		err = rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType,
 			&policy.ResourceName, &policy.AccessorID, &policy.AccessorType, &policy.AccessorName,
-			&operationStr, &policy.Condition, &policy.CreateTime, &policy.ModifyTime)
+			&operationStr, &policy.Condition, &policy.EndTime, &policy.CreateTime, &policy.ModifyTime)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
+		}
+		// 过滤已过期的策略：f_end_time != -1 且 f_end_time < 当前时间
+		if policy.EndTime != -1 && policy.EndTime < curTime {
+			continue
 		}
 		policy.Operation, err = d.operationStrToInfo(operationStr)
 		if err != nil {
@@ -233,7 +186,7 @@ func (d *policyCalc) GetPoliciesByResourceTypes(ctx context.Context, resourceTyp
 	paramList = append(paramList, resourceTypeGroup...)
 	paramList = append(paramList, accessorIDGroup...)
 
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_create_time, f_modify_time from " +
+	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time from " +
 		common.GetDBName(databaseName) + ".t_policy where f_resource_id = '*' and f_resource_type in (" + resourceTypeSet + ") and f_accessor_id in (" + accessorSet + ") "
 	rows, err := d.db.Query(strSQL, paramList...)
 	if err != nil {
@@ -253,15 +206,20 @@ func (d *policyCalc) GetPoliciesByResourceTypes(ctx context.Context, resourceTyp
 		}
 	}()
 
+	curTime := common.GetCurrentMicrosecondTimestamp()
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
 		err = rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType, &policy.ResourceName, &policy.AccessorID,
 			&policy.AccessorType, &policy.AccessorName, &operationStr, &policy.Condition,
-			&policy.CreateTime, &policy.ModifyTime)
+			&policy.EndTime, &policy.CreateTime, &policy.ModifyTime)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
+		}
+		// 过滤已过期的策略：f_end_time != -1 且 f_end_time < 当前时间
+		if policy.EndTime != -1 && policy.EndTime < curTime {
+			continue
 		}
 		policy.Operation, err = d.operationStrToInfo(operationStr)
 		if err != nil {

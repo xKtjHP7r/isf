@@ -144,12 +144,6 @@ class ThirdImportManage(DBConnector):
                             exp_num=ncTShareMgntError.
                             NCT_CANNOT_IMPORT_DOMAIN_USER_TO_ALL)
 
-        # 检查配额空间
-        if option.spaceSize < 0:
-            raise_exception(exp_msg=_("IDS_INVALID_SPACE_SIZE"),
-                            exp_num=ncTShareMgntError.
-                            NCT_INVALID_SAPCE_SIZE)
-
         # 检查用户账号有效期
         if option.expireTime is None:
             option.expireTime = -1
@@ -466,7 +460,6 @@ class ThirdImportManage(DBConnector):
                     else:
                         if not user.oss_id:
                             user.oss_id = option.oss_id
-                        user.space_size = option.spaceSize
                         user.expire_time = option.expireTime
                         self.add_user(user, depart_id, responsible_person_id)
 
@@ -582,7 +575,6 @@ class ThirdImportManage(DBConnector):
         add_user.user.email = user_info.email
         add_user.user.idcardNumber = user_info.idcard_number
         add_user.user.userType = user_info.type
-        add_user.user.space = user_info.space_size
         add_user.user.departmentIds = [depart_id]
         add_user.user.ossInfo = get_oss_info(
             user_info.oss_id) or ncTUsrmOSSInfo()
@@ -597,11 +589,6 @@ class ThirdImportManage(DBConnector):
             add_user.md5Password = user_info.password
 
         self.user_manage.check_user(add_user.user)
-
-        # 如果开启了个人文档, 则检查组织管理员用户空间是否足够
-        if self.config_manage.get_user_doc_status():
-            self.user_manage.check_user_space(
-                add_user.user.space, responsible_person_id)
 
         user_id = self.user_manage.add_user_to_db(add_user)
 

@@ -96,8 +96,6 @@ export default class SetOrgAuditBase extends WebComponent<Console.SetOrgAudit.Pr
                 ncTManageDeptInfo: {
                     departmentIds: depInfo.depIds,
                     departmentNames: depInfo.depNames,
-                    limitUserSpaceSize: -1,
-                    limitDocSpaceSize: -1,
                 },
             }
             this.props.onConfirmSetRoleConfig({

@@ -11,7 +11,6 @@ import { getUserStringType, getUserType } from '@/core/user/'
 import { ListTipStatus } from '../../ListTipComponent/helper'
 import SetUserExpireTime from '../../SetUserExpireTime/component.view'
 import * as userClosedImg from '../assets/images/userClosed.png'
-import * as userOpenedImg from '../assets/images/userOpened.png'
 import PathTitle from './PathTitle/component.view'
 import UserGridBase, { Limit } from './component.base'
 import __ from './locale'
@@ -470,34 +469,18 @@ export default class UserGrid extends UserGridBase {
      * 获取用户图标
      */
     private getUserIcon(userInfo) {
-        const { user: { roles, space, status } } = userInfo
+        const { user: { status } } = userInfo
 
-        const isOrgManager = !!roles.find((role) => role === 'org_manager')
-
-        if (space === 0) {
-            return (
-                <Title content={__(`${isOrgManager ? '组织管理员' : '普通用户'}，已关闭个人文档库`)} role={'ui-title'}>
-                    <UIIcon
-                        className={classnames(styles['user-icon'], { [styles['icon-gray']]: status })}
-                        role={'ui-uiicon'}
-                        code={'\u0000'}
-                        fallback={userClosedImg}
-                        size={16}
-                    />
-                </Title>
-            )
-        } else {
-            return (
-                <Title content={__(`${isOrgManager ? '组织管理员' : '普通用户'}，已开启个人文档库`)} role={'ui-title'}>
-                    <UIIcon
-                        className={classnames(styles['user-icon'], { [styles['icon-gray']]: status })}
-                        role={'ui-uiicon'}
-                        code={'\u0000'}
-                        fallback={userOpenedImg}
-                        size={16}
-                    />
-                </Title>
-            )
-        }
+        return (
+            <Title role={'ui-title'}>
+                <UIIcon
+                    className={classnames(styles['user-icon'], { [styles['icon-gray']]: status })}
+                    role={'ui-uiicon'}
+                    fallback={userClosedImg}
+                    code={'\u0000'}
+                    size={16}
+                />
+            </Title>
+        )
     }
 }

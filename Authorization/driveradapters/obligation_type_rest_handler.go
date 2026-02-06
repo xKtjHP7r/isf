@@ -31,8 +31,8 @@ type obligationTypeRestHandler struct {
 	setSchemaStr   *gojsonschema.Schema
 }
 
-// NewObligationTemplateRestHandler 权限适配器接口
-func NewObligationTemplateRestHandler() RestHandler {
+// NewObligationTypeRestHandler 权限适配器接口
+func NewObligationTypeRestHandler() RestHandler {
 	obligationTypeOnce.Do(func() {
 		obligationTypeHandler = &obligationTypeRestHandler{
 			obligationType: logics.NewObligationType(),
@@ -44,7 +44,9 @@ func NewObligationTemplateRestHandler() RestHandler {
 }
 
 // RegisterPrivate 注册内部API
-func (o *obligationTypeRestHandler) RegisterPrivate(_ *gin.Engine) {
+func (o *obligationTypeRestHandler) RegisterPrivate(engine *gin.Engine) {
+	// 管理接口
+	engine.PUT("/api/authorization/v1/obligation-types/:id", o.setPrivate)
 }
 
 // RegisterPublic 注册外部API
@@ -58,8 +60,11 @@ func (o *obligationTypeRestHandler) RegisterPublic(engine *gin.Engine) {
 	// 查询接口
 	// 义务类型查询
 	engine.GET("/api/authorization/v1/query-obligation-types", o.queryObligationTypes)
+	// 义务类型查询
+	engine.GET("/api/authorization/v2/query-obligation-types", o.queryObligationTypesV2)
 }
 
+//nolint:dupl
 func (o *obligationTypeRestHandler) set(c *gin.Context) {
 	visitor, err := verify(c, o.hydra)
 	if err != nil {
@@ -143,6 +148,93 @@ func (o *obligationTypeRestHandler) set(c *gin.Context) {
 	}
 
 	err = o.obligationType.Set(context.Background(), &visitor, &obligationType)
+	if err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	rest.ReplyOK(c, http.StatusNoContent, nil)
+}
+
+//nolint:dupl
+func (o *obligationTypeRestHandler) setPrivate(c *gin.Context) {
+	ID := c.Param("id")
+	if ID == "" {
+		rest.ReplyErrorV2(c, gerrors.NewError(gerrors.PublicBadRequest, "id is required"))
+		return
+	}
+
+	var err error
+	var obligationTypeDr map[string]any
+	if err = validateAndBindGin(c, o.setSchemaStr, &obligationTypeDr); err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	obligationType := interfaces.ObligationTypeInfo{
+		ID:     ID,
+		Name:   obligationTypeDr["name"].(string),
+		Schema: obligationTypeDr["schema"],
+	}
+
+	defJson, ok := obligationTypeDr["default_value"]
+	if ok {
+		obligationType.DefaultValue = defJson
+	}
+
+	descriptionJson, ok := obligationTypeDr["description"]
+	if ok {
+		obligationType.Description = descriptionJson.(string)
+	}
+
+	uiSchemaJson, ok := obligationTypeDr["ui_schema"]
+	if ok {
+		obligationType.UiSchema = uiSchemaJson
+	}
+
+	resourceTypeScopesJson := obligationTypeDr["applicable_resource_types"].(map[string]any)
+	obligationType.ResourceTypeScope.Unlimited = resourceTypeScopesJson["unlimited"].(bool)
+
+	// 如果资源类型有范围限制，则需要设置资源类型范围
+	if !obligationType.ResourceTypeScope.Unlimited {
+		_, resourceTypesExist := resourceTypeScopesJson["resource_types"]
+		if !resourceTypesExist {
+			rest.ReplyErrorV2(c, gerrors.NewError(gerrors.PublicBadRequest, "resource_types is required"))
+			return
+		}
+		resourceTypesJson := resourceTypeScopesJson["resource_types"].([]any)
+		for _, resourceTypeJson := range resourceTypesJson {
+			// 遍历资源类型，每个资源类型信息 放入 resourceTypeScope
+			var resourceTypeScope interfaces.ObligationResourceTypeScope
+			resourceTypeJsonMap := resourceTypeJson.(map[string]any)
+			resourceTypeID := resourceTypeJsonMap["id"].(string)
+			operationsScopeJson := resourceTypeJsonMap["applicable_operations"].(map[string]any)
+			var operationsScopeInfo interfaces.ObligationOperationsScopeInfo
+			operationsScopeInfo.Unlimited = operationsScopeJson["unlimited"].(bool)
+			if !operationsScopeInfo.Unlimited {
+				_, operationsExist := operationsScopeJson["operations"]
+				if !operationsExist {
+					rest.ReplyErrorV2(c, gerrors.NewError(gerrors.PublicBadRequest, "operations is required"))
+					return
+				}
+				// 获取资源类型上的操作
+				operationsJson := operationsScopeJson["operations"].([]any)
+				for _, operationJson := range operationsJson {
+					operationJsonMap := operationJson.(map[string]any)
+					operationID := operationJsonMap["id"].(string)
+					var operation interfaces.ObligationOperation
+					operation.ID = operationID
+					operationsScopeInfo.Operations = append(operationsScopeInfo.Operations, operation)
+				}
+			}
+			resourceTypeScope.ResourceTypeID = resourceTypeID
+			resourceTypeScope.OperationsScope = operationsScopeInfo
+			// 将资源类型信息放入资源类型范围
+			obligationType.ResourceTypeScope.Types = append(obligationType.ResourceTypeScope.Types, resourceTypeScope)
+		}
+	}
+
+	err = o.obligationType.SetPrivate(context.Background(), nil, &obligationType)
 	if err != nil {
 		rest.ReplyErrorV2(c, err)
 		return
@@ -376,5 +468,72 @@ func (o *obligationTypeRestHandler) queryObligationTypes(c *gin.Context) {
 			"obligation_types": resultTmps,
 		})
 	}
+	rest.ReplyOK(c, http.StatusOK, results)
+}
+
+func (o *obligationTypeRestHandler) queryObligationTypesV2(c *gin.Context) {
+	visitor, err := verify(c, o.hydra)
+	if err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	resourceTypeIDs := c.QueryArray("resource_type_ids")
+	if len(resourceTypeIDs) == 0 {
+		rest.ReplyErrorV2(c, gerrors.NewError(gerrors.PublicBadRequest, "param resource_type_ids is required"))
+		return
+	}
+
+	// 查询义务类型V2
+	queryInfo := interfaces.QueryObligationTypeInfoV2{
+		ResourceTypeIDs: resourceTypeIDs,
+	}
+
+	mapInfos, err := o.obligationType.QueryV2(context.Background(), &visitor, &queryInfo)
+	if err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	// 转换结果格式
+	results := make([]map[string]any, 0, len(mapInfos))
+	for resourceTypeID, operationMap := range mapInfos {
+		operations := make([]map[string]any, 0, len(operationMap))
+		for operationID, obligationTypeInfos := range operationMap {
+			obligations := make([]map[string]any, 0, len(obligationTypeInfos))
+			for i := range obligationTypeInfos {
+				var def any
+				if obligationTypeInfos[i].DefaultValue != nil {
+					def = obligationTypeInfos[i].DefaultValue
+				} else {
+					def = map[string]any{}
+				}
+				var uiSchema any
+				if obligationTypeInfos[i].UiSchema != nil {
+					uiSchema = obligationTypeInfos[i].UiSchema
+				} else {
+					uiSchema = map[string]any{}
+				}
+				obligations = append(obligations, map[string]any{
+					"id":            obligationTypeInfos[i].ID,
+					"name":          obligationTypeInfos[i].Name,
+					"description":   obligationTypeInfos[i].Description,
+					"schema":        obligationTypeInfos[i].Schema,
+					"default_value": def,
+					"ui_schema":     uiSchema,
+				})
+			}
+			// 按照格式要求，operations 是 [[{...}]]，所以每个 operation 需要包装在一个数组中
+			operations = append(operations, map[string]any{
+				"operation_id":     operationID,
+				"obligation_types": obligations,
+			})
+		}
+		results = append(results, map[string]any{
+			"resource_type_id": resourceTypeID,
+			"operations":       operations,
+		})
+	}
+
 	rest.ReplyOK(c, http.StatusOK, results)
 }

@@ -145,6 +145,13 @@ type ResourceTypeOperation struct {
 	Scope       []OperationScopeType `json:"scope"`
 }
 
+type ChildrenResourceTypeOperation struct {
+	ResourceTypeID string
+	Name           string
+	Operations     []ResourceTypeOperationResponse
+	Children       []ChildrenResourceTypeOperation
+}
+
 // ResourceType 资源类型结构体
 type ResourceType struct {
 	ID          string
@@ -175,7 +182,8 @@ type LogicsResourceType interface {
 	GetByID(ctx context.Context, visitor *Visitor, resourceTypeID string) (resource ResourceType, err error)
 
 	// 获取资源类型所有操作
-	GetAllOperation(ctx context.Context, visitor *Visitor, resourceTypeID string, scope OperationScopeType) (operations []ResourceTypeOperationResponse, err error)
+	GetAllOperation(ctx context.Context, visitor *Visitor, resourceTypeID string, scope OperationScopeType) (operations []ResourceTypeOperationResponse,
+		childrenOperations []ChildrenResourceTypeOperation, err error)
 
 	// 获取资源
 	GetByIDsInternal(ctx context.Context, resourceTypeIDs []string) (resourceMap map[string]ResourceType, err error)
@@ -188,6 +196,21 @@ type LogicsResourceType interface {
 
 	// 资源类型设置-私有接口
 	SetPrivate(ctx context.Context, resourceType *ResourceType) error
+}
+
+// LogicsResourceTypeHierarchy 资源类型层级关系逻辑层接口
+type LogicsResourceTypeHierarchy interface {
+	// SetPrivate 设置资源类型层级关系
+	SetPrivate(ctx context.Context, visitor *Visitor, hierarchie *ResourceTypeHierarchy) error
+	// Get 获取资源类型层级关系
+	Get(ctx context.Context, visitor *Visitor, resourceTypeID string) (hierarchy ResourceTypeHierarchy, err error)
+
+	// GetAll 获取所有资源类型层级关系
+	GetAll(ctx context.Context) (resourceTypeHierarchyMap map[string]ResourceTypeHierarchy, err error)
+
+	// 层级关系查询接口
+	// HasHierarchy 判断一个资源类型是否有设置过层级关系
+	HasHierarchy(ctx context.Context, visitor *Visitor, resourceTypeID string) (hasHierarchy bool, err error)
 }
 
 // PolicyIncludeType 策略包含类型
@@ -211,11 +234,12 @@ type AccessorPolicyParam struct {
 }
 
 type ResourcePolicyPagination struct {
-	ResourceID   string
-	ResourceType string
-	Offset       int
-	Limit        int
-	Include      []PolicyIncludeType // 返回信息包含类型 可选值: obligation_type,obligation
+	ResourceID         string
+	ResourceType       string
+	Offset             int
+	Limit              int
+	Include            []PolicyIncludeType // 返回信息包含类型 可选值: obligation_type,obligation
+	SubResourceTypeIDs []string            // 子资源类型ID列表, 目前由层级关系确定该参数
 }
 
 type PolicyIncludeResp struct {
@@ -244,6 +268,9 @@ type LogicsPolicy interface {
 	// 更新资源实例名称
 	UpdateResourceName(ctx context.Context, resourceID, resourceType, name string) error
 
+	// 更新资源实例祖先信息
+	UpdateResourceAncestors(ctx context.Context, resourceID, resourceType string, ancestors []Ancestor) error
+
 	// 获取策略
 	GetResourcePolicy(ctx context.Context, visitor *Visitor, params ResourcePolicyPagination) (count int, policies []PolicyInfo, includeResp PolicyIncludeResp, err error)
 
@@ -260,10 +287,10 @@ type LogicsPolicy interface {
 // ResourceInfo 资源对象信息, 用于策略计算
 // 其他字段为系统字段，id,type为必传字段
 type ResourceInfo struct {
-	ID           string
-	Type         string
-	Name         string
-	ParentIDPath string
+	ID        string
+	Type      string
+	Name      string
+	Ancestors []Ancestor
 }
 
 // AccessorInfo 访问者对象信息, 用于策略计算
@@ -338,6 +365,7 @@ type ResourceTypeScopeWithOperation struct {
 	DataStruct        string
 	TypeOperation     []ResourceTypeOperationResponse
 	InstanceOperation []ResourceTypeOperationResponse
+	Children          []ResourceTypeScopeWithOperation
 }
 
 type ResourceTypeScopeInfoWithOperation struct {
@@ -417,6 +445,17 @@ type RoleMemberSearchInfo struct {
 	Keyword     string
 }
 
+type RoleInfoParam struct {
+	ResourceTypeViewMode ResourceTypeViewMode
+}
+
+type ResourceTypeViewMode string
+
+const (
+	ResourceTypeViewModeFlat      ResourceTypeViewMode = "flat"
+	ResourceTypeViewModeHierarchy ResourceTypeViewMode = "hierarchy"
+)
+
 // LogicsRole 角色
 type LogicsRole interface {
 	// InitRoles 初始化角色
@@ -436,7 +475,7 @@ type LogicsRole interface {
 	GetRoles(ctx context.Context, visitor *Visitor, info RoleSearchInfo) (count int, outInfo []RoleInfo, err error)
 
 	// GetRoleByID 获取指定的角色
-	GetRoleByID(ctx context.Context, visitor *Visitor, roleID string) (info RoleInfoWithResourceTypeOperation, err error)
+	GetRoleByID(ctx context.Context, visitor *Visitor, roleID string, param RoleInfoParam) (info RoleInfoWithResourceTypeOperation, err error)
 
 	// GetRolesByIDs 批量获取角色
 	GetRolesByIDs(ctx context.Context, roleIDs []string) (infoMap map[string]RoleInfo, err error)
@@ -464,6 +503,8 @@ type LogicsRole interface {
 type ObligationType interface {
 	// 添加义务类型
 	Set(ctx context.Context, visitor *Visitor, info *ObligationTypeInfo) (err error)
+	// SetPrivate 设置义务类型-私有接口
+	SetPrivate(ctx context.Context, visitor *Visitor, info *ObligationTypeInfo) (err error)
 	// 删除义务类型
 	Delete(ctx context.Context, visitor *Visitor, obligationTypeID string) (err error)
 	// 指定ID获取义务类型
@@ -481,6 +522,8 @@ type ObligationType interface {
 	// 查询接口
 	// 查询义务类型
 	Query(ctx context.Context, visitor *Visitor, queryInfo *QueryObligationTypeInfo) (resultInfos map[string][]ObligationTypeInfo, err error)
+	// 查询义务类型V2
+	QueryV2(ctx context.Context, visitor *Visitor, queryInfo *QueryObligationTypeInfoV2) (resultInfos map[string]map[string][]ObligationTypeInfo, err error)
 }
 
 type LogicsObligation interface {

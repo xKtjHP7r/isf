@@ -73,7 +73,7 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
     // 获取当前角色信息
     const getCurrentRoleInfo = async() => {
         try {
-            const data = await getRoleInfo({id: curRole?.id})
+            const data = await getRoleInfo({id: curRole?.id, resource_type_view_mode: 'hierarchy'})
             const { resource_type_scopes } = data
             setRoleInfo(data)
             setTypes(resource_type_scopes?.types)
@@ -86,6 +86,15 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
             handleError(e)
         }
     }
+
+    const getTreeChildrenPlaceholder = (item, dataStruct) => {
+        if (dataStruct !== "tree") {
+            return undefined;
+        }
+        const hasChildren = typeof item?.has_children === "boolean" ? item.has_children : true;
+        return hasChildren ? [] : undefined;
+    };
+
     // 获取资源信息
     const getResourceInfo = async(resource, offset = 0, limit= 50, keyword = "" ) => {
         const currentRequestId = ++requestIdRef.current;
@@ -111,14 +120,15 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
                 }
                 
                 let data = entries.map((cur) => {
-                    return !trim(keyword) && (data_struct === "tree" || data_struct === "array") ? {
+                    return !trim(keyword) && (data_struct === "tree") ? {
                         ...cur,
                         key: cur.id,
-                        children: []
+                        children: getTreeChildrenPlaceholder(cur, data_struct),
+                        ancestors: data_struct === "tree" ? [] : undefined
                     } : cur
                 })
                 
-                if (!trim(keyword) && (data_struct === "tree" || data_struct === "array") && offset + entries.length < total_count) {
+                if (!trim(keyword) && (data_struct === "tree") && offset + entries.length < total_count) {
                     data = [
                         ...data,
                         {
@@ -276,13 +286,13 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
                 const body = notExistPolicy.length ? notExistPolicy.map((item) => {
                     return {
                         accessor: { id: curRole?.id, type: "role" },
-                        resource: { id: item.id, name: item.name, type: item.type},
+                        resource: { id: item.id, name: item.name, type: item.type, ancestors: item.ancestors},
                         operation: permInfo?.operation,
                         expires_at: permInfo?.expires_at,
                     }
                 }) : [{
                     accessor: { id: curRole?.id, type: "role" },
-                    resource: { id: "*", name: curType.name, type: curType.id},
+                    resource: { id: "*", name: curType.name, type: curType.id, ancestors: curType.data_struct === 'tree' ? [] : undefined},
                     operation: permInfo?.operation,
                     expires_at: permInfo?.expires_at,
                 }]
@@ -552,7 +562,8 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
                 const newItems = entries.map(item => ({
                     ...item,
                     key: item.id,
-                    children: data_struct === "tree" || data_struct === "array" ? [] : undefined
+                    children: getTreeChildrenPlaceholder(item, data_struct),
+                    ancestors: data_struct === "tree" ? [] : undefined
                 }));
 
                 let updatedData = data.filter(item => !item.isLoadMore);
@@ -591,7 +602,8 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
             const newChildren = entries.map(child => ({
                 ...child,
                 key: child.id,
-                children: []
+                children: getTreeChildrenPlaceholder(child, data_struct),
+                ancestors: [...(targetItem.ancestors || []), {id: targetItem.id, name: targetItem.name, type: targetItem.type}]
             }));
             setData(prevData => {
                 // 移除旧的加载更多项
@@ -650,7 +662,8 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
                 let processedChildren = mergedChildren.map(child => ({
                     ...child,
                     key: child.id,
-                    children: []
+                    children: getTreeChildrenPlaceholder(child, curResourceTypeInfo.data_struct),
+                    ancestors: [...(item.ancestors || []), {id: item.id, name: item.name, type: item.type}]
                 }));
                 if (hasMore) {
                     processedChildren = [
@@ -805,10 +818,18 @@ export const Authorization = ({curRole, topMargin, updateRoleList}) => {
                                             className={styles["btn"]}
                                             disabled={!selections.length}
                                             onClick={() => {
-                                                setCurInfo(selections)
-                                                setCurConfig(selections.length === 1 ? {operation: getCurrentPermAndExpires({ id: selections[0]?.id})?.operation, expires_at: getCurrentPermAndExpires({ id: selections[0]?.id})?.expires_at } : null)
-                                                setOperationType(PermOperationEnum.SetSpecifiedResource)
-                                                setShowAuthorization(true)
+                                                if (selections.length) {
+                                                    const firstType = selections?.[0]?.type;
+                                                    const sameType = selections.every(item => item.type === firstType);
+                                                    if (!sameType) {
+                                                        message.info(intl.get("resource.type.must.be.same"));
+                                                        return;
+                                                    }
+                                                    setCurInfo(selections)
+                                                    setCurConfig(selections.length === 1 ? {operation: getCurrentPermAndExpires({ id: selections[0]?.id})?.operation, expires_at: getCurrentPermAndExpires({ id: selections[0]?.id})?.expires_at } : null)
+                                                    setOperationType(PermOperationEnum.SetSpecifiedResource)
+                                                    setShowAuthorization(true)
+                                                }
                                             }}
                                         >
                                             {intl.get("set.perm")}

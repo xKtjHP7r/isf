@@ -336,7 +336,7 @@ AND `f_path` != %s
 # 检查用户所属本组织下的部门
 check_user_belong_other_dept_same_ou_sql = """
 SELECT COUNT(*) AS cnt
-FROM `t_user_department_relation` 
+FROM `t_user_department_relation`
 WHERE `f_user_id` = %s
     AND `f_path` like %s
     AND `f_path` != %s
@@ -366,7 +366,7 @@ SELECT `user`.`f_user_id`,`user`.`f_login_name`,
 `user`.`f_password`, `user`.`f_display_name`,
 `user`.`f_mail_address`, `user`.`f_idcard_number`, `user`.`f_tel_number`,`user`.`f_third_party_id`,
 `user`.`f_status`, `user`.`f_domain_path`,
-`user`.`f_auth_type`, `user`.`f_priority`, `user`.`f_third_party_attr`, `user`.`f_csf_level`, `user`.`f_code`, `user`.`f_position`, 
+`user`.`f_auth_type`, `user`.`f_priority`, `user`.`f_third_party_attr`, `user`.`f_csf_level`, `user`.`f_code`, `user`.`f_position`,
 `user`.`f_csf_level2`
 FROM `t_user` AS `user`
 JOIN `t_user_department_relation` AS `relation`
@@ -378,17 +378,6 @@ WHERE `relation`.`f_path` = %s
     AND `user`.`f_third_party_id` != ''
 """
 
-# 删除管理员的配额记录
-delet_manager_limit_space_sql = """
-DELETE FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
-"""
-
-# 更新管理员的配额记录
-update_manager_limit_space_sql = """
-UPDATE `t_manager_limit_space` SET `f_allocated_limit_user_space` = %s
-WHERE `f_manager_id` = %s
-"""
-
 # 获取用户所属的部门
 select_user_belong_depart_id = """
 SELECT `f_department_id` FROM `t_user_department_relation`
@@ -397,7 +386,7 @@ WHERE `f_user_id` = %s
 
 # 获取某一组织下用户所属的部门
 select_belong_depart_in_ou_sql = """
-SELECT `f_path` FROM `t_user_department_relation` 
+SELECT `f_path` FROM `t_user_department_relation`
 WHERE `f_user_id` = %s AND `f_path` like %s
 """
 
@@ -406,10 +395,6 @@ select_responsible_person_id = """
 SELECT DISTINCT f_user_id FROM t_department_responsible_person
 """
 
-# 获取配额限制记录表中的组织管理员id
-select_manager_ids = """
-SELECT f_manager_id FROM t_manager_limit_space
-"""
 # 清除部门文档及数据库信息
 del_depart_sql_list = [
     # 删除用户组成员

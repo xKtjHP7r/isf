@@ -244,11 +244,6 @@ export const enum ValidateStatus {
     InvalidDocName,
 
     /**
-     * 配额空间不合法
-     */
-    InvalidQuota,
-
-    /**
      * 库类型名称不合法
      */
     InvalidDocTypeName,
@@ -269,7 +264,6 @@ export const enum ValidateStatus {
  */
 export const ValidateMessages = {
     [ValidateStatus.Empty]: __('此项不允许为空。'),
-    [ValidateStatus.InvalidQuota]: __('配额空间值为不超过 1000000 的正数，支持小数点后两位。'),
     [ValidateStatus.InvalidDocName]: __('库名称不能包含 \\ / : * ? " < > | 特殊字符，长度不能超过128个字符。'),
     [ValidateStatus.InvalidDocTypeName]: __('库分类显示不能包含 \\ / : * ? " < > | 特殊字符，长度不能超过128个字符。'),
     [ValidateStatus.ExitDocTypeName]: __('该分类已被其他类型的显示占用，请重新输入。'),

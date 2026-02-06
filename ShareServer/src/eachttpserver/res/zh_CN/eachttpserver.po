@@ -625,7 +625,7 @@ msgid "IDS_EACHTTP_SEND_VCODE_SERVER_NOT_AVAILABLE"
 msgstr "发送验证码服务器未开启"
 
 msgid "IDS_EACHTTP_APP_CREATER_SUCCESS_EXMSG"
-msgstr "用户名: \"%s\"; 显示名: \"%s\"; 用户类型: \"%s\"; 归属站点: \"%s\"; 邮箱地址: \"%s\"; 配额空间: \"%d\" G"
+msgstr "用户名: \"%s\"; 显示名: \"%s\"; 用户类型: \"%s\"; 归属站点: \"%s\"; 邮箱地址: \"%s\""
 
 msgid "IDS_LOCAL_USER"
 msgstr "本地用户"

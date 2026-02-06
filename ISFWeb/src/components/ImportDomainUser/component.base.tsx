@@ -3,7 +3,7 @@ import { isFunction, noop } from 'lodash';
 import session from '@/util/session';
 import { syncDelay, timer } from '@/util/timer';
 import { Message2 as Message } from '@/sweet-ui';
-import { usrmGetUserDocStatus, usrmGetDefaulSpaceSize, usrmImportDomainUsers, usrmImportDomainOUs, usrmClearImportProgress, usrmGetImportProgress } from '@/core/thrift/sharemgnt/sharemgnt';
+import { usrmImportDomainUsers, usrmImportDomainOUs, usrmClearImportProgress, usrmGetImportProgress } from '@/core/thrift/sharemgnt/sharemgnt';
 import { ErrorCode } from '@/core/thrift/sharemgnt/errcode';
 import WebComponent from '../webcomponent';
 import __ from './locale';
@@ -83,11 +83,6 @@ interface ImportDomainUserState {
     importStyle: ImportStyle;
 
     /**
-     * 配额状态
-     */
-    quotaStatus: boolean;
-
-    /**
      * 覆盖同名用户
      */
     userCover: boolean;
@@ -96,11 +91,6 @@ interface ImportDomainUserState {
      * 用户默认装态
      */
     userStatus: boolean;
-
-    /**
-     * 用户配额空间
-     */
-    quota: number | string;
 
     /**
      * 用户有效期限
@@ -138,10 +128,8 @@ export default class ImportDomainUserBase extends WebComponent<ImportDomainUserP
     state: ImportDomainUserState = {
         renderType: RenderType.View,
         importStyle: ImportStyle.All,
-        quotaStatus: false,
         userCover: true,
         userStatus: true,
-        quota: 0,
         expireTime: -1,
         progress: 0,
         selected: [],
@@ -167,13 +155,10 @@ export default class ImportDomainUserBase extends WebComponent<ImportDomainUserP
     async componentDidMount() {
         try {
             const { csf_level_enum } = await getLevelConfig({ fields: 'csf_level_enum' })
-            const quotaStatus = await usrmGetUserDocStatus()
 
             this.setState({
                 csfOptions: csf_level_enum,
                 csfLevel: csf_level_enum?.[0]?.value,
-                quotaStatus,
-                quota: quotaStatus ? ((await usrmGetDefaulSpaceSize()) / Math.pow(1024, 3)).toFixed(2) : '',
             })
         } catch (ex) {
             if (ex.error.errMsg) {
@@ -326,7 +311,7 @@ export default class ImportDomainUserBase extends WebComponent<ImportDomainUserP
      */
     protected confirmImport = async () => {
 
-        const { userCover, userStatus, expireTime, quota, selected, quotaStatus, csfLevel } = this.state;
+        const { userCover, userStatus, expireTime, selected, csfLevel } = this.state;
 
         const selectedDomains = selected.reduce((prev, item) => {
             /**
@@ -402,7 +387,6 @@ export default class ImportDomainUserBase extends WebComponent<ImportDomainUserP
                     userEmail: true,
                     userDisplayName: true,
                     userCover,
-                    spaceSize: quotaStatus ? Math.round(quota * Math.pow(1024, 3)) : 0,
                     userStatus: userStatus ? 0 : 1,
                     expireTime: expireTime === -1 ? -1 : expireTime / 1000000,
                     departmentId: this.props.departmentId,

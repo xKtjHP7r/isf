@@ -363,8 +363,23 @@ func (r *roleRestHandler) getRoleByID(c *gin.Context) {
 	// 获取用户组ID
 	groupID := c.Param("id")
 
+	param := interfaces.RoleInfoParam{}
+	// 新增 resource_type_view_mode
+	resourceTypeViewMode := c.Query("resource_type_view_mode")
+	if resourceTypeViewMode == "" {
+		param.ResourceTypeViewMode = interfaces.ResourceTypeViewModeFlat
+	} else {
+		if resourceTypeViewMode != string(interfaces.ResourceTypeViewModeFlat) &&
+			resourceTypeViewMode != string(interfaces.ResourceTypeViewModeHierarchy) {
+			err := gerrors.NewError(gerrors.PublicBadRequest, "param resource_type_view_mode is illegal")
+			rest.ReplyErrorV2(c, err)
+			return
+		}
+		param.ResourceTypeViewMode = interfaces.ResourceTypeViewMode(resourceTypeViewMode)
+	}
+
 	// 获取用户组信息
-	roleInfo, err := r.role.GetRoleByID(c, &visitor, groupID)
+	roleInfo, err := r.role.GetRoleByID(c, &visitor, groupID, param)
 	if err != nil {
 		rest.ReplyErrorV2(c, err)
 		return
@@ -398,6 +413,10 @@ func (r *roleRestHandler) getRoleByID(c *gin.Context) {
 		operationResp["type"] = typeOperationsResp
 		operationResp["instance"] = instanceOperationsResp
 		resourceInfo["operation"] = operationResp
+		if len(typesTmp[i].Children) > 0 {
+			// 递归填充子资源类型
+			resourceInfo["children"] = r.convertChildrenResourceTypeScope(typesTmp[i].Children)
+		}
 		resourcInfoTypeResp = append(resourcInfoTypeResp, resourceInfo)
 	}
 	resourcInforesp := make(map[string]any)
@@ -410,6 +429,46 @@ func (r *roleRestHandler) getRoleByID(c *gin.Context) {
 	out["resource_type_scopes"] = resourcInforesp
 	out["source"] = r.roleSourceToStrMap[roleInfo.RoleSource]
 	rest.ReplyOK(c, http.StatusOK, out)
+}
+
+// convertChildrenResourceTypeScope 递归转换子资源类型
+func (r *roleRestHandler) convertChildrenResourceTypeScope(children []interfaces.ResourceTypeScopeWithOperation) []any {
+	result := make([]any, 0, len(children))
+	for i := range children {
+		childInfo := make(map[string]any)
+		childInfo["id"] = children[i].ID
+		childInfo["name"] = children[i].Name
+		childInfo["description"] = children[i].Description
+		childInfo["instance_url"] = children[i].InstanceURL
+		childInfo["data_struct"] = children[i].DataStruct
+		typeOperationsResp := make([]any, 0, len(children[i].TypeOperation))
+		for _, operation := range children[i].TypeOperation {
+			operationResp := map[string]any{
+				"id":          operation.ID,
+				"description": operation.Description,
+				"name":        operation.Name,
+			}
+			typeOperationsResp = append(typeOperationsResp, operationResp)
+		}
+		instanceOperationsResp := make([]any, 0, len(children[i].InstanceOperation))
+		for _, operation := range children[i].InstanceOperation {
+			operationResp := map[string]any{
+				"id":          operation.ID,
+				"description": operation.Description,
+				"name":        operation.Name,
+			}
+			instanceOperationsResp = append(instanceOperationsResp, operationResp)
+		}
+		childInfo["operation"] = map[string]any{
+			"type":     typeOperationsResp,
+			"instance": instanceOperationsResp,
+		}
+		if len(children[i].Children) > 0 {
+			childInfo["children"] = r.convertChildrenResourceTypeScope(children[i].Children)
+		}
+		result = append(result, childInfo)
+	}
+	return result
 }
 
 // getRoleMembers 列举组成员

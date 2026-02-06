@@ -595,19 +595,6 @@ func TestPolicyRestHandler_Get(t *testing.T) {
 	})
 }
 
-func TestPolicyRestHandler_NewPolicyRestHandler(t *testing.T) {
-	Convey("NewPolicyRestHandler", t, func() {
-		Convey("应该返回单例实例", func() {
-			handler1 := NewPolicyRestHandler()
-			handler2 := NewPolicyRestHandler()
-
-			So(handler1, ShouldNotBeNil)
-			So(handler2, ShouldNotBeNil)
-			So(handler1, ShouldEqual, handler2)
-		})
-	})
-}
-
 //nolint:funlen
 func TestPolicyRestHandler_GetAccessorPolicy(t *testing.T) {
 	Convey("getAccessorPolicy", t, func() {

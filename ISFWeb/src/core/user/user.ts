@@ -189,16 +189,6 @@ export enum ValidateState {
     IdCardInvalid,
 
     /**
-     * 配额空间不合法
-     */
-    QuotaSpaceInvalid,
-
-    /**
-     * 配额空间不得小于占用空间
-     */
-    QuotaSpaceSmall,
-
-    /**
      * 存储位置是否禁用
      */
     OssInfoDisabled,
@@ -458,10 +448,6 @@ export const ValidateMessages = {
     [ValidateState.PhoneInvalid]: __('手机号只能包含 数字，长度范围 1~20 个字符。'),
 
     [ValidateState.IdCardInvalid]: __('请输入正确的身份证号。'),
-
-    [ValidateState.QuotaSpaceInvalid]: __('配额空间值为不超过 1000000 的正数，支持小数点后两位。'),
-
-    [ValidateState.QuotaSpaceSmall]: __('配额空间不能小于当前已使用空间。'),
 
     [ValidateState.OssInfoDisabled]: __('所指定的存储位置已不可用，请更换。'),
 

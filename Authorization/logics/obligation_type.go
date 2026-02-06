@@ -328,8 +328,6 @@ func (o *obligationType) Get(ctx context.Context, visitor *interfaces.Visitor, i
 //
 //	queryInfo 是查询条件
 //	resultInfos 是查询结果 key是OperationID, value是ObligationTypeInfo列表
-//
-//nolint:gocyclo
 func (o *obligationType) Query(ctx context.Context, visitor *interfaces.Visitor,
 	queryInfo *interfaces.QueryObligationTypeInfo,
 ) (resultInfos map[string][]interfaces.ObligationTypeInfo, err error) {
@@ -374,16 +372,21 @@ func (o *obligationType) Query(ctx context.Context, visitor *interfaces.Visitor,
 		return
 	}
 
-	resultInfos = make(map[string][]interfaces.ObligationTypeInfo, len(queryInfo.Operation))
+	resultInfos = o.getOperationSet(queryInfo.ResourceType, queryInfo.Operation, allObligationTypes)
+	return
+}
 
-	for _, operation := range queryInfo.Operation {
+func (o *obligationType) getOperationSet(resourceTypeID string, operationIDs []string,
+	allObligationTypes []interfaces.ObligationTypeInfo) (resultInfos map[string][]interfaces.ObligationTypeInfo) {
+	resultInfos = make(map[string][]interfaces.ObligationTypeInfo, len(operationIDs))
+	for _, operation := range operationIDs {
 		resultInfos[operation] = make([]interfaces.ObligationTypeInfo, 0)
 	}
 	// 遍历所有义务类型
 	for i := range allObligationTypes {
 		// 资源类型不限制, 则每个操作都有该义务
 		if allObligationTypes[i].ResourceTypeScope.Unlimited {
-			for _, operation := range queryInfo.Operation {
+			for _, operation := range operationIDs {
 				resultInfos[operation] = append(resultInfos[operation], allObligationTypes[i])
 			}
 			continue
@@ -394,7 +397,7 @@ func (o *obligationType) Query(ctx context.Context, visitor *interfaces.Visitor,
 		resourceTypeFound := false
 		resourceTypeTmp := interfaces.ObligationResourceTypeScope{}
 		for _, resourceType := range allObligationTypes[i].ResourceTypeScope.Types {
-			if resourceType.ResourceTypeID == queryInfo.ResourceType {
+			if resourceType.ResourceTypeID == resourceTypeID {
 				resourceTypeFound = true
 				resourceTypeTmp = resourceType
 				break
@@ -406,7 +409,7 @@ func (o *obligationType) Query(ctx context.Context, visitor *interfaces.Visitor,
 
 		// 如果操作不限制 则该义务类型对所有操作都有
 		if resourceTypeTmp.OperationsScope.Unlimited {
-			for _, operation := range queryInfo.Operation {
+			for _, operation := range operationIDs {
 				resultInfos[operation] = append(resultInfos[operation], allObligationTypes[i])
 			}
 			continue
@@ -414,12 +417,54 @@ func (o *obligationType) Query(ctx context.Context, visitor *interfaces.Visitor,
 
 		// 如果操作有设置，则加入
 		for _, operationTmp := range resourceTypeTmp.OperationsScope.Operations {
-			for _, operation := range queryInfo.Operation {
+			for _, operation := range operationIDs {
 				if operationTmp.ID == operation {
 					resultInfos[operation] = append(resultInfos[operation], allObligationTypes[i])
 				}
 			}
 		}
+	}
+	return
+}
+
+// QueryV2 查询义务类型V2
+//
+//	queryInfo 是查询条件，支持多个资源类型
+//	resultInfos 是查询结果，第一层key是ResourceTypeID，第二层key是OperationID, value是ObligationTypeInfo列表
+func (o *obligationType) QueryV2(ctx context.Context, visitor *interfaces.Visitor,
+	queryInfo *interfaces.QueryObligationTypeInfoV2,
+) (resultInfos map[string]map[string][]interfaces.ObligationTypeInfo, err error) {
+	// 检查资源类型是否存在
+	if len(queryInfo.ResourceTypeIDs) == 0 {
+		err = gerrors.NewError(gerrors.PublicBadRequest, "resource type ids is empty")
+		return
+	}
+
+	resourceTypeInfoMap, err := o.resourceType.GetByIDsInternal(ctx, queryInfo.ResourceTypeIDs)
+	if err != nil {
+		o.logger.Errorf("QueryV2 GetByIDsInternal err: %v", err)
+		return
+	}
+
+	if len(resourceTypeInfoMap) != len(queryInfo.ResourceTypeIDs) {
+		err = gerrors.NewError(gerrors.PublicBadRequest, "some resource types not found")
+		return
+	}
+
+	// 获取数据库的所有义务类型
+	allObligationTypes, err := o.db.GetAll(ctx)
+	if err != nil {
+		o.logger.Errorf("QueryV2 GetAll err: %v", err)
+		return
+	}
+
+	resultInfos = make(map[string]map[string][]interfaces.ObligationTypeInfo, len(resourceTypeInfoMap))
+	for resourceTypeID, resourceTypeInfo := range resourceTypeInfoMap {
+		operations := make([]string, 0, len(resourceTypeInfo.Operation))
+		for _, operation := range resourceTypeInfo.Operation {
+			operations = append(operations, operation.ID)
+		}
+		resultInfos[resourceTypeID] = o.getOperationSet(resourceTypeID, operations, allObligationTypes)
 	}
 	return
 }
@@ -486,4 +531,44 @@ func (o *obligationType) checkObligationTypeChange(old, newInfo *interfaces.Obli
 		return true
 	}
 	return false
+}
+
+// Set 设置义务类型
+func (o *obligationType) SetPrivate(ctx context.Context, _ *interfaces.Visitor, info *interfaces.ObligationTypeInfo) (err error) {
+	// 校验 是不是合格的jsonSchema
+	schema, err := gojsonschema.NewSchema(gojsonschema.NewGoLoader(info.Schema))
+	if err != nil {
+		err = gerrors.NewError(gerrors.PublicBadRequest, "schema is invalid")
+		o.logger.Errorf("Set: %v", err)
+		return
+	}
+
+	// 检查默认值 是否合法
+	if info.DefaultValue != nil {
+		var result *gojsonschema.Result
+		result, err = schema.Validate(gojsonschema.NewGoLoader(info.DefaultValue))
+		if err != nil {
+			return gerrors.NewError(gerrors.PublicBadRequest, err.Error())
+		}
+
+		if !result.Valid() {
+			msgList := make([]string, 0, len(result.Errors()))
+			for _, err := range result.Errors() {
+				msgList = append(msgList, err.String())
+			}
+			return gerrors.NewError(gerrors.PublicBadRequest, strings.Join(msgList, "; "))
+		}
+	}
+
+	// 检查资源类型和操作是否合法
+	err = o.checkResourceTypeAndOperation(ctx, info)
+	if err != nil {
+		return
+	}
+	err = o.db.Set(ctx, info)
+	if err != nil {
+		o.logger.Errorf("Set: %v", err)
+		return
+	}
+	return
 }

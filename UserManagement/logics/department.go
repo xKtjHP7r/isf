@@ -4,7 +4,6 @@ package logics
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"sync"
 
@@ -80,9 +79,6 @@ func NewDepartment() *department {
 
 		// efast逻辑，文档自动清理策略
 		dLogics.event.RegisterDeptDeleted(dLogics.DeleteDocAutoCleanStrategy)
-		dLogics.event.RegisterDeptDeleted(dLogics.DeleteDocDepartmentRelation)
-
-		dLogics.event.RegisterDepartResponserChanged(dLogics.UpdateQuota)
 	})
 
 	return dLogics
@@ -854,11 +850,6 @@ func (d *department) DeleteDocAutoCleanStrategy(obj string) (err error) {
 	return d.db.DeleteDocAutoCleanStrategy(obj)
 }
 
-// DeleteDocDepartmentRelation 删除文档库关联部门
-func (d *department) DeleteDocDepartmentRelation(obj string) (err error) {
-	return d.db.DeleteDocDepartmentRelation([]string{obj})
-}
-
 // DeleteDepartManager 清理部门负责人数据
 func (d *department) DeleteDepartManager(userID string) (err error) {
 	return d.db.DeleteDepartManager(userID)
@@ -886,23 +877,6 @@ func (d *department) GetDepartsInfoByLevel(level int) (infos []interfaces.Object
 		infos = append(infos, interfaces.ObjectBaseInfo{ID: out[k].ID, Name: out[k].Name, Type: "department", ThirdID: out[k].ThirdID})
 	}
 	return
-}
-
-// UpdateQuota 更新配额
-func (d *department) UpdateQuota(ids []string) (err error) {
-	// 更新每个受到影响的管理员配额
-	err = d.updateOrgManagerLimitSpace(ids)
-	if err != nil {
-		d.logger.Errorln(fmt.Sprintf("Delete Department update space quota error, error: %v", err))
-		return err
-	}
-
-	// 判断是否存在被移动到未分配组的管理员，如果存在，则删除其配额信息
-	err = d.deleteUnAttributeOrgManagerInfo()
-	if err != nil {
-		d.logger.Errorln("Delete Department delete unatrrbibute org manager quota info error", err)
-	}
-	return err
 }
 
 // DeleteDepart 根据部门ID删除部门
@@ -1160,93 +1134,6 @@ func (d *department) handleDeletedDepartInfo(path string) (needAddToUnDistribute
 		return nil, nil, nil, nil, err
 	}
 	return
-}
-
-// 更新组织管理员配额
-func (d *department) updateOrgManagerLimitSpace(userIDs []string) (err error) {
-	// 获取组织管理员下所有部门id
-	orgManagerDepInfos, err := d.userDB.GetOrgManagersDepartInfo(userIDs)
-	if err != nil {
-		return err
-	}
-
-	depIDs := make([]string, 0)
-	for _, v := range orgManagerDepInfos {
-		depIDs = append(depIDs, v...)
-	}
-
-	// 获取所有部门的路径
-	depInfos, err := d.db.GetDepartmentInfo(depIDs, false, 0, -1)
-	if err != nil {
-		return err
-	}
-
-	// 获取各个部门管理的所有子用户
-	depSubUsersIDs := make(map[string][]string, 0)
-	allUserIDs := make([]string, 0)
-	for k1 := range depInfos {
-		var tempIDs []string
-		tempIDs, err = d.db.GetAllSubUserIDsByDepartPath(depInfos[k1].Path)
-		if err != nil {
-			return err
-		}
-
-		depSubUsersIDs[depInfos[k1].ID] = tempIDs
-		allUserIDs = append(allUserIDs, tempIDs...)
-	}
-
-	// 去重
-	RemoveDuplicatStrs(&allUserIDs)
-
-	// 获取所有用户的配额信息
-	quotas, err := d.db.GetUserSpaceQuota(allUserIDs)
-	if err != nil {
-		return err
-	}
-
-	// 更新配额
-	for _, v := range userIDs {
-		// 获取组织管理员管辖的部门下所有用户的配额总和
-		var quota int
-		tempDepIDs := orgManagerDepInfos[v]
-		for _, v1 := range tempDepIDs {
-			for _, v2 := range depSubUsersIDs[v1] {
-				quota += quotas[v2]
-			}
-		}
-
-		// 更新管理员配额
-		err = d.db.UpdateOrgManagerSpaceQuota(v, quota)
-	}
-
-	return err
-}
-
-// 判断是否存在被移动到未分配组的组织管理员，如果存在，则删除其配额信息
-func (d *department) deleteUnAttributeOrgManagerInfo() (err error) {
-	// 获取所有的组织管理员
-	orgManagerIDs, err := d.db.GetAllOrgManagerIDs()
-	if err != nil {
-		return err
-	}
-
-	// 获取所有组织管理员路径信息
-	orgManagerInfo, err := d.userDB.GetUsersPath(orgManagerIDs)
-	if err != nil {
-		return err
-	}
-
-	// 获取需要删除的组织管理员信息
-	needRemoveUserIDs := make([]string, 0)
-	for k, v := range orgManagerInfo {
-		if len(v) == 1 && v[0] == "-1" {
-			needRemoveUserIDs = append(needRemoveUserIDs, k)
-		}
-	}
-
-	// 删除组织管理员的配额信息
-	err = d.db.DeleteOrgManagerSpaceLimit(needRemoveUserIDs)
-	return err
 }
 
 // 判断用户是否有权限操作此部门checkDepartInScope

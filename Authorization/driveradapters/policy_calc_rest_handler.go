@@ -110,6 +110,11 @@ func (p *policyCalcRestHandler) checkPublic(c *gin.Context) {
 	resourceJson := jsonReq["resource"].(map[string]any)
 	resourceID := resourceJson["id"].(string)
 	resourceType := resourceJson["type"].(string)
+	ancestorsJson, ok := resourceJson["ancestors"]
+	var ancestors []interfaces.Ancestor
+	if ok {
+		ancestors = p.ancestorsStrToInfo(ancestorsJson)
+	}
 
 	var resourceName string
 	nameJson, ok := resourceJson["name"]
@@ -123,9 +128,10 @@ func (p *policyCalcRestHandler) checkPublic(c *gin.Context) {
 	}
 
 	resource := interfaces.ResourceInfo{
-		ID:   resourceID,
-		Type: resourceType,
-		Name: resourceName,
+		ID:        resourceID,
+		Type:      resourceType,
+		Name:      resourceName,
+		Ancestors: ancestors,
 	}
 
 	operationsJson := jsonReq["operation"].([]any)
@@ -162,6 +168,13 @@ func (p *policyCalcRestHandler) check(c *gin.Context) {
 	resourceID := resourceJson["id"].(string)
 	resourceType := resourceJson["type"].(string)
 
+	// 祖先信息 ,先判断是否 包含
+	ancestorsJson, ok := resourceJson["ancestors"]
+	var ancestors []interfaces.Ancestor
+	if ok {
+		ancestors = p.ancestorsStrToInfo(ancestorsJson)
+	}
+
 	var resourceName string
 	nameJson, ok := resourceJson["name"]
 	if ok {
@@ -174,9 +187,10 @@ func (p *policyCalcRestHandler) check(c *gin.Context) {
 	}
 
 	resource := interfaces.ResourceInfo{
-		ID:   resourceID,
-		Type: resourceType,
-		Name: resourceName,
+		ID:        resourceID,
+		Type:      resourceType,
+		Name:      resourceName,
+		Ancestors: ancestors,
 	}
 
 	operationsJson := jsonReq["operation"].([]any)
@@ -259,9 +273,15 @@ func (p *policyCalcRestHandler) resourceFilter(c *gin.Context) {
 		resourceJson := resource.(map[string]any)
 		resourceID := resourceJson["id"].(string)
 		resourceType := resourceJson["type"].(string)
+		ancestorsJson, ok := resourceJson["ancestors"]
+		var ancestors []interfaces.Ancestor
+		if ok {
+			ancestors = p.ancestorsStrToInfo(ancestorsJson)
+		}
 		resources = append(resources, interfaces.ResourceInfo{
-			ID:   resourceID,
-			Type: resourceType,
+			ID:        resourceID,
+			Type:      resourceType,
+			Ancestors: ancestors,
 		})
 	}
 
@@ -364,10 +384,16 @@ func (p *policyCalcRestHandler) resourceOperation(c *gin.Context) {
 		resourceJson := resource.(map[string]any)
 		resourceID := resourceJson["id"].(string)
 		resourceType := resourceJson["type"].(string)
+		ancestorsJson, ok := resourceJson["ancestors"]
+		var ancestors []interfaces.Ancestor
+		if ok {
+			ancestors = p.ancestorsStrToInfo(ancestorsJson)
+		}
 
 		resources = append(resources, interfaces.ResourceInfo{
-			ID:   resourceID,
-			Type: resourceType,
+			ID:        resourceID,
+			Type:      resourceType,
+			Ancestors: ancestors,
 		})
 	}
 
@@ -430,10 +456,16 @@ func (p *policyCalcRestHandler) resourceOperationPublic(c *gin.Context) {
 		resourceJson := resource.(map[string]any)
 		resourceID := resourceJson["id"].(string)
 		resourceType := resourceJson["type"].(string)
+		ancestorsJson, ok := resourceJson["ancestors"]
+		var ancestors []interfaces.Ancestor
+		if ok {
+			ancestors = p.ancestorsStrToInfo(ancestorsJson)
+		}
 
 		resources = append(resources, interfaces.ResourceInfo{
-			ID:   resourceID,
-			Type: resourceType,
+			ID:        resourceID,
+			Type:      resourceType,
+			Ancestors: ancestors,
 		})
 	}
 
@@ -582,4 +614,18 @@ func (p *policyCalcRestHandler) resourceList(c *gin.Context) {
 		result = append(result, respOne)
 	}
 	rest.ReplyOK(c, http.StatusOK, result)
+}
+
+func (p *policyCalcRestHandler) ancestorsStrToInfo(ancestorsJson any) (result []interfaces.Ancestor) {
+	ancestors := ancestorsJson.([]any)
+	result = make([]interfaces.Ancestor, 0, len(ancestors))
+	for _, v := range ancestors {
+		ancestorMap := v.(map[string]any)
+		ancestor := interfaces.Ancestor{
+			ID:   ancestorMap["id"].(string),
+			Type: ancestorMap["type"].(string),
+		}
+		result = append(result, ancestor)
+	}
+	return
 }

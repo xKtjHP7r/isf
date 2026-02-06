@@ -103,10 +103,6 @@ declare namespace Core {
              */
             email: string;
             /**
-             *  配额空间，单位Bytes，默认5GB，最小1GB
-             */
-            space: number;
-            /**
             * 用户类型
             * enum ncTUsrmUserType {
             *   NCT_USER_TYPE_LOCAL = 1,        // 本地用户
@@ -136,11 +132,6 @@ declare namespace Core {
             status: number;
 
             /**
-             *  已使用配额空间,单位Bytes          
-             */
-            usedSize: number;
-
-            /**
              *  排序优先级 
              */
             priority: number;
@@ -161,11 +152,6 @@ declare namespace Core {
             ossInfo: ncTUsrmOSSInfo;
 
             /**
-             *  管理员限额信息
-             */
-            limitSpaceInfo: ncTLimitSpaceInfo;
-
-            /**
              *  用户创建时间
              */
             createTime: number;
@@ -174,29 +160,6 @@ declare namespace Core {
              *  用户冻结状态，true:冻结 false:未冻结                    
              */
             freezeStatus: boolean;
-        }
-
-        type ncTLimitSpaceInfo = {
-
-            /**
-             *  用户限额，默认为-1(无限制)
-             */
-            limitUserSpace: number;
-
-            /**
-             *  已分配的用户限额,默认0
-             */
-            allocatedLimitUserSpace: number;
-
-            /**
-             *  文档库限额，默认为-1(无限制)
-             */
-            limitDocSpace: number;
-
-            /**
-             *  已分配的文档库限额，默认0
-             */
-            allocatedLimitDocSpace: number;
         }
 
         /**
@@ -378,11 +341,6 @@ declare namespace Core {
              * 同步时间间隔
              */
             syncInterval: number;
-
-            /**
-             * 用户配额空间
-             */
-            spaceSize: number;
 
             /**
              * 同步方式

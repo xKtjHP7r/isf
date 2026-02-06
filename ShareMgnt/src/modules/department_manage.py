@@ -3,7 +3,7 @@
 """This is spcae manage class"""
 import uuid
 import re
-from src.common.global_info import (IS_SINGLE, DEFAULT_DEPART_PRIORITY)
+from src.common.global_info import (DEFAULT_DEPART_PRIORITY)
 from collections import deque
 from eisoo.tclients import TClient
 from src.common.db.connector import DBConnector, ConnectorManager
@@ -356,7 +356,7 @@ class DepartmentManage(DBConnector):
         SELECT f_manager_id, f_name, f_status FROM t_department WHERE f_department_id = %s
         """
         result = self.r_db.one(tmpSql, editParam.departId)
-        
+
         tmp = ""
         # 检查组织或部门名
         c = ''
@@ -598,7 +598,7 @@ class DepartmentManage(DBConnector):
             if addParam.managerID in [NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT]:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
                             exp_num=ncTShareMgntError.NCT_INVALID_PARAMTER)
-            
+
             bExist = self.user_manage.check_user_exists(addParam.managerID, False)
             if not bExist:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
@@ -607,12 +607,12 @@ class DepartmentManage(DBConnector):
         # 检查备注
         if addParam.remark is not None:
             addParam.remark = self._is_remark_valid(addParam.remark)
-        
+
         # 检查部门编码
         if addParam.code is not None:
             addParam.code = self.check_depart_code(addParam.code)
 
-        organ_uuid = self.add_depart_to_db(name=striped_name, oss_id=addParam.ossId, priority=addParam.priority, email=addParam.email, 
+        organ_uuid = self.add_depart_to_db(name=striped_name, oss_id=addParam.ossId, priority=addParam.priority, email=addParam.email,
                             thirdId=addParam.thirdId, managerID=addParam.managerID, remark=addParam.remark, code=addParam.code, status=addParam.status)
         return organ_uuid
 
@@ -631,7 +631,7 @@ class DepartmentManage(DBConnector):
             raise_exception(exp_msg=_("IDS_INVALID_DEPART_CODE"),
                             exp_num=ncTShareMgntError.NCT_INVALID_DEPART_CODE)
 
-        
+
         select_sql = """
         select f_department_id from t_department where f_code = %s
         """
@@ -640,7 +640,7 @@ class DepartmentManage(DBConnector):
             raise_exception(exp_msg=_("IDS_DUPLICATED_DEPART_CODE"),
                             exp_num=ncTShareMgntError.NCT_DUPLICATED_DEPART_CODE)
         return striped_code
-    
+
     def _is_remark_valid(self, remark):
         """
         检查备注是否符合规则，返回最后的备注
@@ -702,7 +702,7 @@ class DepartmentManage(DBConnector):
             if editParam.managerID in [NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT]:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
                             exp_num=ncTShareMgntError.NCT_INVALID_PARAMTER)
-            
+
             bExist = self.user_manage.check_user_exists(editParam.managerID, False)
             if not bExist:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
@@ -858,8 +858,6 @@ class DepartmentManage(DBConnector):
         WHERE `f_user_id` = %s
         """
         self.w_db.query(delete_sql, user_id)
-
-        self.update_admin_space(user_id)
 
     def set_audit_person(self, user_id, depart_ids, manager_id=None):
         """
@@ -1037,19 +1035,6 @@ class DepartmentManage(DBConnector):
 
             role_member.manageDeptInfo.departmentIds.append(result['f_department_id'])
             role_member.manageDeptInfo.departmentNames.append(result['f_name'])
-
-        # 填充管理员配额信息
-        sql = """
-        SELECT f_limit_user_space, f_limit_doc_space, f_manager_id
-        FROM t_manager_limit_space
-        WHERE f_manager_id in ({0})
-        """.format(groupStr)
-        results = self.r_db.all(sql)
-        for result in results:
-            role_member = userid_map[result['f_manager_id']]
-            if role_member.manageDeptInfo:
-                role_member.manageDeptInfo.limitUserSpaceSize = result['f_limit_user_space']
-                role_member.manageDeptInfo.limitDocSpaceSize = result['f_limit_doc_space']
 
     def fill_role_audit_departments(self, role_members):
         """
@@ -1235,7 +1220,7 @@ class DepartmentManage(DBConnector):
             if addParam.managerID in [NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT]:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
                             exp_num=ncTShareMgntError.NCT_INVALID_PARAMTER)
-            
+
             bExist = self.user_manage.check_user_exists(addParam.managerID, False)
             if not bExist:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
@@ -1249,12 +1234,12 @@ class DepartmentManage(DBConnector):
             addParam.code = self.check_depart_code(addParam.code)
 
         return self.add_depart_to_db(name=striped_name, oss_id=addParam.ossId,
-                                     parent_id=addParam.parentId, priority=addParam.priority, email=addParam.email, thirdId=addParam.thirdId, 
+                                     parent_id=addParam.parentId, priority=addParam.priority, email=addParam.email, thirdId=addParam.thirdId,
                                      managerID=addParam.managerID, code=addParam.code, remark=addParam.remark, status=addParam.status)
 
 
     def add_depart_to_db(self, name="", oss_id=None, parent_id=None, ou_info=None,
-                         priority=None, email=None, third_ou_info=None, thirdId=None, 
+                         priority=None, email=None, third_ou_info=None, thirdId=None,
                          managerID=None, status=True, remark=None, code=None):
         """
         添加部门到数据库
@@ -1494,7 +1479,7 @@ class DepartmentManage(DBConnector):
             if editParam.managerID == editParam.departId or editParam.managerID in [NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT]:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
                             exp_num=ncTShareMgntError.NCT_INVALID_PARAMTER)
-            
+
             bExist = self.user_manage.check_user_exists(editParam.managerID, False)
             if not bExist:
                 raise_exception(exp_msg=_("IDS_INVALID_MANAGER"),
@@ -1892,10 +1877,6 @@ class DepartmentManage(DBConnector):
         """
         添加用户到部门
         """
-        global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.Usrm_AddUserToDepartment(user_ids, depart_id)
         if depart_id == NCT_UNDISTRIBUTE_USER_GROUP:
             raise_exception(exp_msg=_("cann't move user to undistribute group."),
                             exp_num=ncTShareMgntError.
@@ -1958,10 +1939,6 @@ class DepartmentManage(DBConnector):
         """
         从部门移除用户
         """
-        global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.Usrm_RomoveUserFromDepartment(user_ids, depart_id)
         self.check_depart_exists(depart_id, True)
         # 去重
         user_ids = list(set(user_ids))
@@ -2035,10 +2012,6 @@ class DepartmentManage(DBConnector):
             src_depart_id:源部门id
             dest_depart_id:目的部门id
         """
-        global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.Usrm_MoveUserToDepartment(user_ids, src_depart_id, dest_depart_id)
         if src_depart_id == dest_depart_id:
             return []
 
@@ -2656,17 +2629,6 @@ class DepartmentManage(DBConnector):
 
         return user_ids
 
-    def get_supervisory_users_used_space(self, manager_id):
-        """
-        获取用户所能管理的所有用户总的已使用配额空间，供acs扣费使用
-        """
-        all_used_space = 0
-        manage_user_ids = self.get_supervisory_user_ids(manager_id)
-
-        user_total_space_tmp, all_used_space = self.user_manage.get_user_space_quota(manage_user_ids)
-
-        return all_used_space
-
     def locate_user(self, manager_id, user_id):
         """
         定位用户
@@ -2882,8 +2844,6 @@ class DepartmentManage(DBConnector):
                 db_user['originalPwd'] = True if self.initSha2AdminPwd == db_user['f_sha2_password'] else False
             db_user['parentDepartId'] = depart_id
             users.append(self.user_manage.convert_user_info(db_user))
-        # 填充用户配额空间
-        self.user_manage.fill_user_quota(users)
         # 填充用户所属部门信息
         self.user_manage.fill_user_departments(users)
         # 填充用户角色信息
@@ -2975,8 +2935,6 @@ class DepartmentManage(DBConnector):
                 db_user['originalPwd'] = True if self.initSha2AdminPwd == db_user['f_sha2_password'] else False
             db_user['parentDepartId'] = depart_id
             users.append(self.user_manage.convert_user_info(db_user))
-        # 填充用户配额空间
-        self.user_manage.fill_user_quota(users)
         # 填充用户所属部门信息
         self.user_manage.fill_user_departments(users)
         # 填充用户角色信息
@@ -3100,8 +3058,6 @@ class DepartmentManage(DBConnector):
         users = []
         for db_user in db_users:
             users.append(self.user_manage.convert_user_info(db_user))
-        # 填充用户配额空间
-        self.user_manage.fill_user_quota(users)
         # 填充用户所属部门信息
         if depart_id != NCT_ALL_USER_GROUP:
             self.user_manage.fill_user_departments(users)
@@ -3349,81 +3305,6 @@ class DepartmentManage(DBConnector):
 
         return ret_infos
 
-    def edit_limit_space(self, user_id, limit_user_space_size, limit_doc_space_size):
-        """
-        编辑组织管理员限额
-        """
-        self.user_manage.check_user_exists(user_id)
-
-        # 检查配额
-        if (limit_user_space_size < 0 and limit_user_space_size != -1) or \
-                (limit_doc_space_size < 0 and limit_doc_space_size != -1):
-            raise_exception(exp_msg=_("IDS_INVALID_SPACE_SIZE"),
-                            exp_num=ncTShareMgntError.NCT_INVALID_SAPCE_SIZE)
-
-        check_sql = """
-            SELECT COUNT(*) AS cnt FROM `t_manager_limit_space`
-            WHERE `f_manager_id` = %s
-        """
-
-        update_sql = """
-            UPDATE `t_manager_limit_space`
-            SET `f_limit_user_space` = %s, `f_allocated_limit_user_space` = %s,
-            `f_limit_doc_space` = %s, `f_allocated_limit_doc_space` = %s WHERE `f_manager_id` = %s
-        """
-
-        insert_sql = """
-            INSERT INTO `t_manager_limit_space` (`f_manager_id`, `f_limit_user_space`,
-            `f_allocated_limit_user_space`, `f_limit_doc_space`, `f_allocated_limit_doc_space`)
-            VALUES(%s, %s, %s, %s, %s)
-        """
-
-        # 获取用户管理的所有部门id
-        select_sql = """
-            SELECT `f_department_id` FROM `t_department_responsible_person`
-            WHERE `f_user_id` = %s
-        """
-        results = self.r_db.all(select_sql, user_id)
-
-        user_ids = []
-        for result in results:
-            tmp_user_ids = self.get_all_users_of_depart(result['f_department_id'])
-            user_ids = list(set(tmp_user_ids).union(set(user_ids)))
-
-        # 获取所有用户的配额
-        all_user_quota, all_user_usedSize = self.user_manage.get_user_space_quota(user_ids)
-
-        # 获取管理员创建的归档库/文档库配额
-        all_doc_quota = 0
-        cdoc_spaceQuota, cdoc_usedSize = self.user_manage.get_custom_doc_space_quota(user_id)
-        adoc_spaceQuota, adoc_usedSize = self.user_manage.get_archive_doc_space_quota(user_id)
-        ddoc_spaceQuota, ddoc_usedSize = self.user_manage.get_department_doc_space_quota(user_id)
-        kdoc_spaceQuota, kdoc_usedSize = self.user_manage.get_knowledge_doc_space_quota(user_id)
-
-        all_doc_quota += cdoc_spaceQuota
-        all_doc_quota += adoc_spaceQuota
-        all_doc_quota += ddoc_spaceQuota
-        all_doc_quota += kdoc_spaceQuota
-
-        count = self.r_db.one(check_sql, user_id)['cnt']
-        if count == 1:
-            self.w_db.query(update_sql, limit_user_space_size, all_user_quota,
-                            limit_doc_space_size, all_doc_quota, user_id)
-        else:
-            self.w_db.query(insert_sql, user_id, limit_user_space_size, all_user_quota,
-                            limit_doc_space_size, all_doc_quota)
-
-    def get_allocated_user_space(self, responsible_person_id):
-        """
-        获取管理员当前已分配的用户空间
-        """
-        # 获取用户管理的所有部门id
-        user_ids = self.get_user_ids_by_admin_id(responsible_person_id)
-
-        # 获取所有用户的配额
-        space_quota, used_size_tmp = self.user_manage.get_user_space_quota(user_ids)
-        return space_quota
-
     def get_user_ids_by_admin_id(self, responsible_person_id):
         """
         根据组织管理员id获取其管辖范围内的所有用户id
@@ -3442,58 +3323,6 @@ class DepartmentManage(DBConnector):
             user_ids = list(set(tmp_user_ids).union(user_ids))
 
         return user_ids
-
-    def check_space_by_dept_id(self, deptment_id, enable_sub, space_size, responsible_person_id):
-        """
-        批量修改用户配额前, 通过部门id检查空间是否足够
-        """
-        self.user_manage.check_user_exists(responsible_person_id)
-
-        all_dept_ids = [deptment_id]
-        if enable_sub:
-            all_dept_ids = self.get_all_departids(deptment_id)
-
-        # 获取部门下用户的总配额
-        user_num = 0
-        user_ids = []
-        user_total_quota = 0
-        for tmp_id in all_dept_ids:
-            user_infos = self.get_users_of_depart(tmp_id, 0, -1, False)
-            for user_info in user_infos:
-                if user_info.id in user_ids:
-                    continue
-                user_num += 1
-                user_ids.append(user_info.id)
-                user_total_quota += user_info.user.space
-
-        # 获取管理员可用配额空间
-        self.user_manage.check_user_space(user_num * space_size - user_total_quota,
-                                          responsible_person_id)
-
-    def update_admin_space(self, admin_id):
-        """
-        检查用户是否是管理员，若是则更新其已分配空间，否则删除用户的限额记录
-        """
-
-        # 检查用户是否是部门管理员
-        sql = """
-            SELECT COUNT(*) AS cnt FROM `t_department_responsible_person` WHERE `f_user_id` = %s
-        """
-        result = self.r_db.one(sql, admin_id)
-        if result['cnt'] == 0:
-            # 删除当前的限额记录
-            sql = """
-                DELETE FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
-            """
-            self.w_db.query(sql, admin_id)
-        else:
-            # 更新用户的已分配空间
-            alloccated_user_space = self.get_allocated_user_space(admin_id)
-            sql = """
-                UPDATE `t_manager_limit_space` SET `f_allocated_limit_user_space` = %s
-                WHERE `f_manager_id` = %s
-            """
-            self.w_db.query(sql, alloccated_user_space, admin_id)
 
     def get_deepest_departs(self, depart_id):
         """
@@ -3663,9 +3492,6 @@ class DepartmentManage(DBConnector):
         WHERE `f_user_id` = %s AND `f_department_id` = %s
         """
         self.w_db.query(sql, user_id, depart_id)
-
-        # 更新配额
-        self.update_admin_space(user_id)
 
     def get_depart_id_by_name(self, name, parent_id):
         """

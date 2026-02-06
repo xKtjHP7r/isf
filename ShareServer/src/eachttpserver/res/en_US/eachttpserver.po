@@ -625,7 +625,7 @@ msgid "IDS_EACHTTP_SEND_VCODE_SERVER_NOT_AVAILABLE"
 msgstr "Server for sending verification code has not been opened"
 
 msgid "IDS_EACHTTP_APP_CREATER_SUCCESS_EXMSG"
-msgstr "User name: \"%s\"; Display name: \"%s\"; User type: \"%s\"; Site: \"%s\"; Email: \"%s\"; Quota: \"%d\" G"
+msgstr "User name: \"%s\"; Display name: \"%s\"; User type: \"%s\"; Site: \"%s\"; Email: \"%s\""
 
 msgid "IDS_LOCAL_USER"
 msgstr "Local User"

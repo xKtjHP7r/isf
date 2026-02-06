@@ -70,11 +70,6 @@ export const enum ValidateStatus {
     InvalidDomainPort,
 
     /**
-     * 配额空间不合法
-     */
-    InvalidSpaceQuota,
-
-    /**
      * 域备用域域名相同
      */
     DuplicateWithSpareDomain,
@@ -113,7 +108,6 @@ export const ValidateMessages = {
     [ValidateStatus.InvalidDomainName]: __('域名只能包含 英文、数字 及 -. 字符，每一级不能以“-”字符开头或结尾，每一级长度必需 1~63 个字符，且总长不能超过253个字符。'),
     [ValidateStatus.InvalidDomainIP]: __('IP地址输入不合法，请检查您输入的内容是否有误。IPv4地址格式形如 XXX.XXX.XXX.XXX，每段必须是 0~255 之间的整数。 IPv6地址格式形如 XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX，其中每个X都为十六进制数。'),
     [ValidateStatus.InvalidDomainPort]: __('端口号必须是1~65535之间的整数。'),
-    [ValidateStatus.InvalidSpaceQuota]: __('配额空间值为不超过1000000的正数，支持小数点后两位。'),
     [ValidateStatus.DuplicateWithSpareDomain]: __('当前域控地址与备用域地址相同。'),
     [ValidateStatus.DomainsNotInOneDomain]: __('当前域控地址与主域不在同一个域内。'),
     [ValidateStatus.SpareAddressDuplicateWithMainDomain]: __('当前域控地址与主域地址相同。'),

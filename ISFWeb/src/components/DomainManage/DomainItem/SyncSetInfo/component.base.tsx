@@ -92,11 +92,6 @@ export enum VerifyType {
      * 同步周期
      */
     SyncInterval,
-
-    /**
-     * 配额空间
-     */
-    Quota,
 }
 
 /**
@@ -157,7 +152,6 @@ interface SyncSetInfoState {
         syncIntervalPlaceholder: string;
         syncIntervalUnit: SyncUnit;
         expireTime: ExpireTime;
-        spaceQuota: number;
         userStatus: boolean;
         syncMode: SyncMode;
         csfLevel: number;
@@ -184,7 +178,6 @@ interface SyncSetInfoState {
      */
     validateStatus: {
         syncIntervalValidateStatus: ValidateStatus;
-        spaceQuotaValidateStatus: ValidateStatus;
     };
 }
 
@@ -209,7 +202,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
             syncIntervalPlaceholder: __('请输入1-60的数值'),
             syncIntervalUnit: SyncUnit.Minutes,
             expireTime: ExpireTime.Forever,
-            spaceQuota: 5,
             userStatus: true,
             syncMode: SyncMode.ALL,
             csfLevel: null,
@@ -236,7 +228,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
          */
         validateStatus: {
             syncIntervalValidateStatus: ValidateStatus.Normal,
-            spaceQuotaValidateStatus: ValidateStatus.Normal,
         },
     }
 
@@ -253,7 +244,7 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
     async componentDidMount() {
         const { csf_level_enum } = await getLevelConfig({ fields: 'csf_level_enum' })
         const domains = await usrmGetAllDomains()
-        const { name, syncStatus, config: { ouPath, syncMode, destDepartId, desetDepartName, syncInterval, validPeriod, spaceSize, userEnableStatus, csfLevel } } = domains.find((item) => item.id === this.props.domainInfo.id)
+        const { name, syncStatus, config: { ouPath, syncMode, destDepartId, desetDepartName, syncInterval, validPeriod, userEnableStatus, csfLevel } } = domains.find((item) => item.id === this.props.domainInfo.id)
 
         this.setState({
             syncSettingInfo: {
@@ -266,7 +257,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                 syncIntervalPlaceholder: syncInterval < 60 ? __('请输入1-60的数值') : syncInterval < 1440 ? __('请输入1-24的数值') : __('请输入正整数'),
                 syncIntervalUnit: syncInterval < 60 ? SyncUnit.Minutes : syncInterval < 1440 ? SyncUnit.Hour : SyncUnit.Day,
                 expireTime: validPeriod,
-                spaceQuota: Number((spaceSize / 1024 / 1024 / 1024).toFixed(2)),
                 userStatus: userEnableStatus,
                 syncMode: syncMode,
                 csfLevel: csfLevel || csf_level_enum?.[0]?.value,
@@ -289,7 +279,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                 },
                 validateStatus: {
                     syncIntervalValidateStatus: ValidateStatus.Normal,
-                    spaceQuotaValidateStatus: ValidateStatus.Normal,
                 },
                 isSyncSettingEditStatus: true,
             }) :
@@ -300,7 +289,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                 },
                 validateStatus: {
                     syncIntervalValidateStatus: ValidateStatus.Normal,
-                    spaceQuotaValidateStatus: ValidateStatus.Normal,
                 },
                 isSyncSettingEditStatus: true,
             })
@@ -414,24 +402,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
     }
 
     /**
-     * 编辑配额空间
-     */
-    protected changeSpaceQuota = ({ detail }: { detail: number }): void => {
-        this.setState({
-            syncSettingInfo: {
-                ...this.state.syncSettingInfo,
-                spaceQuota: detail,
-            },
-            isSyncSettingEditStatus: true,
-            validateStatus: {
-                ...this.state.validateStatus,
-                spaceQuotaValidateStatus: ValidateStatus.Normal,
-            },
-        })
-        this.props.onRequestEditStatus(true)
-    }
-
-    /**
      * 改变用户有效期限
      */
     protected changeExpireTime = ({ detail }: { detail: ExpireTime }): void => {
@@ -495,9 +465,8 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
      * 校验定期同步设置
      */
     protected verifySyncSettingInfo = (verifyType?: VerifyType): boolean => {
-        const { syncSettingInfo: { syncInterval, spaceQuota } } = this.state,
-            syncIntrevalResult = trim(syncInterval) !== '',
-            spaceQuotaResult = spaceQuota !== '' && spaceQuota <= 1000000 && spaceQuota > 0;
+        const { syncSettingInfo: { syncInterval } } = this.state,
+            syncIntrevalResult = trim(syncInterval) !== '';
 
         switch (verifyType) {
             case VerifyType.SyncInterval:
@@ -513,28 +482,14 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                     return false
                 }
 
-            case VerifyType.Quota:
-                if (spaceQuotaResult) {
-                    return true
-                } else {
-                    this.setState({
-                        validateStatus: {
-                            ...this.state.validateStatus,
-                            spaceQuotaValidateStatus: spaceQuota > 1000000 || spaceQuota === 0 ? ValidateStatus.InvalidSpaceQuota : ValidateStatus.Empty,
-                        },
-                    })
-                    return false
-                }
-
             default:
-                if (syncIntrevalResult && spaceQuotaResult) {
+                if (syncIntrevalResult) {
                     return true
                 } else {
                     this.setState({
                         validateStatus: {
                             ...this.state.validateStatus,
                             syncIntervalValidateStatus: syncIntrevalResult ? ValidateStatus.Normal : ValidateStatus.Empty,
-                            spaceQuotaValidateStatus: !spaceQuotaResult ? spaceQuota > 1000000 || spaceQuota === 0 ? ValidateStatus.InvalidSpaceQuota : ValidateStatus.Empty : ValidateStatus.Normal,
                         },
                     })
                     return false
@@ -547,7 +502,7 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
      */
     protected saveDomainConfig = async (): Promise<void> => {
         const { id, name } = this.props.domainInfo;
-        const { syncSettingInfo: { periodicSyncStatus, syncObject, syncInterval, syncTarget, spaceQuota, expireTime, syncMode, userStatus, csfLevel, csfOptions, syncIntervalUnit } } = this.state;
+        const { syncSettingInfo: { periodicSyncStatus, syncObject, syncInterval, syncTarget, expireTime, syncMode, userStatus, csfLevel, csfOptions, syncIntervalUnit } } = this.state;
 
         if (!periodicSyncStatus) {
             try {
@@ -579,7 +534,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                     desetDepartName: syncTarget.length ? syncTarget[0].name : '',
                     ouPath: syncObject.length ? syncObject.some((item) => item.ipAddress || !item.pathName) ? [] : syncObject.map((item) => item.pathName) : [],
                     syncInterval: this.getSyncTime(),
-                    spaceSize: Math.round(spaceQuota * Math.pow(1024, 3)),
                     userEnableStatus: userStatus,
                     syncMode,
                     validPeriod: expireTime,
@@ -625,10 +579,9 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
                             name: name,
                             ouPath: ncTUsrmDomainConfig.desetDepartName || name,
                         }),
-                        __('同步周期 “${syncInterval}”；新建用户密级 “${csfLevel}”；用户配额空间 “${spaceSize}”；用户有效期限 “${validPeriod}”；用户默认状态 “${syncStatus}”；同步方式 “${syncMode}”', {
+                        __('同步周期 “${syncInterval}”；新建用户密级 “${csfLevel}”；用户有效期限 “${validPeriod}”；用户默认状态 “${syncStatus}”；同步方式 “${syncMode}”', {
                             syncInterval: syncIntervalText,
                             csfLevel: csfLevelText,
-                            spaceSize: spaceQuota + 'GB',
                             validPeriod: ExpireTimes[expireTime],
                             syncStatus: userStatus ? __('启用') : __('禁用'),
                             syncMode: syncMode === 0 ? __('同步选中的对象及其成员（包括上层的组织结构）') : syncMode === 1 ? __('同步选中的对象及其成员（不包括上层的组织结构）') : __('仅同步用户账号（不包括组织结构）'),
@@ -655,7 +608,6 @@ export default class SyncSetInfoBase extends WebComponent<SyncSetInfoProps, Sync
             },
             validateStatus: {
                 syncIntervalValidateStatus: ValidateStatus.Normal,
-                spaceQuotaValidateStatus: ValidateStatus.Normal,
             },
             isSyncSettingEditStatus: false,
         })

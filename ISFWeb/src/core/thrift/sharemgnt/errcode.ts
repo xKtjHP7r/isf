@@ -434,21 +434,6 @@ export const enum ErrorCode {
     CountPassDue = 20157,
 
     /**
-     * 导出用户空间使用情况报表任务失败
-     */
-    ExportFailed = 23401,
-
-    /**
-     * 导出用户空间使用情况报表任务在进行中
-     */
-    Exporting = 23402,
-
-    /**
-     * 导出用户空间使用情况报表任务不存在
-     */
-    ExportNotExist = 23403,
-
-    /**
      * 导出正在处理
      */
     ExportProcessing = 23404,

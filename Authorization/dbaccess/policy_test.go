@@ -322,10 +322,10 @@ func TestDBGetByResourceIDs(t *testing.T) {
 			operationJSON := invalidJSON
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
-					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
+					"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_ancestors",
 					"f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time",
 				}).
-					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser,
+					AddRow("policy-1", "resource-1", "type-1", "name-1", "[]", "accessor-1", interfaces.AccessorUser,
 						"accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890),
 			)
 			policiesMap, err := b.GetByResourceIDs(ctx, resourceType, resourceIDs)
@@ -345,10 +345,10 @@ func TestDBGetByResourceIDs(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type",
-					"f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation",
+					"f_resource_name", "f_ancestors", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation",
 					"f_condition", "f_end_time", "f_create_time",
 				}).
-					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1",
+					AddRow("policy-1", "resource-1", "type-1", "name-1", "[]", "accessor-1",
 						interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890),
 			)
 			policiesMap, err := b.GetByResourceIDs(ctx, resourceType, resourceIDs)
@@ -402,10 +402,10 @@ func TestDBGetByPolicyIDs(t *testing.T) {
 			operationJSON := invalidJSON
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
-					"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id",
+					"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_ancestors", "f_accessor_id",
 					"f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time",
 				}).
-					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1",
+					AddRow("policy-1", "resource-1", "type-1", "name-1", "[]", "accessor-1", interfaces.AccessorUser, "accessor-name-1",
 						operationJSON, "condition-1", 1234567890, 1234567890),
 			)
 			policies, err := b.GetByPolicyIDs(ctx, policyIDs)
@@ -424,10 +424,10 @@ func TestDBGetByPolicyIDs(t *testing.T) {
 
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
-					"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id",
+					"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_ancestors", "f_accessor_id",
 					"f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time",
 				}).
-					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser,
+					AddRow("policy-1", "resource-1", "type-1", "name-1", "[]", "accessor-1", interfaces.AccessorUser,
 						"accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890),
 			)
 			policies, err := b.GetByPolicyIDs(ctx, policyIDs)
@@ -709,10 +709,10 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "resource-1", "type-1", "name-1",
-						operationJSON, "condition-1", 1234567890, 1234567890),
+						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
@@ -746,10 +746,10 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "resource-1", "test-type", "name-1",
-						operationJSON, "condition-1", 1234567890, 1234567890),
+						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
@@ -776,10 +776,10 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "test-resource-id", "type-1", "name-1",
-						operationJSON, "condition-1", 1234567890, 1234567890),
+						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
@@ -804,10 +804,10 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "test-resource-id", "test-type", "name-1",
-						operationJSON, "condition-1", 1234567890, 1234567890),
+						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
@@ -834,12 +834,12 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "resource-1", "type-1", "name-1",
-						operationJSON, "condition-1", 1234567890, 1234567890).
+						operationJSON, "condition-1", "[]", 1234567890, 1234567890).
 					AddRow("policy-2", "resource-2", "type-2", "name-2",
-						operationJSON, "condition-2", 1234567891, 1234567891),
+						operationJSON, "condition-2", "[]", 1234567891, 1234567891),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
@@ -856,7 +856,7 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
@@ -889,12 +889,12 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_end_time", "f_create_time",
+					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}).
 					AddRow("policy-1", "resource-1", "type-1", "name-1",
-						operationJSON1, "condition-1", 1234567890, 1234567890).
+						operationJSON1, "condition-1", "[]", 1234567890, 1234567890).
 					AddRow("policy-2", "resource-2", "type-2", "name-2",
-						operationJSON2, "condition-2", 1234567891, 1234567891),
+						operationJSON2, "condition-2", "[]", 1234567891, 1234567891),
 			)
 			count, policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)

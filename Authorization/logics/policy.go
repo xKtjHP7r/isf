@@ -34,33 +34,35 @@ const (
 )
 
 type policy struct {
-	db             interfaces.DBPolicy
-	logger         common.Logger
-	role           interfaces.LogicsRole
-	resourceType   interfaces.LogicsResourceType
-	userMgmt       interfaces.DrivenUserMgnt
-	pool           *sqlx.DB
-	event          interfaces.LogicsEvent
-	policyCalc     interfaces.LogicsPolicyCalc
-	obligationType interfaces.ObligationType
-	obligation     interfaces.LogicsObligation
-	i18n           *common.I18n
+	db                    interfaces.DBPolicy
+	logger                common.Logger
+	role                  interfaces.LogicsRole
+	resourceType          interfaces.LogicsResourceType
+	resourceTypeHierarchy interfaces.LogicsResourceTypeHierarchy
+	userMgmt              interfaces.DrivenUserMgnt
+	pool                  *sqlx.DB
+	event                 interfaces.LogicsEvent
+	policyCalc            interfaces.LogicsPolicyCalc
+	obligationType        interfaces.ObligationType
+	obligation            interfaces.LogicsObligation
+	i18n                  *common.I18n
 }
 
 // NewPolicy 创建新的NewPolicy对象
 func NewPolicy() *policy {
 	policyOnce.Do(func() {
 		policySingleton = &policy{
-			db:             dbPolicy,
-			pool:           dbPool,
-			role:           NewLogicsRole(),
-			resourceType:   NewResourceType(),
-			obligationType: NewObligationType(),
-			obligation:     NewObligation(),
-			logger:         common.NewLogger(),
-			userMgmt:       dnUserMgnt,
-			event:          NewEvent(),
-			policyCalc:     NewPolicyCalc(),
+			db:                    dbPolicy,
+			pool:                  dbPool,
+			role:                  NewLogicsRole(),
+			resourceType:          NewResourceType(),
+			resourceTypeHierarchy: NewResourceTypeHierarchy(),
+			obligationType:        NewObligationType(),
+			obligation:            NewObligation(),
+			logger:                common.NewLogger(),
+			userMgmt:              dnUserMgnt,
+			event:                 NewEvent(),
+			policyCalc:            NewPolicyCalc(),
 			i18n: common.NewI18n(common.I18nMap{
 				i18nAccessorRoleNotFound: {
 					simplifiedChinese:  "角色不存在",
@@ -482,6 +484,12 @@ func (d *policy) Create(ctx context.Context, visitor *interfaces.Visitor, policy
 			return
 		}
 
+		// 检查资源id和祖先
+		err = d.checkResourceIDAndAncestors(ctx, visitor, &policy)
+		if err != nil {
+			return
+		}
+
 		if _, ok := resourceIDpolicysDup[policy.ResourceType]; !ok {
 			resourceIDpolicysDup[policy.ResourceType] = make(map[string]map[string]bool)
 		}
@@ -598,6 +606,12 @@ func (d *policy) CreatePrivate(ctx context.Context, policys []interfaces.PolicyI
 		err = checkEndTime(policy.EndTime)
 		if err != nil {
 			d.logger.Errorf("CreatePrivate: checkEndTime: %v", err)
+			return
+		}
+
+		// 检查资源id和祖先
+		err = d.checkResourceIDAndAncestors(ctx, nil, &policy)
+		if err != nil {
 			return
 		}
 
@@ -851,6 +865,11 @@ func (d *policy) updateAppName(info *interfaces.AppInfo) error {
 // UpdateResourceName 更新资源实例名称
 func (d *policy) UpdateResourceName(ctx context.Context, resourceID, resourceType, name string) error {
 	return d.db.UpdateResourceName(ctx, resourceID, resourceType, name)
+}
+
+// UpdateResourceAncestors 更新资源实例祖先信息
+func (d *policy) UpdateResourceAncestors(ctx context.Context, resourceID, resourceType string, ancestors []interfaces.Ancestor) error {
+	return d.db.UpdateResourceAncestors(ctx, resourceID, resourceType, ancestors)
 }
 
 // DeleteByEndTime 删除过期策略
@@ -1409,4 +1428,62 @@ func (p *policy) GetResourcePolicy(ctx context.Context, visitor *interfaces.Visi
 	}
 
 	return count, policies, includeResp, nil
+}
+
+func (p *policy) checkResourceIDAndAncestors(ctx context.Context, visitor *interfaces.Visitor, policy *interfaces.PolicyInfo) (err error) {
+	// 是否设置过层级关系
+	hasHierarchy, err := p.resourceTypeHierarchy.HasHierarchy(ctx, visitor, policy.ResourceType)
+	if err != nil {
+		p.logger.Errorf("checkResourceIDAndAncestors HasHierarchy: %v", err)
+		return err
+	}
+
+	// 设置过层级关系，但祖先未设置，抛错
+	if hasHierarchy && !policy.HasAncestors {
+		des := fmt.Sprintf(" resource %s  ancestors must set ", policy.ResourceID)
+		err = gerrors.NewError(gerrors.PublicBadRequest, des)
+		return
+	}
+
+	// 检查资源类型 id 是否 包含 /, 表示 父节点下层配置
+	if strings.Contains(policy.ResourceID, "/") {
+		// 没有祖先 抛错
+		if len(policy.Ancestors) == 0 {
+			des := fmt.Sprintf(" resource %s  ancestors must set ", policy.ResourceID)
+			err = gerrors.NewError(gerrors.PublicBadRequest, des)
+			return
+		}
+		resourceIDParts := strings.Split(policy.ResourceID, "/")
+		// 资源id 格式错误
+		numTmp := 2
+		if len(resourceIDParts) != numTmp {
+			des := fmt.Sprintf(" resource id %s is invalid", policy.ResourceID)
+			err = gerrors.NewError(gerrors.PublicBadRequest, des)
+			return
+		}
+		// 资源id 格式错误
+		if resourceIDParts[1] != "*" {
+			des := fmt.Sprintf(" resource id %s is invalid", policy.ResourceID)
+			err = gerrors.NewError(gerrors.PublicBadRequest, des)
+			return
+		}
+
+		parentResourceID := policy.Ancestors[len(policy.Ancestors)-1].ID
+		// 直接父级资源id 不一致
+		if resourceIDParts[0] != parentResourceID {
+			des := fmt.Sprintf(" resource id:%s  ancestors  set error, parentResourceID %s", policy.ResourceID, parentResourceID)
+			err = gerrors.NewError(gerrors.PublicBadRequest, des)
+			return
+		}
+	}
+
+	// 祖先id 不可为*, 只能为具体实例ID
+	for _, ancestor := range policy.Ancestors {
+		if ancestor.ID == "*" {
+			des := fmt.Sprintf(" resource id:%s  ancestors set error, ancestor id can't be *", policy.ResourceID)
+			err = gerrors.NewError(gerrors.PublicBadRequest, des)
+			return
+		}
+	}
+	return nil
 }

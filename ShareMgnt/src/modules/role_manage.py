@@ -26,7 +26,11 @@ from ShareMgnt.constants import (NCT_USER_ADMIN,
                                  NCT_SYSTEM_ROLE_ORG_AUDIT)
 from EThriftException.ttypes import ncTException
 from src.common.sharemgnt_logger import ShareMgnt_Log
+from src.common.http import pub_nsq_msg
 import json
+
+TOPIC_ORG_MANAGER_SETTED = "sharemgnt.org_manager.setted"
+TOPIC_ORG_MANAGER_DELETED = "sharemgnt.org_manager.deleted"
 
 
 class RoleManage(DBConnector):
@@ -528,9 +532,9 @@ class RoleManage(DBConnector):
                 else:
                     self.department_manage.set_responsible_person(memberInfo.userId, depart_ids,
                                                                   userId)
-                self.department_manage.edit_limit_space(memberInfo.userId,
-                                                        memberInfo.manageDeptInfo.limitUserSpaceSize,
-                                                        memberInfo.manageDeptInfo.limitDocSpaceSize)
+
+                # 发送事件消息
+                pub_nsq_msg(TOPIC_ORG_MANAGER_SETTED, {"user_id": memberInfo.userId})
 
             if roleId == NCT_SYSTEM_ROLE_ORG_AUDIT:
                 depart_ids = memberInfo.manageDeptInfo.departmentIds
@@ -733,6 +737,9 @@ class RoleManage(DBConnector):
                 except ncTException as ex:
                     if ex.errID != ncTShareMgntError.NCT_USER_NOT_ADMIN:
                         raise ex
+
+                # 发送事件消息
+                pub_nsq_msg(TOPIC_ORG_MANAGER_DELETED, {"user_id": memberId})
 
             if roleId == NCT_SYSTEM_ROLE_ORG_AUDIT:
                 self.department_manage.cancel_audit_person(memberId, userId)

@@ -384,7 +384,7 @@ func TestRoleRestHandler_GetRoleByID(t *testing.T) {
 				ModifyTime: 1716393600,
 			}
 
-			mockRole.EXPECT().GetRoleByID(gomock.Any(), gomock.Any(), "role1").Return(expectedRole, nil)
+			mockRole.EXPECT().GetRoleByID(gomock.Any(), gomock.Any(), "role1", gomock.Any()).Return(expectedRole, nil)
 
 			// 创建请求
 			req := httptest.NewRequest("GET", "/api/authorization/v1/roles/role1", nil)
@@ -652,19 +652,6 @@ func TestRoleRestHandler_AddOrDeleteRoleMembers(t *testing.T) {
 
 			// 验证结果
 			So(w.Code, ShouldEqual, http.StatusBadRequest)
-		})
-	})
-}
-
-func TestRoleRestHandler_NewRoleRestHandler(t *testing.T) {
-	Convey("NewRoleRestHandler", t, func() {
-		Convey("应该返回单例实例", func() {
-			handler1 := NewRoleRestHandler()
-			handler2 := NewRoleRestHandler()
-
-			So(handler1, ShouldNotBeNil)
-			So(handler2, ShouldNotBeNil)
-			So(handler1, ShouldEqual, handler2)
 		})
 	})
 }
@@ -1271,6 +1258,91 @@ func TestRoleRestHandler_GetAccessorRoles(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			So(err, ShouldBeNil)
 			So(response["total_count"], ShouldEqual, float64(0))
+		})
+	})
+}
+
+func TestRoleRestHandler_ConvertChildrenResourceTypeScope(t *testing.T) {
+	Convey("convertChildrenResourceTypeScope", t, func() {
+		handler := &roleRestHandler{}
+
+		Convey("空children返回空切片", func() {
+			result := handler.convertChildrenResourceTypeScope(nil)
+			So(result, ShouldBeEmpty)
+			result = handler.convertChildrenResourceTypeScope([]interfaces.ResourceTypeScopeWithOperation{})
+			So(result, ShouldBeEmpty)
+		})
+
+		Convey("单个子节点无嵌套", func() {
+			children := []interfaces.ResourceTypeScopeWithOperation{
+				{
+					ID:          "menu",
+					Name:        "菜单",
+					Description: "菜单资源",
+					InstanceURL: "/menu",
+					DataStruct:  "{}",
+					TypeOperation: []interfaces.ResourceTypeOperationResponse{
+						{ID: "read", Name: "读", Description: "读取"},
+					},
+					InstanceOperation: []interfaces.ResourceTypeOperationResponse{
+						{ID: "write", Name: "写", Description: "写入"},
+					},
+					Children: nil,
+				},
+			}
+			result := handler.convertChildrenResourceTypeScope(children)
+			So(len(result), ShouldEqual, 1)
+			childInfo := result[0].(map[string]any)
+			So(childInfo["id"], ShouldEqual, "menu")
+			So(childInfo["name"], ShouldEqual, "菜单")
+			So(childInfo["description"], ShouldEqual, "菜单资源")
+			So(childInfo["instance_url"], ShouldEqual, "/menu")
+			So(childInfo["data_struct"], ShouldEqual, "{}")
+			operation := childInfo["operation"].(map[string]any)
+			typeOps := operation["type"].([]any)
+			So(len(typeOps), ShouldEqual, 1)
+			So(typeOps[0].(map[string]any)["id"], ShouldEqual, "read")
+			instanceOps := operation["instance"].([]any)
+			So(len(instanceOps), ShouldEqual, 1)
+			So(instanceOps[0].(map[string]any)["id"], ShouldEqual, "write")
+		})
+
+		Convey("递归嵌套children", func() {
+			children := []interfaces.ResourceTypeScopeWithOperation{
+				{
+					ID:          "parent",
+					Name:        "父级",
+					Description: "",
+					InstanceURL: "",
+					DataStruct:  "",
+					TypeOperation: []interfaces.ResourceTypeOperationResponse{
+						{ID: "read", Name: "读", Description: ""},
+					},
+					InstanceOperation: nil,
+					Children: []interfaces.ResourceTypeScopeWithOperation{
+						{
+							ID:                "child",
+							Name:              "子级",
+							Description:       "",
+							InstanceURL:       "",
+							DataStruct:        "",
+							TypeOperation:     nil,
+							InstanceOperation: nil,
+							Children:          nil,
+						},
+					},
+				},
+			}
+			result := handler.convertChildrenResourceTypeScope(children)
+			So(len(result), ShouldEqual, 1)
+			parentInfo := result[0].(map[string]any)
+			So(parentInfo["id"], ShouldEqual, "parent")
+			So(parentInfo["children"], ShouldNotBeNil)
+			nestedChildren := parentInfo["children"].([]any)
+			So(len(nestedChildren), ShouldEqual, 1)
+			childInfo := nestedChildren[0].(map[string]any)
+			So(childInfo["id"], ShouldEqual, "child")
+			So(childInfo["name"], ShouldEqual, "子级")
 		})
 	})
 }

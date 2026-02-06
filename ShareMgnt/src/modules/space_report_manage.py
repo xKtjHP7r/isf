@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 import os
 import csv
-import math
 import time
 import threading
 import uuid
@@ -81,9 +80,6 @@ class UserSpaceInfo:
         self.departNames = ""
         self.roleNames = ""
         self.authType = ""
-        self.userdsize = 0
-        self.totalsize = 0
-        self.usedSpaceRate = 0
 
 
 class TaskInfo:
@@ -161,47 +157,12 @@ class SpaceReportManage(DBConnector):
 
         return fileDir
 
-    def __get_doc_space_infos(self, objType):
-        """
-        获取文档库的所有导出信息
-        """
-        custom_space_infos = []
-        sql = f"""
-        SELECT doc.f_name AS f_doc_name, doc.f_type_name AS f_type_name, creater.f_display_name AS f_creater_name, depart.f_name AS f_relate_depart_name, doc.f_oss_id AS f_oss_id, sq.usedsize AS f_usedsize, sq.quota AS f_quota, doc.f_owners_name AS f_owners_name
-        FROM {get_db_name('anyshare')}.t_acs_doc doc
-        LEFT JOIN t_department depart ON doc.f_relate_depart_id=depart.f_department_id
-        LEFT JOIN t_user creater ON doc.f_creater_id=creater.f_user_id
-        LEFT JOIN {get_db_name("ets")}.space_quota sq ON sq.cid= doc.f_doc_id
-        WHERE doc.f_status=1
-        AND doc.f_doc_type=%s
-        ORDER BY doc.f_name ASC
-        """
-        results = self.r_db.all(sql, objType)
-        for result in results:
-            space_info = CustomSpaceInfo()
-            space_info.docName = result['f_doc_name']
-            space_info.typeName = result['f_type_name']
-
-            space_info.createrName = result['f_creater_name']
-            space_info.relateDepartName = '--' if result['f_relate_depart_name'] == None else result['f_relate_depart_name']
-            space_info.ossID = result['f_oss_id']
-            space_info.ownerNames = "--" if result == "" else result['f_owners_name'].replace('|', ',')
-            space_info.usedSpaceRate = (
-                "%.2f" % (result['f_usedsize'] * 100.0 / result['f_quota']))
-            space_info.usedsize = (
-                "%.2f" % (result['f_usedsize'] / math.pow(1024, 3)))
-            space_info.totalsize = (
-                "%.2f" % (result['f_quota'] / math.pow(1024, 3)))
-            custom_space_infos.append(space_info)
-        return custom_space_infos
-
     def _gen_custom_space_report_file(self, csv_write):
         """
         文档库空间使用情况
         """
         # 获取需要导出的文档库的所有信息
-        custom_space_infos = self.__get_doc_space_infos(
-            ncTDocType.NCT_CUSTOM_DOC)
+        custom_space_infos = []
 
         # 获取对象存储信息
         oss_dict = {}
@@ -216,16 +177,6 @@ class SpaceReportManage(DBConnector):
         # 将对象存储的id和name做映射
         for item in data:
             oss_dict[item["id"]] = item["name"]
-
-        # 获取ossID 对应的 ossName
-        for space_info in custom_space_infos:
-            if space_info.ossID in oss_dict:
-                space_info.ossName = oss_dict[space_info.ossID]
-            elif space_info.ossID == "":
-                space_info.ossName = _("IDS_UNSPECIFIED_OSS")
-            else:
-                raise_exception(exp_msg=(_("IDS_OSS_NOT_EXIST") % (space_info.ossID)),
-                                exp_num=ncTShareMgntError.NCT_OSS_NOT_EXIST)
 
         # 写入表头
         csv_write.writerow([_("IDS_CUSTOM_TITLE")])
@@ -234,10 +185,7 @@ class SpaceReportManage(DBConnector):
                             _("IDS_DOC_OWNER"),
                             _("IDS_CREATER_NAME"),
                             _("IDS_RELATE_DEPART"),
-                            _("IDS_OSS_NAME"),
-                            _("IDS_USED_SIZE"),
-                            _("IDS_TOTAL_SIZE"),
-                            _("IDS_USEDSPACE_RATE")])
+                            _("IDS_OSS_NAME")])
         # 逐行写入文件
         for space_info in custom_space_infos:
             csv_write.writerow(["\t%s" % space_info.docName,
@@ -245,18 +193,14 @@ class SpaceReportManage(DBConnector):
                                 "\t%s" % space_info.ownerNames,
                                 "\t%s" % space_info.createrName,
                                 "\t%s" % space_info.relateDepartName,
-                                "\t%s" % space_info.ossName,
-                                space_info.usedsize,
-                                space_info.totalsize,
-                                ("%s%%" % (space_info.usedSpaceRate))])
+                                "\t%s" % space_info.ossName])
 
     def _gen_arch_space_report_file(self, csv_write):
         """
         归档库空间使用情况
         """
         # 获取需要导出的归档库的所有信息
-        acvhive_space_info = self.__get_doc_space_infos(
-            ncTDocType.NCT_ARCHIVE_DOC)
+        acvhive_space_info = []
 
         # 获取对象存储信息
         oss_dict = {}
@@ -272,34 +216,18 @@ class SpaceReportManage(DBConnector):
         for item in data:
             oss_dict[item["id"]] = item["name"]
 
-        # 获取ossID 对应的 ossName
-        for space_info in acvhive_space_info:
-            if space_info.ossID in oss_dict:
-                space_info.ossName = oss_dict[space_info.ossID]
-            elif space_info.ossID == "":
-                space_info.ossName = _("IDS_UNSPECIFIED_OSS")
-            else:
-                raise_exception(exp_msg=(_("IDS_OSS_NOT_EXIST") % (space_info.ossID)),
-                                exp_num=ncTShareMgntError.NCT_OSS_NOT_EXIST)
-
         # 写入表头
         csv_write.writerow([_("IDS_ARCDOC_TITLE")])
         csv_write.writerow([_("IDS_ARCDOC_NAME"),
                             _("IDS_DOC_OWNER"),
                             _("IDS_CREATER_NAME"),
-                            _("IDS_OSS_NAME"),
-                            _("IDS_USED_SIZE"),
-                            _("IDS_TOTAL_SIZE"),
-                            _("IDS_USEDSPACE_RATE")])
+                            _("IDS_OSS_NAME")])
         # 逐行写入文件
         for space_info in acvhive_space_info:
             csv_write.writerow(["\t%s" % space_info.docName,
                                 "\t%s" % space_info.ownerNames,
                                 "\t%s" % space_info.createrName,
-                                "\t%s" % space_info.ossName,
-                                space_info.usedsize,
-                                space_info.totalsize,
-                                ("%s%%" % space_info.usedSpaceRate)])
+                                "\t%s" % space_info.ossName])
 
     def __get_users_in_scope(self, operator_id):
         """
@@ -340,21 +268,10 @@ class SpaceReportManage(DBConnector):
         show_all_users, user_ids_in_scpoe = self.__get_users_in_scope(operator_id)
 
         user_space_infos = []
-        sql = f"""
-        SELECT u.f_user_id, u.f_display_name AS f_display_name, u.f_login_name AS f_login_name, u.f_auth_type AS f_auth_type, sq.f_usedsize AS f_usedsize, sq.f_quota AS f_quota
+        sql = """
+        SELECT u.f_user_id, u.f_display_name AS f_display_name, u.f_login_name AS f_login_name, u.f_auth_type AS f_auth_type
         FROM `t_user` u
-        LEFT JOIN (
-            SELECT d.`f_creater_id` AS f_creater_id, SUM(s.`usedsize`) AS f_usedsize, SUM(s.`quota`) AS f_quota
-            FROM {get_db_name("ets")}.space_quota as s
-            INNER JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-            and d.f_doc_type = 1
-            and d.`f_status` = 1
-            GROUP BY d.`f_creater_id`
-        ) sq
-        ON u.f_user_id=sq.f_creater_id
         WHERE u.`f_user_id` NOT IN (%s, %s, %s, %s)
-        GROUP BY u.`f_user_id`
         """
         results = self.r_db.all(sql,
                                 NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT)
@@ -404,17 +321,6 @@ class SpaceReportManage(DBConnector):
             space_info.roleNames = "/".join(role_names)
             # 处理认证类型
             space_info.authType = self.auth_type[result['f_auth_type'] - 1]
-            # 对用户个人文档是否关闭进行判断,当用户个人文档关闭时，获取到的已用空间信息和配额信息均为None
-            if result['f_quota'] != None:
-                # result['f_usedsize']和result['f_quota']为decimal类型
-                space_info.usedSpaceRate = (
-                    "%.2f" % (result['f_usedsize'] * 100 / result['f_quota']))
-                space_info.usedsize = (
-                    "%.2f" % (result['f_usedsize'] / Decimal.from_float(math.pow(1024, 3))))
-                space_info.totalsize = (
-                    "%.2f" % (result['f_quota'] / Decimal.from_float(math.pow(1024, 3))))
-            else:
-                space_info.usedSpaceRate = space_info.usedsize = space_info.totalsize = "%.2f" % 0.0
 
             user_space_infos.append(space_info)
 
@@ -432,20 +338,14 @@ class SpaceReportManage(DBConnector):
                             _("IDS_LOGIN_NAME"),
                             _("IDS_DEPART_NAMES"),
                             _("IDS_ROLE_NAMES"),
-                            _("IDS_AUTH_TYPE"),
-                            _("IDS_USED_SIZE"),
-                            _("IDS_TOTAL_SIZE"),
-                            _("IDS_USEDSPACE_RATE")])
+                            _("IDS_AUTH_TYPE")])
         # 逐行写入文件
         for space_info in user_space_infos:
             csv_write.writerow(["\t%s" % space_info.displayName,
                                 "\t%s" % space_info.loginName,
                                 "\t%s" % space_info.departNames,
                                 "\t%s" % space_info.roleNames,
-                                space_info.authType,
-                                space_info.usedsize,
-                                space_info.totalsize,
-                                ("%s%%" % space_info.usedSpaceRate)])
+                                space_info.authType])
 
     def gen_space_report_file(self, taskId, taskInfo):
         # 创建文件保存目录
@@ -492,9 +392,6 @@ class SpaceReportManage(DBConnector):
         创建文件生成任务
         """
         global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.ExportSpaceReport(name, objType, operator_id)
 
         # 检查要导出的文档类型合法性
         self.__check_export_doctype(objType)
@@ -546,9 +443,6 @@ class SpaceReportManage(DBConnector):
         获取生成报表任务状态
         """
         global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.GetGenSpaceReportStatus(taskId)
 
         taskInfo = self.__gen_space_report_task_info(taskId)
 
@@ -581,9 +475,6 @@ class SpaceReportManage(DBConnector):
         获取生成的活跃报表信息
         """
         global IS_SINGLE
-        if not IS_SINGLE:
-            with TClient('ShareMgntSingle') as client:
-                return client.GetSpaceReportFileInfo(taskId)
 
         taskInfo = self.__gen_space_report_task_info(taskId)
 

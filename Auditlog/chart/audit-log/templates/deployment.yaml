@@ -59,11 +59,11 @@ spec:
             - name: LOGOUT
               value: {{ .Values.service.logger | quote }}
             {{- end}}
-            {{- if .Values.env.language}}
+            {{- if .Values.service.language}}
             - name: LANG
-              value: {{ .Values.env.language | quote }}
+              value: {{ .Values.service.language | quote }}
             - name: LC_ALL
-              value: {{ .Values.env.language | quote }}
+              value: {{ .Values.service.language | quote }}
             {{- end}}
             {{- if .Values.env.timezone}}
             - name: TZ

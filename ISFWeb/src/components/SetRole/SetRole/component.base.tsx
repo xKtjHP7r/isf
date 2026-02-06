@@ -72,11 +72,6 @@ export default class SetRoleComponentBase extends WebComponent<Console.SetRoleCo
          * 从老版本升级到ASE，用户已经拥有的共享审核员和定密审核员不屏蔽
          */
         allRoles: [],
-        // 当前登录用户限额信息
-        limitSpaceInfo: {
-            limitDocSpace: null,
-            limitUserSpace: null,
-        },
         // 当前登录用户角色信息
         roles: [],
     }
@@ -101,18 +96,13 @@ export default class SetRoleComponentBase extends WebComponent<Console.SetRoleCo
 
             // 存储当前登录的限额信息、角色信息
             if ( loginUserInfo.user.roles.some((item) => item.id === SystemRoleType.OrgManager) ) {
-                const { user: { limitSpaceInfo: { limitDocSpace, limitUserSpace }, roles } } = loginUserInfo
+                const { user: { roles } } = loginUserInfo
                 this.setState({
-                    limitSpaceInfo: { limitDocSpace, limitUserSpace },
                     roles: roles,
                 })
             } else {
                 const { user: { roles } } = loginUserInfo
                 this.setState({
-                    limitSpaceInfo: {
-                        limitDocSpace: -1,
-                        limitUserSpace: -1,
-                    },
                     roles: roles,
                 })
             }
@@ -433,7 +423,7 @@ export default class SetRoleComponentBase extends WebComponent<Console.SetRoleCo
                     manageLog(
                         ManagementOps.SET,
                         __('将 “${userName}” 设为组织管理员，管辖部门：“${departmentName}”', { userName: userInfo.user.displayName, departmentName: auditRange.join(__('”，“')) }),
-                        this.getLogMessage(roleConfig),
+                        '',
                         Level.INFO,
                     )
                 } else {
@@ -462,7 +452,7 @@ export default class SetRoleComponentBase extends WebComponent<Console.SetRoleCo
                     manageLog(
                         ManagementOps.SET,
                         __('编辑 “${userName}” 为组织管理员，管辖部门：“${departmentName}”', { userName: userInfo.user.displayName, departmentName: auditRange.join(__('”，“')) }),
-                        this.getLogMessage(roleConfig),
+                        '',
                         Level.INFO,
                     )
                 } else {
@@ -503,27 +493,5 @@ export default class SetRoleComponentBase extends WebComponent<Console.SetRoleCo
         } else {
             this.context.toast(getErrorMessage(errId));
         }
-    }
-
-    /**
-     * 获取日志的附加信息
-     */
-    private getLogMessage(memberInfo) {
-        let limitUserMessage, limitDocMessage
-        if (memberInfo.manageRange.ncTManageDeptInfo.limitUserSpaceSize === -1) {
-            limitUserMessage = __('不限制其用户管理最大可分配空间')
-        } else {
-            limitUserMessage = __('限制其用户管理最大可分配空间为${quota}GB', {
-                quota: memberInfo.manageRange.ncTManageDeptInfo.limitUserSpaceSize / Math.pow(1024, 3),
-            })
-        }
-        if (memberInfo.manageRange.ncTManageDeptInfo.limitDocSpaceSize === -1) {
-            limitDocMessage = __('不限制其文档管理最大可分配空间。')
-        } else {
-            limitDocMessage = __('限制其文档管理最大可分配空间为${quota}GB。', {
-                quota: memberInfo.manageRange.ncTManageDeptInfo.limitDocSpaceSize / Math.pow(1024, 3),
-            })
-        }
-        return `${limitUserMessage}, ${limitDocMessage}`
     }
 }

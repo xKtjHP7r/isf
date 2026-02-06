@@ -15,12 +15,13 @@ import (
 	"Authorization/interfaces/mock"
 )
 
-func newPolicyCalc(pdb interfaces.DBPolicyCalc, userMgnt interfaces.DrivenUserMgnt, role interfaces.LogicsRole) *policyCalc {
+func newPolicyCalc(pdb interfaces.DBPolicyCalc, userMgnt interfaces.DrivenUserMgnt, role interfaces.LogicsRole, resourceType interfaces.LogicsResourceType) *policyCalc {
 	return &policyCalc{
-		db:       pdb,
-		userMgnt: userMgnt,
-		logger:   common.NewLogger(),
-		role:     role,
+		db:           pdb,
+		userMgnt:     userMgnt,
+		logger:       common.NewLogger(),
+		role:         role,
+		resourceType: resourceType,
 		obligationPriority: map[interfaces.AccessorType]int{
 			interfaces.AccessorUser:       1,
 			interfaces.AccessorApp:        1,
@@ -59,7 +60,8 @@ func TestPolicyCalcCheck(t *testing.T) {
 		pdb := mock.NewMockDBPolicyCalc(ctrl)
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		testErr := errors.New("some error")
 		ctx := context.Background()
@@ -119,7 +121,8 @@ func TestPolicyCalcCheck1(t *testing.T) {
 		pdb := mock.NewMockDBPolicyCalc(ctrl)
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		resource := interfaces.ResourceInfo{
@@ -226,7 +229,8 @@ func TestPolicyCalcCheck2(t *testing.T) {
 		pdb := mock.NewMockDBPolicyCalc(ctrl)
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		resource := interfaces.ResourceInfo{
@@ -243,6 +247,13 @@ func TestPolicyCalcCheck2(t *testing.T) {
 		userMgnt.EXPECT().GetAccessorIDsByUserID(gomock.Any(), gomock.Any()).AnyTimes().Return([]string{accessorID}, nil)
 		role.EXPECT().GetRoleByMembers(gomock.Any(), gomock.Any()).AnyTimes().Return(outInfo, nil)
 		userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).AnyTimes().Return([]interfaces.SystemRoleType{interfaces.SuperAdmin}, nil)
+		// Check 方法内部会调用 createAncestorsResource，需要 mock GetByIDsInternal
+		resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+			resourceTypeDoc: {
+				ID:         resourceTypeDoc,
+				DataStruct: "string",
+			},
+		}, nil)
 		includeParams := []interfaces.PolicCalcyIncludeType{}
 
 		Convey("拒绝优先。直接配置在本层 允许，check 结果为false", func() {
@@ -351,7 +362,8 @@ func TestPolicyResourceList(t *testing.T) {
 		pdb := mock.NewMockDBPolicyCalc(ctrl)
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -368,6 +380,13 @@ func TestPolicyResourceList(t *testing.T) {
 
 		Convey("无策略，返回空列表", func() {
 			pdb.EXPECT().GetPoliciesByResourceTypeAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			// GetResourceList 内部会调用 createAncestorsResource，需要 mock GetByIDsInternal
+			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+				resourceTypeDoc: {
+					ID:         resourceTypeDoc,
+					DataStruct: "list",
+				},
+			}, nil)
 			resources, _, err := pc.GetResourceList(ctx, resourceTypeDoc, &accessor, []string{tmpOperation1}, includeParams)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, len(resources), 0)
@@ -393,6 +412,13 @@ func TestPolicyResourceList(t *testing.T) {
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourceTypeAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			// GetResourceList 内部会调用 createAncestorsResource，需要 mock GetByIDsInternal
+			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+				resourceTypeDoc: {
+					ID:         resourceTypeDoc,
+					DataStruct: "list",
+				},
+			}, nil)
 			operation := []string{tmpOperation1, tmpOperation2}
 			resources, _, err := pc.GetResourceList(ctx, resourceTypeDoc, &accessor, operation, includeParams)
 			resultMap := make(map[string]bool)
@@ -415,7 +441,8 @@ func TestPolicyResourceFliter(t *testing.T) {
 		pdb := mock.NewMockDBPolicyCalc(ctrl)
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -514,8 +541,7 @@ func TestPolicyResourceTypeOperation(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -553,8 +579,7 @@ func TestPolicyResourceTypeOperation1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -659,8 +684,7 @@ func TestPolicyResourceOperation(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -688,7 +712,8 @@ func TestPolicyResourceOperation(t *testing.T) {
 
 		Convey("获取资源类型信息出错", func() {
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
-			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(nil, testErr)
+			// createAncestorsResource 不再调用 GetByIDsInternal，这里只会调用一次 GetByIDsInternal（获取资源类型信息）
+			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).Return(nil, testErr)
 			_, _, err := pc.GetResourceOperation(ctx, resources, &accessor)
 			assert.Equal(t, err, testErr)
 		})
@@ -704,8 +729,7 @@ func TestPolicyResourceOperation1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ctx := context.Background()
 		accessor := interfaces.AccessorInfo{
@@ -757,6 +781,13 @@ func TestPolicyResourceOperation1(t *testing.T) {
 		}
 		Convey("无策略，返回空", func() {
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			// GetResourceOperation 内部会调用 createAncestorsResource，需要 mock GetByIDsInternal
+			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+				resourceTypeDoc: {
+					ID:         resourceTypeDoc,
+					DataStruct: "list",
+				},
+			}, nil)
 			resourceTypeMap, _, err := pc.GetResourceOperation(ctx, resources, &accessor)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, len(resourceTypeMap), 2)
@@ -783,6 +814,13 @@ func TestPolicyResourceOperation1(t *testing.T) {
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policy, nil)
+			// GetResourceOperation 内部会调用 createAncestorsResource，需要 mock GetByIDsInternal
+			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+				resourceTypeDoc: {
+					ID:         resourceTypeDoc,
+					DataStruct: "list",
+				},
+			}, nil)
 			resourceTypeMap, _, err := pc.GetResourceOperation(ctx, resources, &accessor)
 			typeMap := make(map[string]bool)
 			typeMap[tmpOperation1] = true
@@ -807,8 +845,7 @@ func TestCalcObligationWithPriority(t *testing.T) {
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
 		obligation := mock.NewMockLogicsObligation(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 		pc.obligation = obligation
 
 		ope1 := []policyObligationCalcItem{
@@ -906,10 +943,20 @@ func TestCalcObligationWithPriority(t *testing.T) {
 			assert.Equal(t, obligationResult[tmpOperation1][0].ID, obligationID2)
 
 			assert.Equal(t, len(obligationResult[tmpOperation2]), 2)
-			assert.Equal(t, obligationResult[tmpOperation2][0].TypeID, obligationTypeID1)
-			assert.Equal(t, obligationResult[tmpOperation2][0].ID, obligationID1)
-			assert.Equal(t, obligationResult[tmpOperation2][1].TypeID, obligationTypeID2)
-			assert.Equal(t, obligationResult[tmpOperation2][1].ID, obligationID2)
+			// 多个义务类型时，第一个义务类型是随机的，检查数组中是否包含期望的元素
+			obligation2Result := obligationResult[tmpOperation2]
+			foundObligation1 := false
+			foundObligation2 := false
+			for _, item := range obligation2Result {
+				if item.TypeID == obligationTypeID1 && item.ID == obligationID1 {
+					foundObligation1 = true
+				}
+				if item.TypeID == obligationTypeID2 && item.ID == obligationID2 {
+					foundObligation2 = true
+				}
+			}
+			assert.Equal(t, foundObligation1, true, "应该包含 obligationTypeID1/obligationID1")
+			assert.Equal(t, foundObligation2, true, "应该包含 obligationTypeID2/obligationID2")
 		})
 
 		Convey("同一操作，类型义务不同, 相同优先级返回出现在最前面的，用于有层级结构的义务", func() {
@@ -933,8 +980,7 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 		policys := []interfaces.PolicyInfo{
 			{
 				// 所有用户的义务
@@ -1019,8 +1065,7 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		Convey("一个实例3条策略，只有用户策略配置有义务", func() {
 			policys := []interfaces.PolicyInfo{
@@ -1200,8 +1245,7 @@ func TestCalcOneResourcePermWithObligation2(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		Convey("一个实例3条策略，只有部门策略配置有义务，义务有两条，一条有ID，一条没有ID", func() {
 			policys := []interfaces.PolicyInfo{
@@ -1276,8 +1320,7 @@ func TestCalcResourceInheritedOperation(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
-		pc := newPolicyCalc(pdb, userMgnt, role)
-		pc.resourceType = resourceType
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
 
 		ope1 := []policyObligationCalcItem{
 			{
@@ -1330,7 +1373,7 @@ func TestCalcResourceInheritedOperation(t *testing.T) {
 			ID: resourceID,
 		}
 		Convey("一个操作3条配置都有义务，都有义务，相同义务类型按照就近原则顺序收集", func() {
-			_, _, OpaObligationsMap := pc.calcResourceInheritedOperation(&resource, resourcePermMap)
+			_, _, OpaObligationsMap := pc.calcResourceInheritedOperation([]interfaces.ResourceInfo{resource}, resourcePermMap)
 			assert.Equal(t, len(OpaObligationsMap[tmpOperation1]), 4)
 			assert.Equal(t, OpaObligationsMap[tmpOperation1][0].TypeID, obligationTypeID1)
 			assert.Equal(t, OpaObligationsMap[tmpOperation1][0].ID, obligationID1)

@@ -13,8 +13,8 @@ export default class ImportOrganize extends ImportOrganizeBase {
     */
     errorMg(record: Record<string, any>) {
         const {
-            InvalidUserName, InvalidDisplayName, InvalidEmail, InvalidSecret, UserNameExist, DisplayNameExist, OSSDisabled, InvalidUserSpace,
-            UserByAdminExist, EmailExist, InvalidPhoneNub, PhoneNubExist, InvalidCardId, InvalidRemarks, CardIdExist, InvalidDepartName, UsersDocNotExist,
+            InvalidUserName, InvalidDisplayName, InvalidEmail, InvalidSecret, UserNameExist, DisplayNameExist, OSSDisabled,
+            UserByAdminExist, EmailExist, InvalidPhoneNub, PhoneNubExist, InvalidCardId, InvalidRemarks, CardIdExist, InvalidDepartName,
             InvalidChangePwd, UserCreateError, DateExpired, OSSNotExist, InvalidUserStatus, InvalidPwd, LimitAssignUserSpace, CannotEditUsers,
         } = ErrorCode;
 
@@ -77,9 +77,6 @@ export default class ImportOrganize extends ImportOrganizeBase {
             case UserByAdminExist:
                 return __('用户名已被管理员占用')
 
-            case InvalidUserSpace:
-                return __('配额空间值不能超过1000000的正数，支持小数点的后两位，请重新输入')
-
             case InvalidChangePwd:
                 return __('不能修改已存在用户的初始密码')
 
@@ -100,9 +97,6 @@ export default class ImportOrganize extends ImportOrganizeBase {
 
             case CannotEditUsers:
                 return __('组织管理员不能编辑自身')
-
-            case UsersDocNotExist:
-                return __('个人文档已被删除，无法修改配额空间')
 
             default:
                 return record.errorMessage

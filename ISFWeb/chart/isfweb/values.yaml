@@ -25,7 +25,7 @@ service:
   oauthOn: true
   oauthClientID: ""
   oauthClientSecret: ""
-  SECRET_KEY: ""
+  SECRET_KEY: "f+dn2-%#@k2u!%_^*)8_6(ah(ea2z1(q&)cfk10k7gdm_cl5dl"
   sleep:
     tokenRefresh: 10
   sslOn: false

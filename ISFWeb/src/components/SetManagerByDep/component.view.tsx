@@ -12,19 +12,6 @@ import { LoadingOutlined } from '@ant-design/icons';
 
 export default class SetManagerByDep extends SetManagerByDepBase {
     render() {
-        const {
-            isLimitUserSpace,
-            currentUser,
-            limitUserSpaceState,
-            limitUserSpace,
-            isLimitDocSpace,
-            limitDocSpaceState,
-            limitDocSpace,
-            limitCheckDisable: {
-                limitUserCheckDisable,
-                limitDocCheckDisable,
-            },
-        } = this.state
         return (
             <div>
                 {

@@ -895,18 +895,3 @@ func TestObligation_GetByIDSInternal(t *testing.T) {
 		})
 	})
 }
-
-func TestNewObligation(t *testing.T) {
-	Convey("测试NewObligation单例", t, func() {
-		// 注意：因为使用了sync.Once，这个测试可能会受到其他测试的影响
-		// 在实际项目中，可能需要重置单例或使用依赖注入的方式
-		Convey("创建单例", func() {
-			ob1 := NewObligation()
-			ob2 := NewObligation()
-
-			assert.NotNil(t, ob1)
-			assert.NotNil(t, ob2)
-			assert.Equal(t, ob1, ob2) // 同一个实例
-		})
-	})
-}

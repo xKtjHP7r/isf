@@ -440,7 +440,6 @@ class DomainManage(DBConnector):
             config.destDepartId = ""
             config.ouPath = []
             config.syncInterval = 5
-            config.spaceSize = self.config_manage.get_default_space_size()
             config.syncMode = ncTUsrmDomainSyncMode.NCT_SYNC_UPPER_OU
             config.userEnableStatus = True
             config.validPeriod = -1
@@ -990,10 +989,9 @@ class DomainManage(DBConnector):
                 add_user.user.idcardNumber = user.idcardNumber
                 add_user.user.telNumber = user.telNumber
                 add_user.user.userType = ncTUsrmUserType.NCT_USER_TYPE_DOMAIN
-                add_user.user.space = option.spaceSize
                 add_user.user.priority = 999
                 add_user.user.csfLevel = option.csfLevel
-                add_user.user.csfLevel2 = self.config_manage.get_min_csf_level2() 
+                add_user.user.csfLevel2 = self.config_manage.get_min_csf_level2()
                 add_user.user.ossInfo = get_oss_info(option.oss_id) or ncTUsrmOSSInfo()
                 add_user.user.expireTime = option.expireTime
 
@@ -1257,10 +1255,6 @@ class DomainManage(DBConnector):
             # 获取勾选的组织下的用户
             domain_users += self.get_domain_sub_users(content.ous, ldap_manage, key_config)
 
-            # 检查管理员的用户限额空间是否足够
-            space_needed = len(domain_users) * option.spaceSize
-            self.user_manage.check_user_space(space_needed, responsible_person_id)
-
             global_info.IMPORT_TOTAL_NUM = len(domain_users) + len(domain_ous)
 
             # 获取oss_id
@@ -1308,10 +1302,6 @@ class DomainManage(DBConnector):
         # 域控根的用户
         ldap_users = ldap_manage.get_onelevel_sub_users(base_dn, key_config)
         all_domain_users += self.convert_ldap_users(ldap_users)
-
-        # 检查管理员的用户限额是否足够
-        space_needed = len(all_domain_users) * option.spaceSize
-        self.user_manage.check_user_space(space_needed, responsible_person_id)
 
         # 导入的总数
         global_info.IMPORT_TOTAL_NUM = len(domain_ous) + len(all_domain_users)
@@ -1382,10 +1372,6 @@ class DomainManage(DBConnector):
 
             global_info.IMPORT_TOTAL_NUM = len(all_domain_users)
 
-            # 检查管理员的用户限额空间是否足够
-            space_needed = option.spaceSize * global_info.IMPORT_TOTAL_NUM
-            self.user_manage.check_user_space(space_needed, responsible_person_id)
-
             # 添加用户到数据库
             self.add_user_to_db(content.domain, all_domain_users, option, False)
 
@@ -1453,11 +1439,6 @@ class DomainManage(DBConnector):
         # 检查域是否存在
         self.check_domain_exists(domain_id)
 
-        if config.spaceSize <= 0:
-            raise_exception(exp_msg=_("IDS_INVALID_SPACE_SIZE"),
-                            exp_num=ncTShareMgntError.
-                            NCT_INVALID_SAPCE_SIZE)
-
         config_json = {}
         if config.destDepartId:
             is_exists = self.depart_manage.check_depart_exists(config.destDepartId, True, False)
@@ -1470,11 +1451,6 @@ class DomainManage(DBConnector):
 
         config_json['ous'] = config.ouPath if config.ouPath else []
         config_json['sync_interval'] = config.syncInterval if config.syncInterval else 5
-
-        if config.spaceSize:
-            config_json['space_size'] = config.spaceSize
-        else:
-            config_json['space_size'] = self.config_manage.get_default_space_size()
 
         if config.syncMode is None:
             config.syncMode = ncTUsrmDomainSyncMode.NCT_SYNC_UPPER_OU
@@ -1558,9 +1534,6 @@ class DomainManage(DBConnector):
 
                 if 'sync_interval' in config:
                     domain_config.syncInterval = config['sync_interval']
-
-                if 'space_size' in config:
-                    domain_config.spaceSize = config['space_size']
 
                 if 'sync_mode' in config:
                     domain_config.syncMode = int(config['sync_mode'])
@@ -1719,10 +1692,6 @@ class DomainManage(DBConnector):
         """
         检测导入用户参数合法性
         """
-        if option.spaceSize < 0:
-            raise_exception(exp_msg=_("IDS_INVALID_SPACE_SIZE"),
-                            exp_num=ncTShareMgntError.
-                            NCT_INVALID_SAPCE_SIZE)
 
         # 检查用户账号有效期
         if option.expireTime is None:

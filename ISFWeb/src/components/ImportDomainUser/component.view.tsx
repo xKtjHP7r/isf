@@ -17,7 +17,7 @@ const isSafari = isBrowser({ app: Browser.Safari });
 export default class ImportDomainUser extends ImportDomainUserBase {
 
     render() {
-        const { importStyle, userCover, userStatus, quota, expireTime, quotaStatus, renderType, progress, selected, csfLevel, csfOptions } = this.state;
+        const { importStyle, userCover, userStatus, expireTime, renderType, progress, selected, csfLevel, csfOptions } = this.state;
 
         switch (renderType) {
             case RenderType.View:

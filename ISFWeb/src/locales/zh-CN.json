@@ -40,10 +40,6 @@
   "set.member.log": "为角色“{roleName}” 添加成员 “{userName}” 成功",
   "edit.member.log": "编辑 “{userName}” 为组织管理员，管辖部门：“{departmentName}”",
   "set.member.orgaudit.log.message": "“{name}”的管辖范围为：“{memberRange}”",
-  "not.limit.user.space": "不限制其用户管理最大可分配空间",
-  "limit.user.space": "限制其用户管理最大可分配空间为{quota}GB",
-  "not.limit.doc.space": "不限制其文档管理最大可分配空间。",
-  "limit.doc.space": "限制其文档管理最大可分配空间为{quota}GB。",
   "cancel.member.org.log": "取消 “{userName}” 的组织管理员身份，管辖部门：“{departmentName}”",
   "cancel.member.log": "删除角色“{roleName}”的成员 “{userName}” 成功",
   "member.range.log": "“{name}”的管辖范围为：“{memberRange}”",
@@ -145,5 +141,6 @@
   "authorized.user.count.overview": "产品用户授权数概览",
   "authorized.overview": "产品授权概览",
   "no.user": "暂无用户",
-  "no.use.product": "暂无有效产品"
+  "no.use.product": "暂无有效产品",
+  "resource.type.must.be.same": "您选择了不同类型的资源，暂不支持批量设置，请分开设置"
 }

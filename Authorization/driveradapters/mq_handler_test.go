@@ -339,3 +339,47 @@ func TestUpdateResourceName(t *testing.T) {
 		})
 	})
 }
+
+func TestUpdateResourceAncestors(t *testing.T) {
+	Convey("根据 NSQ 更新资源祖先信息", t, func() {
+		test := setGinMode()
+		defer test()
+		engine := gin.New()
+		engine.Use(gin.Recovery())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		policy := mock.NewMockLogicsPolicy(ctrl)
+
+		handler := mqHandler{
+			policy:                        policy,
+			log:                           common.NewLogger(),
+			resourceAncestorsModifySchema: newJSONSchema(resourceAncestorsModifySchemaStr),
+		}
+
+		Convey("updateResourceAncestors 参数是 string", func() {
+			errMsg, _ := jsoniter.Marshal("i am string")
+			err := handler.updateResourceAncestors(errMsg)
+			assert.Equal(t, err, nil)
+		})
+
+		Convey("updateResourceAncestors 成功", func() {
+			nsqValue := map[string]any{
+				"id":   "resource-1",
+				"type": "type-1",
+				"ancestors": []any{
+					map[string]any{
+						"id":   "A",
+						"type": "view",
+						"name": "数据视图A",
+					},
+				},
+			}
+			nsqMsg, _ := jsoniter.Marshal(nsqValue)
+			policy.EXPECT().UpdateResourceAncestors(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+			err := handler.updateResourceAncestors(nsqMsg)
+			assert.Equal(t, err, nil)
+		})
+	})
+}

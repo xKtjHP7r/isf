@@ -240,7 +240,6 @@ class DomainOuManage(BaseOuManage):
         user_info.server_type = domain_user_info.server_type
         user_info.dn = self.domain_name if user_info.server_type == 1 else domain_user_info.dn
         user_info.type = ncTUsrmUserType.NCT_USER_TYPE_DOMAIN
-        user_info.space_size = self.sync_config.spaceSize
         user_info.csf_level = self.sync_config.csfLevel
 
         return user_info

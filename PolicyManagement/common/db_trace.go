@@ -53,7 +53,6 @@ func NewDBTracePool() *sqlx.DB {
 		}
 
 		connInfo.CustomDriver = traceDriverName
-		connInfo.Database = GetDBName(connInfo.Database)
 
 		dbTracePool, err = sqlx.NewDB(&connInfo)
 		if err != nil {
@@ -75,5 +74,5 @@ func NewDBTracePool() *sqlx.DB {
 
 // GetDBName 获取数据库名
 func GetDBName(dbName string) string {
-	return fmt.Sprintf("%s%s", os.Getenv("DB_SYSTEM_ID"), dbName)
+	return fmt.Sprintf("%s%s", os.Getenv("SYSTEM_ID"), dbName)
 }

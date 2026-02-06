@@ -56,7 +56,7 @@ class SharemgntDBManager(object):
               't_third_party_auth', 't_oem_config', 't_sharemgnt_config',
               't_perm_share_strategy', 't_link_share_strategy', 't_find_share_strategy',
               't_leak_proof_strategy', 't_cert', 't_client_update_package',
-              't_site_info', 't_manager_limit_space', 't_third_party_db',
+              't_site_info', 't_third_party_db',
               't_third_depart_table', 't_third_depart_relation_table',
               't_third_user_table', 't_third_user_relation_table', 't_third_auth_info',
               't_third_party_tool_config', 't_net_accessors_info',
@@ -64,7 +64,7 @@ class SharemgntDBManager(object):
               't_nginx_user_rate', 't_department_responsible_person',
               't_watermark_config', 't_watermark_doc',
               't_link_template', 't_net_docs_limit_info',
-              't_doc_download_limit', 't_user_verification_code', 't_antivirus_admin',
+              't_user_verification_code', 't_antivirus_admin',
               't_hide_ou', 't_vcode', 't_sms_code', 't_copy_limit_rate',
               't_active_user_day', 't_active_user_month', 't_active_user_year', 't_operation_problem',
               't_role', 't_user_role_relation', 't_department_audit_person', 't_user_role_attribute',
@@ -307,9 +307,6 @@ class SharemgntDBManager(object):
         # 初始化t_link_template
         self.__init_link_template()
 
-        # 初始化管理员限额信息
-        self.__init_manager_limit_space()
-
         # 初始化水印配置
         self.__init_watermark_config()
 
@@ -546,26 +543,6 @@ class SharemgntDBManager(object):
 
             cursor.execute(insert_sql, (template_id, ncTTemplateType.EXTERNAL_LINK,
                            NCT_ALL_USER_GROUP, 2, 0, config))
-        self.conn.commit()
-        cursor.close()
-
-    def __init_manager_limit_space(self):
-        """
-        初始化管理员限额空间
-        """
-        # 如果没有admin的限额记录，新建一条
-        cursor = self.conn.cursor()
-        check_sql = """
-        SELECT * FROM `t_manager_limit_space`
-        WHERE `f_manager_id` = %s
-        """
-        cursor.execute(check_sql, (NCT_USER_ADMIN,))
-        result = cursor.fetchall()
-        if not result:
-            insert_sql = """
-            INSERT INTO `t_manager_limit_space` VALUES(%s, %s, %s, %s, %s)
-            """
-            cursor.execute(insert_sql, (NCT_USER_ADMIN, -1, 0, -1, 0))
         self.conn.commit()
         cursor.close()
 

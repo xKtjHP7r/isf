@@ -32,17 +32,21 @@ var (
 )
 
 type mqHandler struct {
-	mqClient                 interfaces.MQClient
-	pollIntervalMilliseconds int64
-	maxInFlight              int
-	log                      common.Logger
-	resourceNameModifySchema *gojsonschema.Schema
-	event                    interfaces.LogicsEvent
-	policy                   interfaces.LogicsPolicy
+	mqClient                      interfaces.MQClient
+	pollIntervalMilliseconds      int64
+	maxInFlight                   int
+	log                           common.Logger
+	resourceNameModifySchema      *gojsonschema.Schema
+	resourceAncestorsModifySchema *gojsonschema.Schema
+	event                         interfaces.LogicsEvent
+	policy                        interfaces.LogicsPolicy
 }
 
 //go:embed jsonschema/policy/resource_name_modify.json
 var resourceNameModifySchemaStr string
+
+//go:embed jsonschema/policy/resource_ancestors_modify.json
+var resourceAncestorsModifySchemaStr string
 
 type jsonValueDesc = rest.JSONValueDesc
 
@@ -50,13 +54,14 @@ type jsonValueDesc = rest.JSONValueDesc
 func NewMQHandler() MQHandler {
 	pOnce.Do(func() {
 		handler := mqHandler{
-			mqClient:                 mqClient,
-			pollIntervalMilliseconds: 100,
-			maxInFlight:              200,
-			event:                    logics.NewEvent(),
-			log:                      common.NewLogger(),
-			policy:                   logics.NewPolicy(),
-			resourceNameModifySchema: newJSONSchema(resourceNameModifySchemaStr),
+			mqClient:                      mqClient,
+			pollIntervalMilliseconds:      100,
+			maxInFlight:                   200,
+			event:                         logics.NewEvent(),
+			log:                           common.NewLogger(),
+			policy:                        logics.NewPolicy(),
+			resourceNameModifySchema:      newJSONSchema(resourceNameModifySchemaStr),
+			resourceAncestorsModifySchema: newJSONSchema(resourceAncestorsModifySchemaStr),
 		}
 		mq = &handler
 	})
@@ -77,7 +82,8 @@ func (m *mqHandler) Subscribe(g *errgroup.Group, ctx context.Context) {
 		"core.app.name.modified": m.appNameModified,
 
 		// 点对点消息
-		"authorization.resource.name.modify": m.updateResourceName,
+		"authorization.resource.name.modify":      m.updateResourceName,
+		"authorization.resource.ancestors.modify": m.updateResourceAncestors,
 	}
 
 	for t, f := range topicFuncMap {
@@ -291,10 +297,43 @@ func (m *mqHandler) updateResourceName(message []byte) error {
 	resourceName := jsonV["name"].(string)
 
 	ctx := context.Background()
-	m.log.Errorf("updateResourceName resourceID: %s, resourceType: %s, resourceName: %s", resourceID, resourceType, resourceName)
+	m.log.Debugf("updateResourceName resourceID: %s, resourceType: %s, resourceName: %s", resourceID, resourceType, resourceName)
 	err := m.policy.UpdateResourceName(ctx, resourceID, resourceType, resourceName)
 	if err != nil {
 		m.log.Errorf("updateResourceName UpdateResourceName error:%v", err)
+		if m.needReTry(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+// updateResourceAncestors 资源祖先信息修改
+func (m *mqHandler) updateResourceAncestors(message []byte) error {
+	var jsonV map[string]any
+	if err := validateAndBind(message, m.resourceAncestorsModifySchema, &jsonV); err != nil {
+		m.log.Errorf("updateResourceAncestors validateAndBind error:%v", err)
+		return nil
+	}
+
+	resourceID := jsonV["id"].(string)
+	resourceType := jsonV["type"].(string)
+
+	ancestorsAny := jsonV["ancestors"].([]any)
+	ancestors := make([]interfaces.Ancestor, 0, len(ancestorsAny))
+	for _, a := range ancestorsAny {
+		am := a.(map[string]any)
+		ancestors = append(ancestors, interfaces.Ancestor{
+			ID:   am["id"].(string),
+			Type: am["type"].(string),
+			Name: am["name"].(string),
+		})
+	}
+
+	ctx := context.Background()
+	m.log.Debugf("updateResourceAncestors resourceID: %s, resourceType: %s, ancestorsLen: %d", resourceID, resourceType, len(ancestors))
+	if err := m.policy.UpdateResourceAncestors(ctx, resourceID, resourceType, ancestors); err != nil {
+		m.log.Errorf("updateResourceAncestors UpdateResourceAncestors error:%v", err)
 		if m.needReTry(err) {
 			return err
 		}

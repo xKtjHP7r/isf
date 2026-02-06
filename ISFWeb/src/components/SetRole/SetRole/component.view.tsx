@@ -24,7 +24,6 @@ export default class SetRoleComponent extends SetRoleComponentBase {
             selectRoleInfo,
             showRoleEditDialog,
             allRoles,
-            limitSpaceInfo,
             roles,
         } = this.state;
 
@@ -170,7 +169,6 @@ export default class SetRoleComponent extends SetRoleComponentBase {
                                             ? { departmentId: userInfo.user.departmentIds[0], departmentName: userInfo.user.departmentNames[0] }
                                             : null
                                 }
-                                limitSpaceInfo={limitSpaceInfo}
                                 roles={roles}
                             /> :
                             selectRoleInfo.id === SystemRoleType.OrgAudit ?

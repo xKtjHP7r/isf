@@ -15,11 +15,12 @@ import (
 	"Authorization/interfaces/mock"
 )
 
-func newResourceType(db interfaces.DBResourceType, userMgmt interfaces.DrivenUserMgnt) *resourceType {
+func newResourceType(db interfaces.DBResourceType, userMgmt interfaces.DrivenUserMgnt, resourceTypeHierarchy interfaces.LogicsResourceTypeHierarchy) *resourceType {
 	return &resourceType{
-		db:       db,
-		userMgmt: userMgmt,
-		logger:   common.NewLogger(),
+		db:                    db,
+		userMgmt:              userMgmt,
+		resourceTypeHierarchy: resourceTypeHierarchy,
+		logger:                common.NewLogger(),
 	}
 }
 
@@ -36,7 +37,8 @@ func TestResourceType_GetPagination(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{
@@ -97,7 +99,8 @@ func TestResourceType_Set(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{
@@ -156,6 +159,7 @@ func TestResourceType_Set(t *testing.T) {
 	})
 }
 
+//nolint:dupl
 func TestResourceType_Delete(t *testing.T) {
 	Convey("测试Delete方法", t, func() {
 		ctrl := gomock.NewController(t)
@@ -163,7 +167,8 @@ func TestResourceType_Delete(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{
@@ -206,7 +211,8 @@ func TestResourceType_GetByID(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{
@@ -251,6 +257,7 @@ func TestResourceType_GetByID(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestResourceType_GetAllOperation(t *testing.T) {
 	Convey("测试GetAllOperation方法", t, func() {
 		ctrl := gomock.NewController(t)
@@ -258,7 +265,8 @@ func TestResourceType_GetAllOperation(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{
@@ -268,26 +276,29 @@ func TestResourceType_GetAllOperation(t *testing.T) {
 		}
 
 		Convey("数据库查询失败", func() {
-			db.EXPECT().GetByIDs(gomock.Any(), []string{testResourceTypeID}).Return(nil, errors.New("数据库查询失败"))
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return(nil, errors.New("数据库查询失败"))
 
-			operations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
 
 			assert.Error(t, err)
 			assert.Nil(t, operations)
+			assert.Nil(t, childrenOperations)
 		})
 
 		Convey("资源类型不存在", func() {
-			db.EXPECT().GetByIDs(gomock.Any(), []string{testResourceTypeID}).Return(map[string]interfaces.ResourceType{}, nil)
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{}, nil)
 
-			operations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
 
 			assert.NoError(t, err)
-			assert.Empty(t, operations)
+			assert.Nil(t, operations)
+			assert.Nil(t, childrenOperations)
 		})
 
-		Convey("成功获取操作列表", func() {
+		Convey("scope为ScopeType时直接返回操作列表", func() {
 			resourceType := interfaces.ResourceType{
-				ID: testResourceTypeID,
+				ID:   testResourceTypeID,
+				Name: "测试资源类型",
 				Operation: []interfaces.ResourceTypeOperation{
 					{
 						ID:          "display",
@@ -310,16 +321,171 @@ func TestResourceType_GetAllOperation(t *testing.T) {
 				},
 			}
 
-			db.EXPECT().GetByIDs(gomock.Any(), []string{testResourceTypeID}).Return(map[string]interfaces.ResourceType{
-				testResourceTypeID: resourceType,
-			}, nil)
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{resourceType}, nil)
 
-			operations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeType)
 
 			assert.NoError(t, err)
 			assert.Len(t, operations, 1)
 			assert.Equal(t, "display", operations[0].ID)
 			assert.Equal(t, "显示", operations[0].Name)
+			assert.Nil(t, childrenOperations)
+		})
+
+		Convey("scope为ScopeInstance且没有子资源类型", func() {
+			resourceType := interfaces.ResourceType{
+				ID:   testResourceTypeID,
+				Name: "测试资源类型",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "create",
+						Description: "创建操作",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeInstance},
+						Name: []interfaces.OperationName{
+							{Language: "zh-cn", Value: "创建"},
+						},
+					},
+				},
+			}
+
+			emptyHierarchy := interfaces.ResourceTypeHierarchy{
+				ResourceTypeID: testResourceTypeID,
+				Children:       []interfaces.ResourceTypeHierarchy{},
+			}
+
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{resourceType}, nil)
+			resourceTypeHierarchy.EXPECT().Get(gomock.Any(), visitor, testResourceTypeID).Return(emptyHierarchy, nil)
+
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeInstance)
+
+			assert.NoError(t, err)
+			assert.Len(t, operations, 1)
+			assert.Equal(t, "create", operations[0].ID)
+			assert.Nil(t, childrenOperations)
+		})
+
+		Convey("scope为ScopeInstance且有子资源类型", func() {
+			childResourceTypeID := "child_resource_type"
+			resourceType := interfaces.ResourceType{
+				ID:   testResourceTypeID,
+				Name: "测试资源类型",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "create",
+						Description: "创建操作",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeInstance},
+						Name: []interfaces.OperationName{
+							{Language: "zh-cn", Value: "创建"},
+						},
+					},
+				},
+			}
+
+			childResourceType := interfaces.ResourceType{
+				ID:   childResourceTypeID,
+				Name: "子资源类型",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "view",
+						Description: "查看操作",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeType},
+						Name: []interfaces.OperationName{
+							{Language: "zh-cn", Value: "查看"},
+						},
+					},
+				},
+			}
+
+			hierarchy := interfaces.ResourceTypeHierarchy{
+				ResourceTypeID: testResourceTypeID,
+				Children: []interfaces.ResourceTypeHierarchy{
+					{
+						ResourceTypeID: childResourceTypeID,
+						Children:       []interfaces.ResourceTypeHierarchy{},
+					},
+				},
+			}
+
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{resourceType, childResourceType}, nil)
+			resourceTypeHierarchy.EXPECT().Get(gomock.Any(), visitor, testResourceTypeID).Return(hierarchy, nil)
+
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeInstance)
+
+			assert.NoError(t, err)
+			assert.Len(t, operations, 1)
+			assert.Equal(t, "create", operations[0].ID)
+			assert.Len(t, childrenOperations, 1)
+			assert.Equal(t, childResourceTypeID, childrenOperations[0].ResourceTypeID)
+			assert.Equal(t, "子资源类型", childrenOperations[0].Name)
+			assert.Len(t, childrenOperations[0].Operations, 1)
+			assert.Equal(t, "view", childrenOperations[0].Operations[0].ID)
+		})
+
+		Convey("获取层级关系失败", func() {
+			resourceType := interfaces.ResourceType{
+				ID:   testResourceTypeID,
+				Name: "测试资源类型",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "create",
+						Description: "创建操作",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeInstance},
+						Name: []interfaces.OperationName{
+							{Language: "zh-cn", Value: "创建"},
+						},
+					},
+				},
+			}
+
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{resourceType}, nil)
+			resourceTypeHierarchy.EXPECT().Get(gomock.Any(), visitor, testResourceTypeID).Return(interfaces.ResourceTypeHierarchy{}, errors.New("获取层级关系失败"))
+
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeInstance)
+
+			assert.Error(t, err)
+			// 即使获取层级关系失败，当前资源类型的操作信息已经获取到了
+			assert.NotNil(t, operations)
+			assert.Len(t, operations, 1)
+			assert.Equal(t, "create", operations[0].ID)
+			assert.Nil(t, childrenOperations)
+		})
+
+		Convey("子资源类型不存在时跳过", func() {
+			resourceType := interfaces.ResourceType{
+				ID:   testResourceTypeID,
+				Name: "测试资源类型",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "create",
+						Description: "创建操作",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeInstance},
+						Name: []interfaces.OperationName{
+							{Language: "zh-cn", Value: "创建"},
+						},
+					},
+				},
+			}
+
+			nonExistentChildID := "non_existent_child"
+			hierarchy := interfaces.ResourceTypeHierarchy{
+				ResourceTypeID: testResourceTypeID,
+				Children: []interfaces.ResourceTypeHierarchy{
+					{
+						ResourceTypeID: nonExistentChildID,
+						Children:       []interfaces.ResourceTypeHierarchy{},
+					},
+				},
+			}
+
+			db.EXPECT().GetAllInternalWithHidden(gomock.Any()).Return([]interfaces.ResourceType{resourceType}, nil)
+			resourceTypeHierarchy.EXPECT().Get(gomock.Any(), visitor, testResourceTypeID).Return(hierarchy, nil)
+
+			operations, childrenOperations, err := rt.GetAllOperation(ctx, visitor, testResourceTypeID, interfaces.ScopeInstance)
+
+			assert.NoError(t, err)
+			assert.Len(t, operations, 1)
+			assert.Equal(t, "create", operations[0].ID)
+			assert.Empty(t, childrenOperations)
 		})
 	})
 }
@@ -331,7 +497,8 @@ func TestResourceType_GetByIDsInternal(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		resourceTypeIDs := []string{testResourceTypeID, testResourceTypeID2}
@@ -376,7 +543,8 @@ func TestResourceType_InitResourceTypes(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		resourceTypes := []interfaces.ResourceType{
@@ -463,7 +631,8 @@ func TestResourceType_checkResourceTypeChange(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		Convey("名称发生变化", func() {
 			old := &interfaces.ResourceType{Name: "旧名称"}
@@ -541,7 +710,8 @@ func TestResourceType_getOperationNameByLanguage(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		operationNames := []interfaces.OperationName{
 			{Language: "zh-cn", Value: "显示"},
@@ -577,7 +747,8 @@ func TestResourceType_checkVisitorType(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 
@@ -642,7 +813,8 @@ func TestResourceType_SetPrivate(t *testing.T) {
 
 		db := mock.NewMockDBResourceType(ctrl)
 		userMgmt := mock.NewMockDrivenUserMgnt(ctrl)
-		rt := newResourceType(db, userMgmt)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		rt := newResourceType(db, userMgmt, resourceTypeHierarchy)
 
 		ctx := context.Background()
 

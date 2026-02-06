@@ -21,15 +21,16 @@ import (
 )
 
 type role struct {
-	roleDB        interfaces.DBRole
-	roleMemberDB  interfaces.DBRoleMember
-	userMgnt      interfaces.DrivenUserMgnt
-	pool          *sqlx.DB
-	logger        common.Logger
-	event         interfaces.LogicsEvent
-	resourceType  interfaces.LogicsResourceType
-	roleSortOrder map[string]int // 角色排序
-	i18n          *common.I18n
+	roleDB                interfaces.DBRole
+	roleMemberDB          interfaces.DBRoleMember
+	userMgnt              interfaces.DrivenUserMgnt
+	pool                  *sqlx.DB
+	logger                common.Logger
+	event                 interfaces.LogicsEvent
+	resourceType          interfaces.LogicsResourceType
+	resourceTypeHierarchy interfaces.LogicsResourceTypeHierarchy
+	roleSortOrder         map[string]int // 角色排序
+	i18n                  *common.I18n
 }
 
 var (
@@ -59,13 +60,14 @@ var (
 func NewLogicsRole() *role {
 	roleOnce.Do(func() {
 		roleLogics = &role{
-			roleDB:       dbRole,
-			roleMemberDB: dbRoleMember,
-			userMgnt:     dnUserMgnt,
-			pool:         dbPool,
-			logger:       common.NewLogger(),
-			event:        NewEvent(),
-			resourceType: NewResourceType(),
+			roleDB:                dbRole,
+			roleMemberDB:          dbRoleMember,
+			userMgnt:              dnUserMgnt,
+			pool:                  dbPool,
+			logger:                common.NewLogger(),
+			event:                 NewEvent(),
+			resourceType:          NewResourceType(),
+			resourceTypeHierarchy: NewResourceTypeHierarchy(),
 			i18n: common.NewI18n(common.I18nMap{
 				i18nRoleNotFound: {
 					simplifiedChinese:  "角色不存在",
@@ -297,7 +299,9 @@ func (r *role) ModifyRole(ctx context.Context, visitor *interfaces.Visitor, role
 2. 如果资源类型范围信息为限制，则返回限制的资源类型
 3. 返回的信息有资源类型名称，资源类型描述，资源类型实例URL，资源类型数据结构，资源类型上的操作，资源类型实例上的操作
 */
-func (r *role) getResourceTypeScopeInfo(ctx context.Context, visitor *interfaces.Visitor, info interfaces.ResourceTypeScopeInfo) (respInfo interfaces.ResourceTypeScopeInfoWithOperation, err error) {
+//nolint:staticcheck
+func (r *role) getResourceTypeScopeInfo(ctx context.Context, visitor *interfaces.Visitor, info interfaces.ResourceTypeScopeInfo,
+	param interfaces.RoleInfoParam) (respInfo interfaces.ResourceTypeScopeInfoWithOperation, err error) {
 	respInfo.Unlimited = info.Unlimited
 	var resourceTypeInfoMap map[string]interfaces.ResourceType
 	var resourceTypeIDs []string
@@ -327,46 +331,141 @@ func (r *role) getResourceTypeScopeInfo(ctx context.Context, visitor *interfaces
 		}
 	}
 
-	// 填充资源类型和资源实例上的操作
-	for _, ResourceTypeID := range resourceTypeIDs {
-		resourceTypeInfo, ok := resourceTypeInfoMap[ResourceTypeID]
-		if !ok {
-			continue
+	if param.ResourceTypeViewMode == interfaces.ResourceTypeViewModeFlat {
+		respInfo.Types = r.getResourceTypeScopeInfoFlat(ctx, visitor, resourceTypeIDs, resourceTypeInfoMap)
+	} else if param.ResourceTypeViewMode == interfaces.ResourceTypeViewModeHierarchy {
+		respInfo.Types, err = r.getResourceTypeScopeInfoHierarchy(ctx, visitor, resourceTypeIDs, resourceTypeInfoMap)
+		if err != nil {
+			return respInfo, err
 		}
-		tmpResourceTypeScope := interfaces.ResourceTypeScopeWithOperation{
-			ID:          resourceTypeInfo.ID,
-			Name:        resourceTypeInfo.Name,
-			Description: resourceTypeInfo.Description,
-			InstanceURL: resourceTypeInfo.InstanceURL,
-			DataStruct:  resourceTypeInfo.DataStruct,
-		}
-		typeOperations := make([]interfaces.ResourceTypeOperationResponse, 0, len(resourceTypeInfo.Operation))
-		instanceOperations := make([]interfaces.ResourceTypeOperationResponse, 0, len(resourceTypeInfo.Operation))
-		for _, operation := range resourceTypeInfo.Operation {
-			opeInfo := interfaces.ResourceTypeOperationResponse{
-				ID:          operation.ID,
-				Description: operation.Description,
-			}
-			// 根据国际化获取名称
-			opeInfo.Name = r.getOperationNameByLanguage(visitor.Language, operation.Name)
-			// 填充类型上的操作
-			if slices.Contains(operation.Scope, interfaces.ScopeType) {
-				typeOperations = append(typeOperations, opeInfo)
-			}
-			// 填充实例上的操作
-			if slices.Contains(operation.Scope, interfaces.ScopeInstance) {
-				instanceOperations = append(instanceOperations, opeInfo)
-			}
-		}
-		tmpResourceTypeScope.TypeOperation = typeOperations
-		tmpResourceTypeScope.InstanceOperation = instanceOperations
-		respInfo.Types = append(respInfo.Types, tmpResourceTypeScope)
 	}
 	return
 }
 
+// getResourceTypeScopeInfoFlat 获取资源类型范围信息扁平化
+func (r *role) getResourceTypeScopeInfoFlat(ctx context.Context, visitor *interfaces.Visitor, resourceTypeIDs []string,
+	resourceTypeInfoMap map[string]interfaces.ResourceType) (types []interfaces.ResourceTypeScopeWithOperation) {
+	// 填充资源类型和资源实例上的操作
+	for _, resourceTypeID := range resourceTypeIDs {
+		tmpResourceTypeScope, ok := r.getResourceTypeInfo(ctx, visitor, resourceTypeID, resourceTypeInfoMap)
+		// 如果资源类型不存在，则跳过
+		if !ok {
+			continue
+		}
+		types = append(types, tmpResourceTypeScope)
+	}
+	return
+}
+
+// getResourceTypeScopeInfoHierarchy 获取资源类型范围信息层级化
+func (r *role) getResourceTypeScopeInfoHierarchy(ctx context.Context, visitor *interfaces.Visitor, resourceTypeIDs []string,
+	resourceTypeInfoMap map[string]interfaces.ResourceType) (types []interfaces.ResourceTypeScopeWithOperation, err error) {
+	// 有层级关系的，按照层级展示
+	resourceTypeHierarchyMap, err := r.resourceTypeHierarchy.GetAll(ctx)
+	if err != nil {
+		return types, err
+	}
+	// 下层层级的资源类型都放到这个childrenMap中，递归检查Children
+	childrenMap := make(map[string]bool)
+	topMap := make(map[string]bool)
+	var collectChildrenIDs func(children []interfaces.ResourceTypeHierarchy)
+	collectChildrenIDs = func(children []interfaces.ResourceTypeHierarchy) {
+		for _, child := range children {
+			childrenMap[child.ResourceTypeID] = true
+			collectChildrenIDs(child.Children)
+		}
+	}
+	for _, resourceTypeHierarchy := range resourceTypeHierarchyMap {
+		topMap[resourceTypeHierarchy.ResourceTypeID] = true
+		collectChildrenIDs(resourceTypeHierarchy.Children)
+	}
+
+	for _, resourceTypeID := range resourceTypeIDs {
+		// 如果不在顶层，在子层级中，则跳过
+		if !topMap[resourceTypeID] && childrenMap[resourceTypeID] {
+			continue
+		}
+		tmpResourceTypeScope, ok := r.getResourceTypeInfo(ctx, visitor, resourceTypeID, resourceTypeInfoMap)
+
+		// 如果资源类型不存在，则跳过
+		if !ok {
+			continue
+		}
+		// 如果有层级关系, 递归填充子资源类型（hierarchy.Children 下可能还有嵌套的 Children）
+		if hierarchy, ok := resourceTypeHierarchyMap[resourceTypeID]; ok && len(hierarchy.Children) > 0 {
+			resourceTypeIDSet := make(map[string]bool, len(resourceTypeIDs))
+			for _, id := range resourceTypeIDs {
+				resourceTypeIDSet[id] = true
+			}
+			var fillChildrenFromHierarchy func(children []interfaces.ResourceTypeHierarchy) ([]interfaces.ResourceTypeScopeWithOperation, error)
+			fillChildrenFromHierarchy = func(children []interfaces.ResourceTypeHierarchy) ([]interfaces.ResourceTypeScopeWithOperation, error) {
+				result := make([]interfaces.ResourceTypeScopeWithOperation, 0, len(children))
+				for _, child := range children {
+					if !resourceTypeIDSet[child.ResourceTypeID] {
+						continue
+					}
+					scope, ok := r.getResourceTypeInfo(ctx, visitor, child.ResourceTypeID, resourceTypeInfoMap)
+					if !ok {
+						continue
+					}
+					if len(child.Children) > 0 {
+						scope.Children, err = fillChildrenFromHierarchy(child.Children)
+						if err != nil {
+							return nil, err
+						}
+					}
+					result = append(result, scope)
+				}
+				return result, nil
+			}
+			tmpResourceTypeScope.Children, err = fillChildrenFromHierarchy(hierarchy.Children)
+			if err != nil {
+				return types, err
+			}
+		}
+		types = append(types, tmpResourceTypeScope)
+	}
+	return
+}
+
+func (r *role) getResourceTypeInfo(_ context.Context, visitor *interfaces.Visitor, resourceTypeID string,
+	resourceTypeInfoMap map[string]interfaces.ResourceType) (tmpResourceTypeInfo interfaces.ResourceTypeScopeWithOperation, ok bool) {
+	resourceTypeInfo, ok := resourceTypeInfoMap[resourceTypeID]
+	if !ok {
+		return tmpResourceTypeInfo, false
+	}
+	tmpResourceTypeInfo = interfaces.ResourceTypeScopeWithOperation{
+		ID:          resourceTypeInfo.ID,
+		Name:        resourceTypeInfo.Name,
+		Description: resourceTypeInfo.Description,
+		InstanceURL: resourceTypeInfo.InstanceURL,
+		DataStruct:  resourceTypeInfo.DataStruct,
+	}
+	typeOperations := make([]interfaces.ResourceTypeOperationResponse, 0, len(resourceTypeInfo.Operation))
+	instanceOperations := make([]interfaces.ResourceTypeOperationResponse, 0, len(resourceTypeInfo.Operation))
+	for _, operation := range resourceTypeInfo.Operation {
+		opeInfo := interfaces.ResourceTypeOperationResponse{
+			ID:          operation.ID,
+			Description: operation.Description,
+		}
+		// 根据国际化获取名称
+		opeInfo.Name = r.getOperationNameByLanguage(visitor.Language, operation.Name)
+		// 填充类型上的操作
+		if slices.Contains(operation.Scope, interfaces.ScopeType) {
+			typeOperations = append(typeOperations, opeInfo)
+		}
+		// 填充实例上的操作
+		if slices.Contains(operation.Scope, interfaces.ScopeInstance) {
+			instanceOperations = append(instanceOperations, opeInfo)
+		}
+	}
+	tmpResourceTypeInfo.TypeOperation = typeOperations
+	tmpResourceTypeInfo.InstanceOperation = instanceOperations
+	return tmpResourceTypeInfo, true
+}
+
 // GetRoleByID 获取指定的角色
-func (r *role) GetRoleByID(ctx context.Context, visitor *interfaces.Visitor, roleID string) (info interfaces.RoleInfoWithResourceTypeOperation, err error) {
+func (r *role) GetRoleByID(ctx context.Context, visitor *interfaces.Visitor, roleID string, param interfaces.RoleInfoParam) (info interfaces.RoleInfoWithResourceTypeOperation, err error) {
 	// 权限检查 visitor
 	err = r.checkVisitorType(ctx, visitor)
 	if err != nil {
@@ -386,7 +485,7 @@ func (r *role) GetRoleByID(ctx context.Context, visitor *interfaces.Visitor, rol
 	info.Description = tmpInfo.Description
 	info.RoleSource = tmpInfo.RoleSource
 	// 填充资源类型范围信息
-	info.ResourceTypeScopesInfo, err = r.getResourceTypeScopeInfo(ctx, visitor, tmpInfo.ResourceTypeScopeInfo)
+	info.ResourceTypeScopesInfo, err = r.getResourceTypeScopeInfo(ctx, visitor, tmpInfo.ResourceTypeScopeInfo, param)
 	if err != nil {
 		return info, err
 	}

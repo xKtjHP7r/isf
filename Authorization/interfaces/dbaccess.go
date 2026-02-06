@@ -18,8 +18,24 @@ type DBResourceType interface {
 	// 获取资源
 	GetByIDs(ctx context.Context, resourceTypeIDs []string) (resourceMap map[string]ResourceType, err error)
 
-	// 获取所有资源类型
+	// 获取所有资源类型, 不包含隐藏的资源类型
 	GetAllInternal(ctx context.Context) (resourceTypes []ResourceType, err error)
+	// 获取所有资源类型, 包含隐藏的资源类型
+	GetAllInternalWithHidden(ctx context.Context) (resourceTypes []ResourceType, err error)
+}
+
+// ResourceTypeHierarchy 资源类型层级关系
+type ResourceTypeHierarchy struct {
+	ResourceTypeID string
+	Children       []ResourceTypeHierarchy
+}
+
+// DBResourceTypeHierarchy 资源类型层级关系数据库接口
+type DBResourceTypeHierarchy interface {
+	// Set 设置资源类型层级关系
+	Set(ctx context.Context, hierarchy *ResourceTypeHierarchy) error
+	// GetAll 获取所有资源类型层级关系
+	GetAll(ctx context.Context) (hierarchyMap map[string]ResourceTypeHierarchy, err error)
 }
 
 // PolicyPagination 策略分页查询参数
@@ -47,12 +63,21 @@ type PolicyOperation struct {
 	Deny  []PolicyOperationItem
 }
 
+// Ancestor 资源祖先信息
+type Ancestor struct {
+	ID   string
+	Type string
+	Name string
+}
+
 // PolicyInfo 策略信息
 type PolicyInfo struct {
 	ID           string
 	ResourceID   string
 	ResourceType string
 	ResourceName string
+	Ancestors    []Ancestor
+	HasAncestors bool
 	AccessorID   string
 	AccessorType
 	AccessorName string
@@ -94,6 +119,9 @@ type DBPolicy interface {
 
 	// 更新资源实例名称
 	UpdateResourceName(ctx context.Context, resourceID, resourceType, name string) error
+
+	// 更新资源实例祖先信息
+	UpdateResourceAncestors(ctx context.Context, resourceID, resourceType string, ancestors []Ancestor) error
 
 	// 删除过期策略
 	DeleteByEndTime(curTime int64) error
@@ -217,6 +245,10 @@ type ObligationTypeSearchInfo struct {
 type QueryObligationTypeInfo struct {
 	ResourceType string
 	Operation    []string
+}
+
+type QueryObligationTypeInfoV2 struct {
+	ResourceTypeIDs []string
 }
 
 type ObligationInfo struct {

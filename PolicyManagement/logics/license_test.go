@@ -213,6 +213,22 @@ func TestUserAddAllProducts(t *testing.T) {
 			assert.Equal(t, err, nil)
 		})
 
+		Convey("有许可证，GetAuthorizedProducts报错，直接返回", func() {
+			licenseCache = make(map[string]interfaces.License)
+			licenseCache = map[string]interfaces.License{
+				"product1": {
+					Product:        "product1",
+					TotalUserQuota: 100,
+				},
+			}
+			licenseCacheGetTime = time.Now()
+
+			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(nil, errors.New("test"))
+			err := lic.userAddAllProducts(context.Background(), strUserID1)
+			assert.Equal(t, err, errors.New("test"))
+		})
+
 		Convey("有许可证，GetProductsAuthorizedCount 报错", func() {
 			licenseCache = make(map[string]interfaces.License)
 			licenseCache = map[string]interfaces.License{
@@ -224,6 +240,7 @@ func TestUserAddAllProducts(t *testing.T) {
 			licenseCacheGetTime = time.Now()
 
 			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{}, nil)
 			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(0, errors.New("test"))
 			err := lic.userAddAllProducts(context.Background(), strUserID1)
 			assert.Equal(t, err, errors.New("test"))
@@ -240,6 +257,7 @@ func TestUserAddAllProducts(t *testing.T) {
 			licenseCacheGetTime = time.Now()
 
 			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{}, nil)
 			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(100, nil)
 			err := lic.userAddAllProducts(context.Background(), strUserID1)
 			assert.Equal(t, err, nil)
@@ -256,27 +274,9 @@ func TestUserAddAllProducts(t *testing.T) {
 			licenseCacheGetTime = time.Now()
 
 			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{}, nil)
 			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(99, nil)
 			mockDB.ExpectBegin().WillReturnError(errors.New("test"))
-			err := lic.userAddAllProducts(context.Background(), strUserID1)
-			assert.Equal(t, err, errors.New("test"))
-		})
-
-		Convey("有许可证，未超过授权，tx begin成功，DeleteUserAuthorizedProducts报错", func() {
-			licenseCache = make(map[string]interfaces.License)
-			licenseCache = map[string]interfaces.License{
-				"product1": {
-					Product:        "product1",
-					TotalUserQuota: 100,
-				},
-			}
-			licenseCacheGetTime = time.Now()
-
-			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
-			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(99, nil)
-			mockDB.ExpectBegin()
-			dbLicense.EXPECT().DeleteUserAuthorizedProducts(gomock.Any(), strUserID1, gomock.Any()).Return(errors.New("test"))
-			mockDB.ExpectRollback()
 			err := lic.userAddAllProducts(context.Background(), strUserID1)
 			assert.Equal(t, err, errors.New("test"))
 		})
@@ -292,9 +292,9 @@ func TestUserAddAllProducts(t *testing.T) {
 			licenseCacheGetTime = time.Now()
 
 			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{}, nil)
 			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(99, nil)
 			mockDB.ExpectBegin()
-			dbLicense.EXPECT().DeleteUserAuthorizedProducts(gomock.Any(), strUserID1, gomock.Any()).Return(nil)
 			dbLicense.EXPECT().AddAuthorizedProducts(gomock.Any(), []interfaces.ProductInfo{
 				{
 					AccountID: strUserID1,
@@ -317,13 +317,48 @@ func TestUserAddAllProducts(t *testing.T) {
 			licenseCacheGetTime = time.Now()
 
 			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{}, nil)
 			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(99, nil)
 			mockDB.ExpectBegin()
-			dbLicense.EXPECT().DeleteUserAuthorizedProducts(gomock.Any(), strUserID1, gomock.Any()).Return(nil)
 			dbLicense.EXPECT().AddAuthorizedProducts(gomock.Any(), []interfaces.ProductInfo{
 				{
 					AccountID: strUserID1,
 					Product:   "product1",
+				},
+			}, gomock.Any()).Return(nil)
+			mockDB.ExpectCommit()
+			err := lic.userAddAllProducts(context.Background(), strUserID1)
+			assert.Equal(t, err, nil)
+		})
+
+		Convey("success1", func() {
+			licenseCache = make(map[string]interfaces.License)
+			licenseCache = map[string]interfaces.License{
+				"product1": {
+					Product:        "product1",
+					TotalUserQuota: 100,
+				},
+				"product2": {
+					Product:        "product2",
+					TotalUserQuota: 100,
+				},
+			}
+			licenseCacheGetTime = time.Now()
+
+			config.EXPECT().GetConfig(gomock.Any(), gomock.Any()).Return("", nil)
+			dbLicense.EXPECT().GetAuthorizedProducts(gomock.Any(), gomock.Any()).Return(map[string]interfaces.AuthorizedProduct{
+				strUserID1: {
+					ID:      strUserID1,
+					Type:    interfaces.ObjectTypeUser,
+					Product: []string{"product1"},
+				},
+			}, nil)
+			dbLicense.EXPECT().GetProductsAuthorizedCount(gomock.Any(), gomock.Any()).Return(99, nil)
+			mockDB.ExpectBegin()
+			dbLicense.EXPECT().AddAuthorizedProducts(gomock.Any(), []interfaces.ProductInfo{
+				{
+					AccountID: strUserID1,
+					Product:   "product2",
 				},
 			}, gomock.Any()).Return(nil)
 			mockDB.ExpectCommit()

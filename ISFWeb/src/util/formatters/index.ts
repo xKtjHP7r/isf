@@ -140,32 +140,6 @@ export function formatRate(bytes: number, fixed: number = 2, { minUnit = 'B' } =
 }
 
 /**
- * 配额空间单位转换,四舍五入取一位小数
- * @param inputTextArray 输入的文字
- * @return String 返回调整后的换算结果
- * 使用formatSize(size).toFixed(1):1023.96GB四舍五入会出现1024.0GB，需调整转换的结果成1.0TB
- */
-export function formatQuotaSize(size: number): string {
-    const [usedSize, usedUnit] = transformBytes(size)
-
-    // 获取输入文字的数值为1024时，转换为向上转换一个单位，如：1024.0GB转换成1.0TB
-    let outputText;
-    if (usedSize.toFixed(1) === '1024.0') {
-        // 单位集合
-        const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'BB', 'NB', 'DB'];
-        // 获取输入文字的单位，如：1024.0GB 获取单位 GB
-        const minUnit = usedUnit
-
-        // 当前显示单位的下标
-        let minUnitIndex = findIndex(units, (value) => value === minUnit);
-
-        minUnitIndex++;
-        return outputText = `1.0${units[minUnitIndex]}`;
-    }
-    return outputText = `${usedSize.toFixed(1)}${usedUnit}`;
-}
-
-/**
  * 根据字符串模板从字符串中提取键值对
  * @param input 要匹配的文本
  * @param template 匹配模板

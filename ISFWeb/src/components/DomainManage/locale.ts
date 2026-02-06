@@ -206,11 +206,6 @@ export default i18n([
         'If you delete the controller, the imported users will not be verified. Continue?',
     ],
     [
-        '配额空间值为不超过1000000的正数，支持小数点后两位。',
-        '配額空間值為不超過1000000的正數，支持小數點後兩位。',
-        'The quota value should be a positive number not greater than 1000000, allowing for 2 digits after the decimal point.',
-    ],
-    [
         '当前域控地址与备用域地址相同。',
         '當前網域控制站位址和備用網域位址相同。',
         'This controller address is the same as one of the backup controller.',

@@ -192,8 +192,49 @@ func (d *resourceType) GetByIDs(ctx context.Context, resourceTypeIDs []string) (
 }
 
 // 获取所有资源类型, 不包含隐藏的资源类型
+//
+//nolint:dupl
 func (d *resourceType) GetAllInternal(ctx context.Context) (resourceTypes []interfaces.ResourceType, err error) {
 	strSQL := "select f_id, f_name, f_description, f_instance_url, f_data_struct, f_operation from " + common.GetDBName(databaseName) + ".t_resource_type where f_hidden = 0"
+	rows, err := d.db.Query(strSQL)
+	if err != nil {
+		d.logger.Errorln(err)
+		return nil, err
+	}
+	defer func() {
+		if rows != nil {
+			if rowsErr := rows.Err(); rowsErr != nil {
+				d.logger.Errorln(rowsErr)
+			}
+			if closeErr := rows.Close(); closeErr != nil {
+				d.logger.Errorln(closeErr)
+			}
+		}
+	}()
+
+	for rows.Next() {
+		var resource interfaces.ResourceType
+		operationStr := ""
+		err = rows.Scan(&resource.ID, &resource.Name, &resource.Description, &resource.InstanceURL, &resource.DataStruct, &operationStr)
+		if err != nil {
+			d.logger.Errorln(err)
+			return nil, err
+		}
+		err = json.Unmarshal([]byte(operationStr), &resource.Operation)
+		if err != nil {
+			d.logger.Errorln(err)
+			return nil, err
+		}
+		resourceTypes = append(resourceTypes, resource)
+	}
+	return resourceTypes, nil
+}
+
+// 获取所有资源类型, 包含隐藏的资源类型
+//
+//nolint:dupl
+func (d *resourceType) GetAllInternalWithHidden(ctx context.Context) (resourceTypes []interfaces.ResourceType, err error) {
+	strSQL := "select f_id, f_name, f_description, f_instance_url, f_data_struct, f_operation from " + common.GetDBName(databaseName) + ".t_resource_type"
 	rows, err := d.db.Query(strSQL)
 	if err != nil {
 		d.logger.Errorln(err)

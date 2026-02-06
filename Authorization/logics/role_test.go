@@ -138,24 +138,28 @@ func TestRole_GetRoleByID(t *testing.T) {
 		logger := common.NewLogger()
 		event := mock.NewMockLogicsEvent(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		r := newRole(roleDB, roleMemberDB, userMgnt, logger, event)
+		r.resourceTypeHierarchy = resourceTypeHierarchy
 		r.resourceType = resourceType
 
 		ctx := context.Background()
 		visitor := &interfaces.Visitor{ID: "user1", Type: interfaces.RealName}
 		roleID := roleTmpID
 		roleInfo := interfaces.RoleInfo{ID: roleID}
-
+		param := interfaces.RoleInfoParam{
+			ResourceTypeViewMode: interfaces.ResourceTypeViewModeFlat,
+		}
 		Convey("权限检查失败", func() {
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), "user1").Return(nil, errors.New("权限错误"))
-			_, err := r.GetRoleByID(ctx, visitor, roleID)
+			_, err := r.GetRoleByID(ctx, visitor, roleID, param)
 			assert.Error(t, err)
 		})
 
 		Convey("角色不存在", func() {
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), "user1").Return([]interfaces.SystemRoleType{interfaces.SuperAdmin}, nil)
 			roleDB.EXPECT().GetRoleByID(gomock.Any(), roleID).Return(interfaces.RoleInfo{}, nil)
-			_, err := r.GetRoleByID(ctx, visitor, roleID)
+			_, err := r.GetRoleByID(ctx, visitor, roleID, param)
 			assert.Error(t, err)
 		})
 
@@ -163,7 +167,7 @@ func TestRole_GetRoleByID(t *testing.T) {
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), "user1").Return([]interfaces.SystemRoleType{interfaces.SuperAdmin}, nil)
 			roleDB.EXPECT().GetRoleByID(gomock.Any(), roleID).Return(roleInfo, nil)
 			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(map[string]interfaces.ResourceType{"test": {ID: "test", Name: "test"}}, nil)
-			info, err := r.GetRoleByID(ctx, visitor, roleID)
+			info, err := r.GetRoleByID(ctx, visitor, roleID, param)
 			assert.NoError(t, err)
 			assert.Equal(t, roleID, info.ID)
 		})
@@ -1510,6 +1514,10 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 			Language: "zh-cn",
 		}
 
+		param := interfaces.RoleInfoParam{
+			ResourceTypeViewMode: interfaces.ResourceTypeViewModeFlat,
+		}
+
 		Convey("Unlimited为true时获取所有资源类型", func() {
 			info := interfaces.ResourceTypeScopeInfo{
 				Unlimited: true,
@@ -1567,7 +1575,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetAllInternal(ctx).Return(allResourceTypes, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.True(t, result.Unlimited)
@@ -1640,7 +1648,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc", "image"}).Return(resourceTypeMap, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.False(t, result.Unlimited)
@@ -1669,7 +1677,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetAllInternal(ctx).Return(nil, errors.New("database error"))
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.Error(t, err)
 			assert.Equal(t, "database error", err.Error())
@@ -1687,7 +1695,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc"}).Return(nil, errors.New("database error"))
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.Error(t, err)
 			assert.Equal(t, "database error", err.Error())
@@ -1718,7 +1726,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc", "nonexistent"}).Return(resourceTypeMap, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.False(t, result.Unlimited)
@@ -1747,7 +1755,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc"}).Return(resourceTypeMap, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.False(t, result.Unlimited)
@@ -1802,7 +1810,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc"}).Return(resourceTypeMap, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.Len(t, result.Types, 1)
@@ -1853,7 +1861,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{"doc"}).Return(resourceTypeMap, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.Len(t, result.Types, 1)
@@ -1869,7 +1877,7 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{}).Return(map[string]interfaces.ResourceType{}, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.False(t, result.Unlimited)
@@ -1884,11 +1892,150 @@ func TestRole_getResourceTypeScopeInfo(t *testing.T) {
 
 			resourceType.EXPECT().GetAllInternal(ctx).Return([]interfaces.ResourceType{}, nil)
 
-			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info)
+			result, err := r.getResourceTypeScopeInfo(ctx, visitor, info, param)
 
 			assert.NoError(t, err)
 			assert.True(t, result.Unlimited)
 			assert.Empty(t, result.Types)
+		})
+	})
+}
+
+func TestRole_getResourceTypeScopeInfoHierarchy(t *testing.T) {
+	Convey("测试getResourceTypeScopeInfoHierarchy方法", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		roleDB := mock.NewMockDBRole(ctrl)
+		roleMemberDB := mock.NewMockDBRoleMember(ctrl)
+		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
+		logger := common.NewLogger()
+		event := mock.NewMockLogicsEvent(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
+		r := newRole(roleDB, roleMemberDB, userMgnt, logger, event)
+		r.resourceTypeHierarchy = resourceTypeHierarchy
+
+		ctx := context.Background()
+		visitor := &interfaces.Visitor{ID: "user1", Type: interfaces.RealName, Language: "zh-cn"}
+
+		resourceTypeInfoMap := map[string]interfaces.ResourceType{
+			"menu": {
+				ID:          "menu",
+				Name:        "菜单",
+				Description: "菜单资源",
+				InstanceURL: "/menu",
+				DataStruct:  "{}",
+				Operation: []interfaces.ResourceTypeOperation{
+					{
+						ID:          "read",
+						Description: "读取",
+						Scope:       []interfaces.OperationScopeType{interfaces.ScopeType},
+						Name:        []interfaces.OperationName{{Language: "zh-cn", Value: "读取"}},
+					},
+				},
+			},
+			"submenu": {
+				ID:          "submenu",
+				Name:        "子菜单",
+				Description: "子菜单资源",
+				InstanceURL: "/submenu",
+				DataStruct:  "{}",
+				Operation:   []interfaces.ResourceTypeOperation{},
+			},
+		}
+
+		Convey("GetAll失败", func() {
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(nil, errors.New("db error"))
+
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{"menu"}, resourceTypeInfoMap)
+			assert.Error(t, err)
+			assert.Nil(t, result)
+		})
+
+		Convey("空resourceTypeIDs", func() {
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(map[string]interfaces.ResourceTypeHierarchy{}, nil)
+
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{}, resourceTypeInfoMap)
+			assert.NoError(t, err)
+			assert.Empty(t, result)
+		})
+
+		Convey("无层级关系-扁平返回", func() {
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(map[string]interfaces.ResourceTypeHierarchy{}, nil)
+
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{"menu"}, resourceTypeInfoMap)
+			assert.NoError(t, err)
+			assert.Len(t, result, 1)
+			assert.Equal(t, "menu", result[0].ID)
+			assert.Equal(t, "菜单", result[0].Name)
+			assert.Empty(t, result[0].Children)
+		})
+
+		Convey("有层级关系-递归填充子资源类型", func() {
+			hierarchyMap := map[string]interfaces.ResourceTypeHierarchy{
+				"menu": {
+					ResourceTypeID: "menu",
+					Children: []interfaces.ResourceTypeHierarchy{
+						{ResourceTypeID: "submenu", Children: nil},
+					},
+				},
+			}
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(hierarchyMap, nil)
+
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{"menu", "submenu"}, resourceTypeInfoMap)
+			assert.NoError(t, err)
+			assert.Len(t, result, 1)
+			assert.Equal(t, "menu", result[0].ID)
+			assert.Len(t, result[0].Children, 1)
+			assert.Equal(t, "submenu", result[0].Children[0].ID)
+			assert.Equal(t, "子菜单", result[0].Children[0].Name)
+		})
+
+		Convey("仅子层级资源类型时被跳过", func() {
+			hierarchyMap := map[string]interfaces.ResourceTypeHierarchy{
+				"menu": {
+					ResourceTypeID: "menu",
+					Children: []interfaces.ResourceTypeHierarchy{
+						{ResourceTypeID: "submenu", Children: nil},
+					},
+				},
+			}
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(hierarchyMap, nil)
+
+			// 仅传 submenu：submenu 在 childrenMap 中但不在 topMap 中，应被跳过
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{"submenu"}, resourceTypeInfoMap)
+			assert.NoError(t, err)
+			assert.Empty(t, result)
+		})
+
+		Convey("嵌套children场景", func() {
+			resourceTypeInfoMap["grandchild"] = interfaces.ResourceType{
+				ID: "grandchild", Name: "孙级", Description: "", InstanceURL: "", DataStruct: "", Operation: nil,
+			}
+			hierarchyMap := map[string]interfaces.ResourceTypeHierarchy{
+				"menu": {
+					ResourceTypeID: "menu",
+					Children: []interfaces.ResourceTypeHierarchy{
+						{
+							ResourceTypeID: "submenu",
+							Children: []interfaces.ResourceTypeHierarchy{
+								{ResourceTypeID: "grandchild", Children: nil},
+							},
+						},
+					},
+				},
+			}
+			resourceTypeHierarchy.EXPECT().GetAll(gomock.Any()).Return(hierarchyMap, nil)
+
+			result, err := r.getResourceTypeScopeInfoHierarchy(ctx, visitor, []string{"menu", "submenu", "grandchild"}, resourceTypeInfoMap)
+			assert.NoError(t, err)
+			assert.Len(t, result, 1)
+			assert.Equal(t, "menu", result[0].ID)
+			assert.Len(t, result[0].Children, 1)
+			assert.Equal(t, "submenu", result[0].Children[0].ID)
+			assert.Len(t, result[0].Children[0].Children, 1)
+			assert.Equal(t, "grandchild", result[0].Children[0].Children[0].ID)
+			assert.Equal(t, "孙级", result[0].Children[0].Children[0].Name)
 		})
 	})
 }

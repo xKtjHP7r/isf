@@ -167,21 +167,6 @@ export default i18n([
         'Export My Documents Use Statistics Successfully',
     ],
     [
-        '导出用户空间使用情况报表任务失败',
-        '匯出使用者空間使用情況報表任務失敗',
-        'Export space usage statistics failed',
-    ],
-    [
-        '导出用户空间使用情况报表任务在进行中',
-        '匯出使用者空間使用情況報表任務在進行中',
-        'The task of exporting space usage statistics is being performed',
-    ],
-    [
-        '导出用户空间使用情况报表任务不存在',
-        '匯出使用者空間使用情況報表任務不存在',
-        'The task of exporting space usage statistics does not exist',
-    ],
-    [
         '正在处理中，请稍候...',
         '正在處理中，請稍候...',
         'Exporting, please Wait...',

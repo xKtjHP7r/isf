@@ -72,11 +72,6 @@ export default i18n([
         'Auth Type',
     ],
     [
-        '配额空间',
-        '配額空間',
-        'Quota',
-    ],
-    [
         '权重排序',
         '權重排序',
         'Priority',

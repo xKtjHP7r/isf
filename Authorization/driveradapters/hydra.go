@@ -161,7 +161,7 @@ func verify(c *gin.Context, hydra interfaces.Hydra) (visitor interfaces.Visitor,
 		return
 	}
 
-	common.NewLogger().Errorf("verify info: %v", info.VisitorID)
+	common.NewLogger().Debugf("verify info: %v", info.VisitorID)
 	visitor = interfaces.Visitor{
 		ID:         info.VisitorID,
 		TokenID:    tokenID,

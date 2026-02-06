@@ -57,11 +57,6 @@ export default i18n([
         'For the newly imported users:',
     ],
     [
-        '用户配额空间设为：',
-        '使用者配額空間設為：',
-        'Quota: ',
-    ],
-    [
         '导入',
         '導入',
         'Import',

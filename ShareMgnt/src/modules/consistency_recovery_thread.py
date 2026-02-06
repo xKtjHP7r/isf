@@ -66,30 +66,6 @@ class ConsistencyRecoveryThread(threading.Thread, DBConnector):
                             NCT_SYSTEM_ROLE_SECURIT, NCT_SYSTEM_ROLE_AUDIT)
 
     @wrap_recovery
-    def recovery_org_manage(self):
-        """
-        开始进行组织管理员数据一致性恢复
-        """
-        # 如果角色已被删除，则需要清空相应策略配置
-        sql = """
-        DELETE FROM t_department_responsible_person
-        WHERE f_user_id not in (
-            SELECT f_user_id
-            FROM t_user_role_relation
-            WHERE f_role_id = %s)
-        """
-        self.w_db.query(sql, NCT_SYSTEM_ROLE_ORG_MANAGER)
-
-        # 删除配额限制记录
-        sql = """
-        DELETE FROM t_manager_limit_space
-        WHERE f_manager_id != %s and f_manager_id not in (
-            SELECT f_user_id
-            FROM t_department_responsible_person)
-        """
-        self.w_db.query(sql, NCT_USER_ADMIN)
-
-    @wrap_recovery
     def recovery_org_audit(self):
         """
         开始进行组织审计员数据一致性恢复
@@ -125,7 +101,6 @@ class ConsistencyRecoveryThread(threading.Thread, DBConnector):
         开始进行角色模块相关数据恢复
         """
         self.recovery_supper_role()
-        self.recovery_org_manage()
         self.recovery_org_audit()
         self.recovery_role_attribute()
 

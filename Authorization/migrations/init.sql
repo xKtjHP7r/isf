@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS `t_policy`
     `f_accessor_name`  varchar(150) NOT NULL COMMENT '访问者名称',
     `f_operation`     longtext   NOT NULL COMMENT '操作',
     `f_condition`     longtext   NOT NULL COMMENT '条件',
+    `f_ancestors`     longtext   NOT NULL COMMENT '祖先信息',
     `f_end_time` bigint(20) NOT NULL COMMENT '过期时间',
     `f_create_time` bigint(20) NOT NULL COMMENT '创建时间',
     `f_modify_time` bigint(20) NOT NULL COMMENT '修改时间',
@@ -100,3 +101,15 @@ CREATE TABLE IF NOT EXISTS `t_obligation` (
     KEY `idx_f_type_id` (`f_type_id`),
     PRIMARY KEY (`f_primary_id`)
 ) ENGINE = InnoDB COMMENT='义务表';
+
+
+CREATE TABLE IF NOT EXISTS `t_resource_type_hierarchy`
+(
+    `f_primary_id` bigint(20) NOT NULL AUTO_INCREMENT,
+    `f_resource_type_id`  char(40) NOT NULL COMMENT '根节点的资源类型唯一标识',
+    `f_children`          longtext NOT NULL COMMENT '下级节点信息',
+    `f_created_at` bigint(20) NOT NULL COMMENT '创建时间',
+    `f_modified_at` bigint(20) NOT NULL COMMENT '修改时间',
+    UNIQUE KEY `uk_resource_type_id` (`f_resource_type_id`),
+    PRIMARY KEY (`f_primary_id`)
+) ENGINE = InnoDB COMMENT='资源类型层级关系表';

@@ -90,12 +90,12 @@ ncEACThirdUserHandler::CreateUser (brpc::Controller* cntl, ncIntrospectInfo &inf
     if (requestJson["manager"].type() != JSON::NIL)
     {
         JSON::Object& managerInfo = requestJson["manager"].o ();
-        if (managerInfo["type"].s () != "user") 
+        if (managerInfo["type"].s () != "user")
         {
             THROW_E (EAC_HTTP_SERVER, EACHTTP_INVALID_PARAM_VALUE,
                 LOAD_STRING (_T("IDS_EACHTTP_ERR_MSG_AGR_ERR")));
         }
-        
+
         addUserInfo.user.__set_managerID(managerInfo["id"].s ());
     }
 
@@ -156,8 +156,7 @@ ncEACThirdUserHandler::CreateUser (brpc::Controller* cntl, ncIntrospectInfo &inf
 
         exmsg.format (ncEACHttpServerLoader, _T("IDS_EACHTTP_APP_CREATER_SUCCESS_EXMSG"), retUserInfo.user.loginName.c_str(),
                       retUserInfo.user.displayName.c_str(), userType.getCStr(),
-                      retUserInfo.user.ossInfo.ossName.c_str(), retUserInfo.user.email.c_str(),
-                      retUserInfo.user.space/(1024 * 1024 * 1024));
+                      retUserInfo.user.ossInfo.ossName.c_str(), retUserInfo.user.email.c_str());
 
 
         ncEACHttpServerUtil::Log (cntl, info.userId, info.visitorType, ncTLogType::NCT_LT_MANAGEMENT, ncTLogLevel::NCT_LL_INFO,
@@ -222,12 +221,12 @@ ncEACThirdUserHandler::EditUser (brpc::Controller* cntl, ncIntrospectInfo &info)
     if (requestJson["manager"].type() != JSON::NIL)
     {
         JSON::Object& managerInfo = requestJson["manager"].o ();
-        if (managerInfo["type"].s () != "user") 
+        if (managerInfo["type"].s () != "user")
         {
             THROW_E (EAC_HTTP_SERVER, EACHTTP_INVALID_PARAM_VALUE,
                 LOAD_STRING (_T("IDS_EACHTTP_ERR_MSG_AGR_ERR")));
         }
-        
+
         editUserInfo.__set_managerID(managerInfo["id"].s ());
     }
     if (requestJson["account"].type() != JSON::NIL)
@@ -277,8 +276,7 @@ ncEACThirdUserHandler::EditUser (brpc::Controller* cntl, ncIntrospectInfo &info)
 
         exmsg.format (ncEACHttpServerLoader, _T("IDS_EACHTTP_APP_CREATER_SUCCESS_EXMSG"), retUserInfo.user.loginName.c_str(),
                       retUserInfo.user.displayName.c_str(), userType.getCStr(),
-                      retUserInfo.user.ossInfo.ossName.c_str(), retUserInfo.user.email.c_str(),
-                      retUserInfo.user.space/(1024 * 1024 * 1024));
+                      retUserInfo.user.ossInfo.ossName.c_str(), retUserInfo.user.email.c_str());
 
         ncEACHttpServerUtil::Log (cntl, info.userId, info.visitorType, ncTLogType::NCT_LT_MANAGEMENT, ncTLogLevel::NCT_LL_INFO,
                                  ncTManagementType::NCT_MNT_SET, msg.getCStr(), exmsg.getCStr());

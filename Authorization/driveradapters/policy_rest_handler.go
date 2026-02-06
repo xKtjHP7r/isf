@@ -122,6 +122,11 @@ func (p *policyRestHandler) create(c *gin.Context) {
 		resourceID := resource["id"].(string)
 		resourceType := resource["type"].(string)
 		resourceName := resource["name"].(string)
+		var ancestors []interfaces.Ancestor
+		ancestorsJson, hasAncestors := resource["ancestors"]
+		if hasAncestors {
+			ancestors = p.ancestorsStrToInfo(ancestorsJson)
+		}
 
 		operationJson := jsonReq["operation"].(map[string]any)
 		allowJson := operationJson["allow"].([]any)
@@ -195,6 +200,8 @@ func (p *policyRestHandler) create(c *gin.Context) {
 			Operation:    operation,
 			Condition:    condition,
 			EndTime:      endTime,
+			Ancestors:    ancestors,
+			HasAncestors: hasAncestors,
 		}
 		policys = append(policys, policy)
 	}
@@ -231,6 +238,11 @@ func (p *policyRestHandler) createPrivate(c *gin.Context) {
 		resourceID := resource["id"].(string)
 		resourceType := resource["type"].(string)
 		resourceName := resource["name"].(string)
+		var ancestors []interfaces.Ancestor
+		ancestorsJson, hasAncestors := resource["ancestors"]
+		if hasAncestors {
+			ancestors = p.ancestorsStrToInfo(ancestorsJson)
+		}
 
 		operationJson := jsonReq["operation"].(map[string]any)
 		allowJson := operationJson["allow"].([]any)
@@ -303,6 +315,8 @@ func (p *policyRestHandler) createPrivate(c *gin.Context) {
 			Operation:    operation,
 			Condition:    condition,
 			EndTime:      endTime,
+			Ancestors:    ancestors,
+			HasAncestors: hasAncestors,
 		}
 		policys = append(policys, policy)
 	}
@@ -720,6 +734,21 @@ func (p *policyRestHandler) operationArrayToJsonWithObligations(operations []int
 			operationItem["obligations"] = obligations
 		}
 		resp = append(resp, operationItem)
+	}
+	return
+}
+
+func (p *policyRestHandler) ancestorsStrToInfo(ancestorsJson any) (result []interfaces.Ancestor) {
+	ancestors := ancestorsJson.([]any)
+	result = make([]interfaces.Ancestor, 0, len(ancestors))
+	for _, v := range ancestors {
+		ancestorMap := v.(map[string]any)
+		ancestor := interfaces.Ancestor{
+			ID:   ancestorMap["id"].(string),
+			Type: ancestorMap["type"].(string),
+			Name: ancestorMap["name"].(string),
+		}
+		result = append(result, ancestor)
 	}
 	return
 }

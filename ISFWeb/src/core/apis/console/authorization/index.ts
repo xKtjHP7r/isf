@@ -123,8 +123,8 @@ export const getResources = ({
 /**
  * 获取角色信息
  */
-export const getRoleInfo = ({id}) => {
-    return consolehttp("get", ["authorization", "v1", "roles", id], null, null);
+export const getRoleInfo = ({id, resource_type_view_mode = 'flat' }) => {
+    return consolehttp("get", ["authorization", "v1", "roles", id], null, { resource_type_view_mode });
 }
 
 /**

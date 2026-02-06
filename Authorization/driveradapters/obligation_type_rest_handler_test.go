@@ -779,3 +779,270 @@ func TestObligationTypeRestHandler_ResourceTypeScopeInfoToString(t *testing.T) {
 		})
 	})
 }
+
+func TestObligationTypeRestHandler_QueryObligationTypesV2(t *testing.T) {
+	Convey("queryObligationTypesV2", t, func() {
+		test := setGinMode()
+		defer test()
+		r := gin.New()
+		r.Use(gin.Recovery())
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockObligationType := mock.NewMockObligationType(ctrl)
+		mockHydra := mock.NewMockHydra(ctrl)
+
+		handler := &obligationTypeRestHandler{
+			obligationType: mockObligationType,
+			hydra:          mockHydra,
+		}
+
+		handler.RegisterPublic(r)
+
+		Convey("验证失败 - 无权限", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active: false,
+			}, gerrors.NewError(gerrors.PublicUnauthorized, "unauthorized"))
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusUnauthorized)
+		})
+
+		Convey("参数错误 - 缺少resource_type_ids", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusBadRequest)
+		})
+
+		Convey("成功查询 - 单个资源类型", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]map[string][]interfaces.ObligationTypeInfo{
+				"doc": {
+					"read": {
+						{
+							ID:           "obl1",
+							Name:         "Obligation 1",
+							Description:  "Description 1",
+							Schema:       map[string]any{"type": "string"},
+							DefaultValue: "default1",
+							UiSchema:     map[string]any{"widget": "text"},
+						},
+					},
+					"write": {
+						{
+							ID:           "obl2",
+							Name:         "Obligation 2",
+							Description:  "Description 2",
+							Schema:       map[string]any{"type": "number"},
+							DefaultValue: nil,
+							UiSchema:     nil,
+						},
+					},
+				},
+			}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusOK)
+
+			var resp []map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+			So(len(resp), ShouldEqual, 1)
+			So(resp[0]["resource_type_id"], ShouldEqual, "doc")
+			operations := resp[0]["operations"].([]any)
+			So(len(operations), ShouldEqual, 2)
+		})
+
+		Convey("成功查询 - 多个资源类型", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]map[string][]interfaces.ObligationTypeInfo{
+				"doc": {
+					"read": {
+						{
+							ID:           "obl1",
+							Name:         "Obligation 1",
+							Description:  "Description 1",
+							Schema:       map[string]any{"type": "string"},
+							DefaultValue: "default1",
+							UiSchema:     map[string]any{"widget": "text"},
+						},
+					},
+				},
+				"file": {
+					"download": {
+						{
+							ID:           "obl3",
+							Name:         "Obligation 3",
+							Description:  "Description 3",
+							Schema:       map[string]any{"type": "object"},
+							DefaultValue: map[string]any{"key": "value"},
+							UiSchema:     map[string]any{"widget": "form"},
+						},
+					},
+				},
+			}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc&resource_type_ids=file", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusOK)
+
+			var resp []map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+			So(len(resp), ShouldEqual, 2)
+		})
+
+		Convey("成功查询 - 空结果", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]map[string][]interfaces.ObligationTypeInfo{}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusOK)
+
+			var resp []map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+			So(len(resp), ShouldEqual, 0)
+		})
+
+		Convey("成功查询 - 验证返回格式", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]map[string][]interfaces.ObligationTypeInfo{
+				"doc": {
+					"read": {
+						{
+							ID:           "obl1",
+							Name:         "Obligation 1",
+							Description:  "Description 1",
+							Schema:       map[string]any{"type": "string"},
+							DefaultValue: "default1",
+							UiSchema:     map[string]any{"widget": "text"},
+						},
+					},
+				},
+			}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusOK)
+
+			var resp []map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+			So(len(resp), ShouldEqual, 1)
+
+			result := resp[0]
+			So(result["resource_type_id"], ShouldEqual, "doc")
+			operations := result["operations"].([]any)
+			So(len(operations), ShouldEqual, 1)
+
+			operation := operations[0].(map[string]any)
+			So(operation["operation_id"], ShouldEqual, "read")
+			obligationTypes := operation["obligation_types"].([]any)
+			So(len(obligationTypes), ShouldEqual, 1)
+
+			obligationType := obligationTypes[0].(map[string]any)
+			So(obligationType["id"], ShouldEqual, "obl1")
+			So(obligationType["name"], ShouldEqual, "Obligation 1")
+			So(obligationType["description"], ShouldEqual, "Description 1")
+			So(obligationType["default_value"], ShouldEqual, "default1")
+		})
+
+		Convey("成功查询 - DefaultValue和UiSchema为nil时使用空对象", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(map[string]map[string][]interfaces.ObligationTypeInfo{
+				"doc": {
+					"read": {
+						{
+							ID:           "obl1",
+							Name:         "Obligation 1",
+							Description:  "Description 1",
+							Schema:       map[string]any{"type": "string"},
+							DefaultValue: nil,
+							UiSchema:     nil,
+						},
+					},
+				},
+			}, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusOK)
+
+			var resp []map[string]any
+			err := json.Unmarshal(w.Body.Bytes(), &resp)
+			So(err, ShouldBeNil)
+
+			operations := resp[0]["operations"].([]any)
+			operation := operations[0].(map[string]any)
+			obligationTypes := operation["obligation_types"].([]any)
+			obligationType := obligationTypes[0].(map[string]any)
+
+			defaultValue := obligationType["default_value"].(map[string]any)
+			So(len(defaultValue), ShouldEqual, 0)
+
+			uiSchema := obligationType["ui_schema"].(map[string]any)
+			So(len(uiSchema), ShouldEqual, 0)
+		})
+
+		Convey("QueryV2方法失败", func() {
+			mockHydra.EXPECT().Introspect("test-token").Return(interfaces.TokenIntrospectInfo{
+				Active:    true,
+				VisitorID: "user1",
+			}, nil)
+			mockObligationType.EXPECT().QueryV2(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("query failed"))
+
+			req := httptest.NewRequest(http.MethodGet, "/api/authorization/v2/query-obligation-types?resource_type_ids=doc", nil)
+			req.Header.Set("Authorization", "Bearer test-token")
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			So(w.Code, ShouldEqual, http.StatusInternalServerError)
+		})
+	})
+}

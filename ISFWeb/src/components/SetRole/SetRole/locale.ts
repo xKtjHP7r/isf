@@ -96,26 +96,6 @@ export default i18n([
         'Set "${userName}" as Organization Admin. Manage Scope: "${departmentName}"',
     ],
     [
-        '不限制其用户管理最大可分配空间',
-        '不限制其使用者管理最大可分配空間',
-        'Space allocated for user is unlimited',
-    ],
-    [
-        '限制其用户管理最大可分配空间为${quota}GB',
-        '限制其使用者管理最大可分配空間為${quota}GB',
-        'Max space allocated for user is ${quota}GB',
-    ],
-    [
-        '不限制其文档管理最大可分配空间。',
-        '不限制其文件管理最大可分配空間。',
-        'Space allocated for library is unlimited.',
-    ],
-    [
-        '限制其文档管理最大可分配空间为${quota}GB。',
-        '限制其文件管理最大可分配空間為${quota}GB。',
-        'Max space allocated for library is ${quota}GB.',
-    ],
-    [
         '取消 “${userName}” 的组织管理员身份，管辖部门：“${departmentName}”',
         '取消 “${userName}” 的組織管理員身份，管轄部門： “${departmentName}”',
         'Cancel "${userName}" as Organization Admin. Manage scope: "${departmentName}"',

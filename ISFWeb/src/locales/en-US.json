@@ -40,10 +40,6 @@
     "set.member.log": "Successfully added member “{userName}” as the role “{roleName}”",
     "edit.member.log": "Edit “{userName}” as Organization administrator, manage department: “{departmentName}”",
     "set.member.orgaudit.log.message": "Successfully set the range of '{name}' to '{memberRange}'",
-    "not.limit.user.space": "No limit on the maximum allocatable space for User Management",
-    "limit.user.space": "Limit the maximum allocatable space for User Management to {quota}GB",
-    "not.limit.doc.space": "No limit on the maximum allocatable space for Document Management",
-    "limit.doc.space": "Limit the maximum allocatable space for Document Management to {quota}GB",
     "cancel.member.org.log": "Cancelled “{userName}” as Organization Administrator, Department: “{departmentName}”",
     "cancel.member.log": "Successfully removed member '{userName}' from role '{roleName}'",
     "member.range.log": "“{name}”'s Management Range：“{memberRange}”",
@@ -145,6 +141,7 @@
     "authorized.user.count.overview": "User License Overview",
     "authorized.overview": "Authorization Overview",
     "no.user": "No users",
-    "no.use.product": "No authorized products"
+    "no.use.product": "No authorized products",
+    "resource.type.must.be.same": "You have selected resources of different types. Please select resources of the same type for batch configuration."
   }
   

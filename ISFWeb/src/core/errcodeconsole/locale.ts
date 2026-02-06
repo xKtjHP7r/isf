@@ -62,11 +62,6 @@ export default i18n([
         'Knowledge documents with the same name already exists.',
     ],
     [
-        '配额空间不能小于当前已使用空间。',
-        '配額空間不能小於當前已使用空間。',
-        'Quota cannot be less than the used space.',
-    ],
-    [
         '库所有者 “${owners}” 不存在。',
         '庫擁有者 “${owners}” 不存在',
         'The owner “${owners}” doesn\'t exist',

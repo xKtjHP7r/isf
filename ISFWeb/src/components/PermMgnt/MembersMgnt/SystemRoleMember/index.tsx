@@ -113,12 +113,6 @@ export const SystemRoleMember = ({type = 'create', title, currentRole, selectmem
         return result;
     }
 
-    const getEditLogMessage = () => {
-        const limitUserMessage = intl.get("not.limit.user.space")
-        const limitDocMessage = intl.get("not.limit.doc.space")
-        return `${limitUserMessage}, ${limitDocMessage}`
-    }
-
     const getLogMessage = (memberInfo) => {
 
         switch (currentRole.id) {
@@ -127,8 +121,6 @@ export const SystemRoleMember = ({type = 'create', title, currentRole, selectmem
                     name: memberInfo.displayName,
                     memberRange: memberInfo.manageDeptInfo.departmentNames.join(intl.get("quota")),
                 })
-            case SystemRoleType.OrgManager:
-                return getEditLogMessage()
 
             default:
                 return ''
@@ -176,8 +168,6 @@ export const SystemRoleMember = ({type = 'create', title, currentRole, selectmem
                         ncTManageDeptInfo: {
                             departmentIds,
                             departmentNames,
-                            limitUserSpaceSize: -1,
-                            limitDocSpaceSize: -1
                         }
                     }
                 }])
@@ -188,8 +178,6 @@ export const SystemRoleMember = ({type = 'create', title, currentRole, selectmem
                     manageDeptInfo: {
                         departmentIds,
                         departmentNames,
-                        limitUserSpaceSize: -1,
-                        limitDocSpaceSize: -1
                     }
                 }
                 if(type === "create") {
@@ -212,7 +200,7 @@ export const SystemRoleMember = ({type = 'create', title, currentRole, selectmem
                     manageLog(
                         ManagementOps.SET,
                         intl.get('edit.member.log', { userName: memberInfo.displayName, departmentName: memberInfo.manageDeptInfo.departmentNames.join(intl.get("quota")) }),
-                        getEditLogMessage(),
+                        '',
                         Level.INFO,
                     )
                 }

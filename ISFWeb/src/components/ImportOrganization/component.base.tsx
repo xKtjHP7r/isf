@@ -1,6 +1,6 @@
 import { noop } from 'lodash';
 import { timer } from '@/util/timer';
-import { usrmGetUserDocStatus, usrmGetDefaulSpaceSize, usrmExpandThirdPartyNode, usrmImportThirdPartyOUs, usrmClearThirdImportProgress, usrmGetThirdImportProgress } from '@/core/thrift/sharemgnt/sharemgnt';
+import { usrmExpandThirdPartyNode, usrmImportThirdPartyOUs, usrmClearThirdImportProgress, usrmGetThirdImportProgress } from '@/core/thrift/sharemgnt/sharemgnt';
 import WebComponent from '../webcomponent';
 import __ from './locale';
 
@@ -52,8 +52,6 @@ export default class ImportOrganizationBase extends WebComponent<any, any> {
     }
 
     state = {
-        spaceStatus: false,
-        spaceSize: '',
         option: {
             /**
             * 是否导入用户邮箱
@@ -75,11 +73,6 @@ export default class ImportOrganizationBase extends WebComponent<any, any> {
              */
             departmentId: this.props.departmentId,
 
-            /**
-             * 用户的配额空间
-             */
-            spaceSize: 0,
-
         },
         importOption: ImportOptions.All,
         selectedData: [],
@@ -91,40 +84,6 @@ export default class ImportOrganizationBase extends WebComponent<any, any> {
     }
 
     static ImportOptions = ImportOptions;
-
-    async componentDidMount() {
-        const spaceStatus = await usrmGetUserDocStatus()
-        try {
-            if (spaceStatus) {
-                this.setState({
-                    spaceStatus,
-                    spaceSize: ((await usrmGetDefaulSpaceSize()) / Math.pow(1024, 3)).toFixed(2),
-                })
-            } else {
-                this.setState({
-                    spaceStatus,
-                })
-            }
-        } catch (ex) {
-
-        }
-    }
-
-    /**
-     * 更改文本框的值
-     */
-    protected changeDocSpace = (value) => {
-        if (value === '' || Number(value) <= 1000000) {
-            this.setState({
-                spaceSize: value,
-            })
-        } else {
-            this.setState({
-                spaceSize: this.state.spaceSize,
-            })
-        }
-
-    }
 
     /**
      * 选择导入方式
@@ -194,7 +153,6 @@ export default class ImportOrganizationBase extends WebComponent<any, any> {
                 {
                     ncTUsrmImportOption: {
                         ...this.state.option,
-                        spaceSize: this.state.spaceSize === '' ? 0 : Number(this.state.spaceSize) * Math.pow(1024, 3),
                         expireTime: (this.state.expireTime === -1 ? -1 : this.state.expireTime / 1000 / 1000),
                     },
                 }, this.props.userid])

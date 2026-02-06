@@ -47,37 +47,6 @@ declare namespace Console {
              * 当前选择的用户
              */
             currentUser: any | null;
-
-            /**
-             * 用户限额开关状态
-             */
-            isLimitUserSpace: boolean;
-
-            /**
-             * 当前用户管理最大可分配限额
-             */
-            limitUserSpace: number | string;
-
-            /**
-             * 用户限额文本框为空
-             */
-            limitUserSpaceState: number;
-
-            /**
-             * 文档限额状态
-             */
-            isLimitDocSpace: boolean;
-
-            /**
-             * 当前文档管理最大可分配限额
-             */
-            limitDocSpace: number | string;
-
-            /**
-             * 文档限额文本框为空
-             */
-            limitDocSpaceState: number;
-
             /**
              * 错误
              */

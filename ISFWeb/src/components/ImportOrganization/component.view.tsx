@@ -110,7 +110,7 @@ export default class ImportOrganization extends ImportOrganizationBase {
                                 <Panel.Footer>
                                     <Panel.Button
                                         theme='oem'
-                                        disabled={!this.state.selectedData.length || (this.state.spaceStatus && this.state.spaceSize === '')}
+                                        disabled={!this.state.selectedData.length}
                                         onClick={this.importThirdUser}
                                     >
                                         {__('导入')}

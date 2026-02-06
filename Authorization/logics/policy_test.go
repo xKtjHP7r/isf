@@ -18,14 +18,16 @@ import (
 
 func newPolicy(db interfaces.DBPolicy, userMgnt interfaces.DrivenUserMgnt, role interfaces.LogicsRole,
 	resourceType interfaces.LogicsResourceType, policyCalc interfaces.LogicsPolicyCalc,
+	resourceTypeHierarchy interfaces.LogicsResourceTypeHierarchy,
 ) *policy {
 	return &policy{
-		db:           db,
-		userMgmt:     userMgnt,
-		logger:       common.NewLogger(),
-		role:         role,
-		resourceType: resourceType,
-		policyCalc:   policyCalc,
+		db:                    db,
+		userMgmt:              userMgnt,
+		logger:                common.NewLogger(),
+		role:                  role,
+		resourceType:          resourceType,
+		resourceTypeHierarchy: resourceTypeHierarchy,
+		policyCalc:            policyCalc,
 		i18n: common.NewI18n(common.I18nMap{
 			i18nAccessorRoleNotFound: {
 				simplifiedChinese:  "角色不存在",
@@ -45,8 +47,9 @@ func TestPolicyGetPagination(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		testErr := errors.New("some error")
 		ctx := context.Background()
@@ -217,10 +220,13 @@ func TestPolicyGetPagination1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		ctx := context.Background()
+		// CreatePrivate -> checkResourceIDAndAncestors 会调用 GetParentResourceTypeID；默认返回无父级，避免要求必须传 ancestors
+		resourceTypeHierarchy.EXPECT().HasHierarchy(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(false, nil)
 		visitor := interfaces.Visitor{
 			ID:       accessorID,
 			Type:     interfaces.RealName,
@@ -381,8 +387,9 @@ func TestPolicyDelete(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		testErr := errors.New("some error")
 		var ctx context.Context
@@ -465,8 +472,9 @@ func TestPolicyUpdate(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		testErr := errors.New("some error")
 		var ctx context.Context
@@ -531,8 +539,9 @@ func TestPolicyUpdate1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		ctx := context.Background()
 		visitor := interfaces.Visitor{
 			ID:   accessorID,
@@ -646,8 +655,9 @@ func TestPolicyUpdate2(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		dbPool, txMock, err := sqlx.New()
 		assert.Equal(t, err, nil)
 		defer func() {
@@ -745,8 +755,9 @@ func TestPolicyCreate(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		var ctx context.Context
 		ctx = context.Background()
 		visitor := interfaces.Visitor{
@@ -769,8 +780,9 @@ func TestPolicyCreate1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		var ctx context.Context
 		ctx = context.Background()
 		visitor := interfaces.Visitor{
@@ -795,6 +807,7 @@ func TestPolicyCreate1(t *testing.T) {
 
 		userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
 		resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, nil)
+		resourceTypeHierarchy.EXPECT().HasHierarchy(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(false, nil)
 		Convey("超级管理员调用， 到期时间异常", func() {
 			policyInfo := interfaces.PolicyInfo{
 				ResourceType: resourceTypeDoc,
@@ -877,8 +890,9 @@ func TestPolicyCreate2(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		dbPool, txMock, err := sqlx.New()
 		assert.Equal(t, err, nil)
 		defer func() {
@@ -934,6 +948,7 @@ func TestPolicyCreate2(t *testing.T) {
 		oldPoliciesMap := make(map[string][]interfaces.PolicyInfo)
 		userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
 		resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, nil)
+		resourceTypeHierarchy.EXPECT().HasHierarchy(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(false, nil)
 		role.EXPECT().GetRolesByIDs(gomock.Any(), gomock.Any()).Return(roleInfoMap, nil)
 		tmpDB.EXPECT().GetByResourceIDs(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(oldPoliciesMap, nil)
 		Convey("超级管理员调用，获取历史数据为空, 写入数据库成功", func() {
@@ -960,7 +975,7 @@ func TestCalcMinEndTime(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		policy := newPolicy(nil, nil, nil, nil, nil)
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
 
 		Convey("当两个时间都是-1时，应该返回-1", func() {
 			result := policy.calcMinEndTime(-1, -1)
@@ -1000,7 +1015,7 @@ func TestCheckPolicyOperationValid(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		policy := newPolicy(nil, nil, nil, nil, nil)
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
 
 		operationIDMap := map[string]bool{
 			"read":   true,
@@ -1082,7 +1097,7 @@ func TestCmpPolicy(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		policy := newPolicy(nil, nil, nil, nil, nil)
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
 
 		oldPolicy := &interfaces.PolicyInfo{
 			EndTime: 1000,
@@ -1167,7 +1182,7 @@ func TestMergeNewPolicy(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		policy := newPolicy(nil, nil, nil, nil, nil)
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
 
 		oldPolicy := &interfaces.PolicyInfo{
 			ID:           "old-id",
@@ -1269,10 +1284,12 @@ func TestCreatePrivate(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		ctx := context.Background()
+		resourceTypeHierarchy.EXPECT().HasHierarchy(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().Return(false, nil)
 
 		Convey("当策略列表为空时，应该直接返回", func() {
 			err := policy.CreatePrivate(ctx, []interfaces.PolicyInfo{})
@@ -1369,8 +1386,9 @@ func TestInitPolicy(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		dbPool, txMock, err := sqlx.New()
 		assert.Equal(t, err, nil)
 		defer func() {
@@ -1464,8 +1482,9 @@ func TestInitPolicy1(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 		dbPool, txMock, err := sqlx.New()
 		assert.Equal(t, err, nil)
 		defer func() {
@@ -1560,8 +1579,9 @@ func TestDeleteByResourceIDs(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		Convey("当资源列表为空时，应该直接返回", func() {
 			err := policy.DeleteByResourceIDs(context.Background(), []interfaces.PolicyDeleteResourceInfo{})
@@ -1601,8 +1621,9 @@ func TestDeleteByEndTime(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		Convey("当删除成功时，应该返回nil", func() {
 			curTime := int64(1000)
@@ -1633,8 +1654,9 @@ func TestUpdateResourceName(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceTypeSvc := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceTypeSvc, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceTypeSvc, policyCalc, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		resourceID := resourceID
@@ -1668,8 +1690,9 @@ func TestDeletePolicyByAccessorID(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		accessorID := "accessor-id"
 
@@ -1700,8 +1723,9 @@ func TestUpdatePolicyAccessorName(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		id := "accessor-id"
 		name := "new-name"
@@ -1733,8 +1757,9 @@ func TestUpdateAppName(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		appInfo := &interfaces.AppInfo{
 			ID:   "app-id",
@@ -1764,7 +1789,7 @@ func TestGetOperationNameByLanguage(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		policy := newPolicy(nil, nil, nil, nil, nil)
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
 
 		operationNames := []interfaces.OperationName{
 			{Language: "zh-cn", Value: "读取"},
@@ -1804,8 +1829,9 @@ func TestGetResourceTypeOperations(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		resourceTypeMap := map[string][]string{
@@ -1871,8 +1897,9 @@ func TestGetAccessorPolicy(t *testing.T) {
 		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
 		role := mock.NewMockLogicsRole(ctrl)
 		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
-		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc)
+		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
 
 		ctx := context.Background()
 		visitor := interfaces.Visitor{

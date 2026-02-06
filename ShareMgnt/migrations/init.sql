@@ -314,15 +314,6 @@ CREATE TABLE IF NOT EXISTS `t_site_info` (
   UNIQUE KEY `f_uniq_index_index` (`f_uniq_index`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `t_manager_limit_space` (
-  `f_manager_id` char(40) NOT NULL,                                 -- 管理员id
-  `f_limit_user_space` bigint(20) DEFAULT '-1',                     -- 限制的总用户配额, -1为不限制
-  `f_allocated_limit_user_space` bigint(20) DEFAULT '0',            -- 已分配的首先用户配额
-  `f_limit_doc_space` bigint(20) DEFAULT '-1',                      -- 限制的总文档配额, -1为不限制
-  `f_allocated_limit_doc_space` bigint(20) DEFAULT '0',             -- 已分配的受限文档配额
-  PRIMARY KEY (`f_manager_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
 CREATE TABLE IF NOT EXISTS `t_third_party_db` (
     `f_third_db_id` char(50) NOT NULL,                              -- 第三方数据库标识id
     `f_name` char(50) DEFAULT "",                                   -- 第三方名称
@@ -492,15 +483,6 @@ CREATE TABLE IF NOT EXISTS `t_net_docs_limit_info` (
     PRIMARY KEY (`f_index`),
     KEY `f_doc_id_index` (`f_doc_id`)
 )ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS `t_doc_download_limit` (
-  `f_id` varchar(40) NOT NULL,                                      -- 记录标识
-  `f_obj_id` varchar(40) NOT NULL,                                  -- 对象id
-  `f_obj_type` tinyint(4) NOT NULL,                                 -- 对象类型
-  `f_download_limit_value` bigint(20) NOT NULL,                     -- 下载的数量限制
-  `f_time` bigint(20) NOT NULL,                                     -- 记录的时间
-  PRIMARY KEY (`f_id`, `f_obj_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS `t_user_verification_code` (
   `f_user_id` char(40) NOT NULL,                                    -- 用户id

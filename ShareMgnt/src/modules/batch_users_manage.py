@@ -93,7 +93,7 @@ class BatchUsersManage(DBConnector):
         # 获取用户可选的密级
         csf_levels = self.config_manage.get_csf_levels()
         return {k:v for k, v in list(csf_levels.items())}
-    
+
     @property
     def csf_level2_dict(self):
         # 获取用户可选的密级2
@@ -125,7 +125,6 @@ class BatchUsersManage(DBConnector):
                                 'idcard_number',
                                 'expire_time',
                                 'storage_name',
-                                'space',
                                 'status',
                                 'csf_level',
                                 'csf_level2']
@@ -152,7 +151,6 @@ class BatchUsersManage(DBConnector):
                                 idcard_number = _("IDS_IDCARD_NUMBER"),
                                 expire_time = _("IDS_EXPIRE_TIME"),
                                 storage_name = _("IDS_STORAGE_LOCATION"),
-                                space =  _("IDS_SPACE"),
                                 status = _("IDS_STATUS"),
                                 csf_level = _("IDS_CSF_LEVEL"),
                                 csf_level2 = _("IDS_CSF_LEVEL2")
@@ -203,15 +201,6 @@ class BatchUsersManage(DBConnector):
                                     'input_message': _('IDS_TIME_FORMAT'),
                                     'error_message':_('IDS_INVALID_DATE')})
 
-        # 检验配额空间
-        space_quota_column = all_user_info_list.index('space')
-        worksheet.data_validation(start_row, space_quota_column, MAXROW, space_quota_column,
-                                    {'validate': 'decimal',
-                                    'criteria': 'between',
-                                    'minimum': 0.01,
-                                    'maximum': 1000000,
-                                    'error_message':_('IDS_INVALID_SPACE_QUOTA')})
-
         # 存储位置
         storage_location_list = self.get_storage_location_list()
         storage_info_column = all_user_info_list.index('storage_name')
@@ -231,7 +220,7 @@ class BatchUsersManage(DBConnector):
         worksheet.data_validation(start_row, csf_level_column, MAXROW, csf_level_column,
                                         {'validate': 'list',
                                         'source': [item[0] for item in sorted_csf]})
-        
+
         #用户密级2
         csf_level2_column = all_user_info_list.index('csf_level2')
         sorted_csf2 = sorted(list(self.csf_level2_dict.items()), key = lambda item: item[1])
@@ -255,14 +244,11 @@ class BatchUsersManage(DBConnector):
         # Set the columns height and width
         worksheet.set_row(0, 300)
         worksheet.set_row(2, 30)
-        # 除了日期，配额空间，所有列设置为文本,13为column的宽度
+        # 除了日期，所有列设置为文本,13为column的宽度
         expire_time_colunm = self.all_user_info_list.index('expire_time')
-        space_column = self.all_user_info_list.index('space')
         worksheet.set_column(0,user_infos_length, 13, self.default_format(workbook))
         worksheet.set_column(expire_time_colunm, expire_time_colunm , 13,
                                 workbook.add_format({'num_format': 'yyyy/mm/dd', 'valign': 'vcenter', 'align': 'center'}))
-        worksheet.set_column(space_column, space_column, 13,
-                                    workbook.add_format({'num_format': '0.00', 'valign': 'vcenter', 'align': 'center'}))
 
         # fill second row(user infos、user roles and customize cell)
         second_row_format = self.default_format(workbook)
@@ -330,11 +316,9 @@ class BatchUsersManage(DBConnector):
                                 workbook.add_format({'num_format': 'yyyy/mm/dd', 'valign': 'vcenter', 'align': 'center'}))
                 worksheet.write(start_row, start_column + 9, self.convert_ossinfo_to_exel(user.user.ossInfo),
                                 self.default_format(workbook))
-                worksheet.write(start_row, start_column + 10, self.convert_user_space(user.user.space, False),
-                                workbook.add_format({'num_format': '0.00', 'valign': 'vcenter', 'align': 'center'}))
-                worksheet.write(start_row, start_column + 11, self.convert_status(user.user.status, False), self.default_format(workbook))
-                worksheet.write(start_row, start_column + 12, self.convert_csf_level(user.user.csfLevel, False), self.default_format(workbook))
-                worksheet.write(start_row, start_column + 13, self.convert_csf_level2(user.user.csfLevel2, False), self.default_format(workbook))
+                worksheet.write(start_row, start_column + 10, self.convert_status(user.user.status, False), self.default_format(workbook))
+                worksheet.write(start_row, start_column + 11, self.convert_csf_level(user.user.csfLevel, False), self.default_format(workbook))
+                worksheet.write(start_row, start_column + 12, self.convert_csf_level2(user.user.csfLevel2, False), self.default_format(workbook))
                 start_row += 1
                 global_info.IMPORT_SUCCESS_NUM += 1
 
@@ -647,8 +631,8 @@ class BatchUsersManage(DBConnector):
                                 exp_num=ncTShareMgntError.NCT_INVALID_CSF_LEVEL)
         else:
             return self.get_key_by_value(self.csf_level_dict, csf_level)
-        
-    
+
+
     def convert_csf_level2(self, csf_level2, is_import = True):
         if is_import:
             try:
@@ -688,7 +672,6 @@ class BatchUsersManage(DBConnector):
             user.user.expireTime = self.convert_expire_time(user_info.get('expire_time'))
             user.user.ossInfo = ncTUsrmOSSInfo()
             user.user.ossInfo = self.convert_exel_ossinfo(user_info.get('storage_name'))
-            user.user.space = int(self.convert_user_space(user_info.get('space')))
             user.user.status = self.convert_status(user_info.get('status'))
             user.user.csfLevel = self.convert_csf_level(user_info.get('csf_level'))
             user.user.csfLevel2 = self.convert_csf_level2(user_info.get('csf_level2'))
@@ -890,8 +873,6 @@ class BatchUsersManage(DBConnector):
                     # 设置用户状态
                     user_status = True if user.user.status== ncTUsrmUserStatus.NCT_STATUS_ENABLE else False
                     self.user_manage.set_user_status(as_user.id, user_status)
-                    # 更改配额空间
-                    self.user_manage.modify_user_space(as_user.id, user.user.space, responsible_person_id)
 
                     # 获取部门id，若部门不存在，新建部门
                     self.check_avaible(user.user.departmentNames, restrict_depart_names, as_user.user)
@@ -935,7 +916,7 @@ class BatchUsersManage(DBConnector):
                         user_modify_info["new_telephone"] = user.user.telNumber
                     if as_user.user.email != user.user.email:
                         user_modify_info["new_email"] = user.user.email
-                    
+
                     if len(user_modify_info) > 0:
                         # 发送用户信息更新nsq消息
                         user_modify_info["user_id"] = as_user.id
@@ -972,9 +953,6 @@ class BatchUsersManage(DBConnector):
                     user.sha2Password = self.user_manage.user_default_password.sha2_pwd
                     user.ntlmPassword = self.user_manage.user_default_password.ntlm_pwd
 
-                # 如果开启了个人文档, 则检查组织管理员用户空间是否足够
-                if self.config_manage.get_user_doc_status():
-                    self.user_manage.check_user_space(user.user.space, responsible_person_id)
                 # 获取部门id，若部门不存在，新建部门
                 self.check_avaible(user.user.departmentNames, restrict_depart_names)
                 user.user.departmentIds = [self.get_department_id(each) for each in user.user.departmentNames]
@@ -1014,14 +992,12 @@ class BatchUsersManage(DBConnector):
     def get_ex_msg(self, user, is_add_user = 1):
         """
         附加信息为：用户名 “<用户名>”；原显示名 “<原显示名>”；邮箱地址 “<邮箱地址>”；手机号码“<手机号码>”；
-        身份证号“<身份证号>”；存储位置 “<存储位置>”；配额空间 “<配额值>”；用户密级 “<用户密级>; 用户密级2 “<用户密级2>”
+        身份证号“<身份证号>”；存储位置 “<存储位置>”；用户密级 “<用户密级>; 用户密级2 “<用户密级2>”
         """
         if is_add_user:
             display_name = _("IDS_DISPLAY_NAME")
         else:
             display_name = _("IDS_ORIGINAL_DISPLAY_NAME")
-        # '配额空间(GB)'去除'(GB)'
-        space = _("IDS_SPACE")[:-4]
         convert_idcard = lambda num:num[:3] + len(num[3:-4]) * '*' + num[-4:] if num and len(num) == 18 else ''
         csf_level = self.convert_csf_level(user.user.csfLevel, False)
         csf_level2 = self.convert_csf_level2(user.user.csfLevel2, False)
@@ -1033,8 +1009,7 @@ class BatchUsersManage(DBConnector):
                         convert_idcard(user.user.idcardNumber),
                         csf_level,
                         csf_level2,
-                        self.convert_ossinfo_to_exel(user.user.ossInfo),
-                        str(self.convert_user_space(user.user.space, False)) + 'GB']
+                        self.convert_ossinfo_to_exel(user.user.ossInfo)]
         user_info_key = [_("IDS_LOGIN_NAME"),
                         display_name,
                         _("IDS_MAIL_ADDRESS"),
@@ -1042,8 +1017,7 @@ class BatchUsersManage(DBConnector):
                         _("IDS_IDCARD_NUMBER"),
                         _("IDS_CSF_LEVEL"),
                         _("IDS_CSF_LEVEL2"),
-                        _("IDS_STORAGE_LOCATION"),
-                        space]
+                        _("IDS_STORAGE_LOCATION")]
 
         ex_msg = ''
         for k, v in zip(user_info_key, user_info_value):
@@ -1066,8 +1040,6 @@ class BatchUsersManage(DBConnector):
                 return 0
 
     def convert_user_info_scope(self, user):
-        user.space = self.convert_scope(1,user.space)
-        user.usedSize = self.convert_scope(1,user.usedSize)
         user.createTime = self.convert_scope(1,user.createTime)
         user.priority = self.convert_scope(0, user.priority)
         user.csfLevel = self.convert_scope(0, user.csfLevel)

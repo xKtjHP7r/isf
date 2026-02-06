@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "resourceTypeHierarchy": {
+            "type": "object",
+            "required": [
+                "resource_type_id",
+                "children"
+            ],
+            "properties": {
+                "resource_type_id": {
+                    "type": "string"
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/resourceTypeHierarchy"
+                    }
+                }
+            }
+        }
+    },
+    "type": "array",
+    "items": {
+        "$ref": "#/definitions/resourceTypeHierarchy"
+    }
+}
+

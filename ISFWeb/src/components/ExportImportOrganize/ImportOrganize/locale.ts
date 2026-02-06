@@ -173,11 +173,6 @@ export default i18n([
         'Invalid user security',
     ],
     [
-        '配额空间值不能超过1000000的正数，支持小数点的后两位，请重新输入',
-        '配額空間值不能超過1000000的正數，支援小數點的後兩位，請重新輸入',
-        'Quota value should be positive number not greater than 1000000. Enter 2 digit after decimal point at most, please re-enter',
-    ],
-    [
         '不能修改已存在用户的初始密码',
         '不能變更已存在使用者的初始密碼',
         'The initail password of the existing user cannot be changed',
@@ -203,18 +198,8 @@ export default i18n([
         'Invalid password',
     ],
     [
-        '当前用户管理可分配空间已超出限制',
-        '當前使用者管理可分配的配額超過限制',
-        'User quota exceeds the limit',
-    ],
-    [
         '组织管理员不能编辑自身',
         '組織管理員無法編輯自身帳號',
         'You are General Admin and cannot edit yourself',
-    ],
-    [
-        '个人文档已被删除，无法修改配额空间',
-        '個人文件已被删除，無法變更配額空間',
-        'Quota cannot be changed. My documents is deleted',
     ],
 ])

@@ -24,17 +24,18 @@ import (
 
 // Authorization 授权管理对象
 type Authorization struct {
-	timer                     driveradapters.Timer
-	mqHandler                 driveradapters.MQHandler
-	healthHandler             driveradapters.RestHandler
-	systemConfigHandler       driveradapters.RestHandler
-	initData                  driveradapters.InitData
-	roleHandler               driveradapters.RestHandler
-	resourceTypeHandler       driveradapters.RestHandler
-	policyHandler             driveradapters.RestHandler
-	policyCalcHandler         driveradapters.RestHandler
-	obligationTemplateHandler driveradapters.RestHandler
-	obligationHandler         driveradapters.RestHandler
+	timer                        driveradapters.Timer
+	mqHandler                    driveradapters.MQHandler
+	healthHandler                driveradapters.RestHandler
+	systemConfigHandler          driveradapters.RestHandler
+	initData                     driveradapters.InitData
+	roleHandler                  driveradapters.RestHandler
+	resourceTypeHandler          driveradapters.RestHandler
+	policyHandler                driveradapters.RestHandler
+	policyCalcHandler            driveradapters.RestHandler
+	obligationTypeHandler        driveradapters.RestHandler
+	obligationHandler            driveradapters.RestHandler
+	resourceTypeHierarchyHandler driveradapters.RestHandler
 }
 
 // Start 开启服务
@@ -70,7 +71,7 @@ func (t *Authorization) Start() {
 		t.policyHandler.RegisterPublic(engine)
 		t.policyCalcHandler.RegisterPublic(engine)
 		t.roleHandler.RegisterPublic(engine)
-		t.obligationTemplateHandler.RegisterPublic(engine)
+		t.obligationTypeHandler.RegisterPublic(engine)
 		t.obligationHandler.RegisterPublic(engine)
 		s := &http.Server{
 			Addr:    fmt.Sprintf("%s:%d", common.SvcConfig.SvcHost, common.SvcConfig.SvcPublicPort),
@@ -109,6 +110,8 @@ func (t *Authorization) Start() {
 		t.policyHandler.RegisterPrivate(engine)
 		t.policyCalcHandler.RegisterPrivate(engine)
 		t.roleHandler.RegisterPrivate(engine)
+		t.resourceTypeHierarchyHandler.RegisterPrivate(engine)
+		t.obligationTypeHandler.RegisterPrivate(engine)
 		docSharePrivateServer := &http.Server{
 			Addr:    fmt.Sprintf("%s:%d", common.SvcConfig.SvcHost, common.SvcConfig.SvcPrivatePort),
 			Handler: engine.Handler(),
@@ -207,22 +210,24 @@ func main() {
 	logics.SetDBRoleMember(dbaccess.NewRoleMember())
 	logics.SetDBObligationType(dbaccess.NewObligationType())
 	logics.SetDBObligation(dbaccess.NewObligation())
+	logics.SetDBResourceTypeHierarchy(dbaccess.NewResourceTypeHierarchy())
 	// logics的drivenadapters依赖注入
 
 	logics.SetDnUserMgnt(drivenadapters.NewUserMgnt())
 
 	server := &Authorization{
-		healthHandler:             driveradapters.NewHealthHandler(),
-		systemConfigHandler:       driveradapters.NewServiceConfigDriver(),
-		resourceTypeHandler:       driveradapters.NewResourceTypeRestHandler(),
-		policyHandler:             driveradapters.NewPolicyRestHandler(),
-		policyCalcHandler:         driveradapters.NewPolicyCalcRestHandler(),
-		roleHandler:               driveradapters.NewRoleRestHandler(),
-		initData:                  driveradapters.NewInitData(),
-		mqHandler:                 driveradapters.NewMQHandler(),
-		timer:                     driveradapters.NewTimer(),
-		obligationTemplateHandler: driveradapters.NewObligationTemplateRestHandler(),
-		obligationHandler:         driveradapters.NewObligationRestHandler(),
+		healthHandler:                driveradapters.NewHealthHandler(),
+		systemConfigHandler:          driveradapters.NewServiceConfigDriver(),
+		resourceTypeHandler:          driveradapters.NewResourceTypeRestHandler(),
+		policyHandler:                driveradapters.NewPolicyRestHandler(),
+		policyCalcHandler:            driveradapters.NewPolicyCalcRestHandler(),
+		roleHandler:                  driveradapters.NewRoleRestHandler(),
+		resourceTypeHierarchyHandler: driveradapters.NewResourceTypeHierarchyRestHandler(),
+		initData:                     driveradapters.NewInitData(),
+		mqHandler:                    driveradapters.NewMQHandler(),
+		timer:                        driveradapters.NewTimer(),
+		obligationTypeHandler:        driveradapters.NewObligationTypeRestHandler(),
+		obligationHandler:            driveradapters.NewObligationRestHandler(),
 	}
 
 	server.Start()

@@ -26,21 +26,6 @@ declare namespace Console {
              */
             directDeptInfo: Object;
 
-             /**
-             * 限额信息
-             */
-            limitSpaceInfo: {
-                /**
-                 * 文档管理限额信息
-                 */
-                limitDocSpace: number;
-
-                /**
-                 * 用户管理限额信息
-                 */
-                limitUserSpace: number;
-            };
-
             /**
              * 当前登录用户角色信息
              */

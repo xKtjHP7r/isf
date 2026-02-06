@@ -361,6 +361,7 @@ func TestObligationType_Set(t *testing.T) {
 	})
 }
 
+//nolint:dupl
 func TestObligationType_Delete(t *testing.T) {
 	Convey("测试Delete方法", t, func() {
 		ctrl := gomock.NewController(t)
@@ -927,6 +928,139 @@ func TestObligationType_GetByIDSInternal(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.Empty(t, infos)
+		})
+	})
+}
+
+func TestObligationType_SetPrivate(t *testing.T) {
+	Convey("测试SetPrivate方法", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		db := mock.NewMockDBObligationType(ctrl)
+		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		ot := newObligationType(db, userMgnt, resourceType)
+
+		ctx := context.Background()
+		visitor := &interfaces.Visitor{}
+
+		Convey("Schema不合法", func() {
+			info := &interfaces.ObligationTypeInfo{
+				ID:     testObligationTypeID,
+				Schema: "",
+			}
+			err := ot.SetPrivate(ctx, visitor, info)
+
+			assert.Error(t, err)
+			assert.Equal(t, gerrors.PublicBadRequest, err.(*gerrors.Error).Code)
+		})
+
+		Convey("默认值不符合Schema", func() {
+			info := &interfaces.ObligationTypeInfo{
+				ID: testObligationTypeID,
+				Schema: map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"name": map[string]any{
+							"type": "string",
+						},
+					},
+					"required": []any{"name"},
+				},
+				DefaultValue: map[string]any{
+					"age": 18, // 缺少required字段name
+				},
+			}
+			err := ot.SetPrivate(ctx, visitor, info)
+
+			assert.Error(t, err)
+		})
+
+		Convey("资源类型和操作检查失败", func() {
+			resourceType.EXPECT().GetAllInternal(gomock.Any()).Return(nil, errors.New("数据库错误"))
+
+			info := &interfaces.ObligationTypeInfo{
+				ID: testObligationTypeID,
+				Schema: map[string]any{
+					"type": "string",
+				},
+				ResourceTypeScope: interfaces.ObligationResourceTypeScopeInfo{
+					Unlimited: false,
+					Types: []interfaces.ObligationResourceTypeScope{
+						{ResourceTypeID: testResourceTypeID},
+					},
+				},
+			}
+			err := ot.SetPrivate(ctx, visitor, info)
+
+			assert.Error(t, err)
+		})
+
+		Convey("数据库保存失败", func() {
+			resourceType.EXPECT().GetAllInternal(gomock.Any()).Return([]interfaces.ResourceType{
+				{ID: testResourceTypeID, Operation: []interfaces.ResourceTypeOperation{{ID: "read"}}},
+			}, nil)
+			db.EXPECT().Set(gomock.Any(), gomock.Any()).Return(errors.New("数据库保存失败"))
+			info := &interfaces.ObligationTypeInfo{
+				ID: testObligationTypeID,
+				Schema: map[string]any{
+					"type": "string",
+				},
+				ResourceTypeScope: interfaces.ObligationResourceTypeScopeInfo{
+					Unlimited: false,
+					Types: []interfaces.ObligationResourceTypeScope{
+						{ResourceTypeID: testResourceTypeID, OperationsScope: interfaces.ObligationOperationsScopeInfo{Unlimited: false, Operations: []interfaces.ObligationOperation{{ID: "read"}}}},
+					},
+				},
+			}
+			err := ot.SetPrivate(ctx, visitor, info)
+
+			assert.Error(t, err)
+		})
+
+		Convey("成功保存义务类型", func() {
+			resourceType.EXPECT().GetAllInternal(gomock.Any()).Return([]interfaces.ResourceType{
+				{
+					ID: testResourceTypeID,
+					Operation: []interfaces.ResourceTypeOperation{
+						{ID: "read"},
+					},
+				},
+			}, nil)
+			db.EXPECT().Set(gomock.Any(), gomock.Any()).Return(nil)
+
+			info := &interfaces.ObligationTypeInfo{
+				ID: testObligationTypeID,
+				Schema: map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"name": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+				DefaultValue: map[string]any{
+					"name": "test",
+				},
+				ResourceTypeScope: interfaces.ObligationResourceTypeScopeInfo{
+					Unlimited: false,
+					Types: []interfaces.ObligationResourceTypeScope{
+						{
+							ResourceTypeID: testResourceTypeID,
+							OperationsScope: interfaces.ObligationOperationsScopeInfo{
+								Unlimited: false,
+								Operations: []interfaces.ObligationOperation{
+									{ID: "read"},
+								},
+							},
+						},
+					},
+				},
+			}
+			err := ot.SetPrivate(ctx, visitor, info)
+
+			assert.NoError(t, err)
 		})
 	})
 }

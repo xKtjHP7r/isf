@@ -3,7 +3,6 @@ import { noop } from 'lodash';
 import { usrmGetDepartResponsiblePerson, setUserRolemMember, deleteUserRolemMember, getRoleMemberDetail } from '@/core/thrift/sharemgnt/sharemgnt';
 import { getUserInfo } from '@/core/thrift/user/user';
 import { SystemRoleType } from '@/core/role/role';
-import { QuotaType } from '@/core/quota';
 import { ShareMgnt } from '@/core/thrift';
 import { manageLog, Level, ManagementOps } from '@/core/log';
 import WebComponent from '../webcomponent';
@@ -17,7 +16,6 @@ export enum ValidateState {
 
 export const ValidateMessages = {
     [ValidateState.Empty]: __('此项不允许为空。'),
-    [ValidateState.InvalidSpace]: __('配额空间值为不超过 1000000 的正数，支持小数点后两位，请重新输入。'),
 }
 
 export default class SetManagerByDepBase extends WebComponent<Console.SetManagerByDep.Props, Console.SetManagerByDep.State> {
@@ -34,18 +32,8 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
         isAddingManager: false,
         managers: [],
         currentUser: null,
-        isLimitUserSpace: false,
-        limitUserSpace: '',
-        limitUserSpaceState: ValidateState.Normal,
-        isLimitDocSpace: false,
-        limitDocSpace: '',
-        limitDocSpaceState: ValidateState.Normal,
         errorStatus: null,
         isSetting: false,
-        limitCheckDisable: {
-            limitUserCheckDisable: false,
-            limitDocCheckDisable: false,
-        },
     }
 
     /**
@@ -64,17 +52,6 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
     originManagers = null;
 
     /**
-     * 当前登录管理员的限额信息
-     */
-    limitSpaceInfo: {
-        userSpace: number | string;
-        docSpace: number | string;
-    } = {
-        userSpace: '',
-        docSpace: '',
-    };
-
-    /**
      * 当前登录管理员的角色信息
      */
     roles: ReadonlyArray<any> = []
@@ -86,41 +63,11 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
             managers,
         })
 
-        // 获取并存储当前登录用户的限额信息、角色信息
+        // 获取并存储当前登录用户的角色信息
         const { userid } = this.props
         try {
-            const { user: { limitSpaceInfo: { limitDocSpace, limitUserSpace }, roles } } = await ShareMgnt('Usrm_GetUserInfo', [userid])
-            this.limitSpaceInfo = {
-                userSpace: limitUserSpace === -1 ? '' : (limitUserSpace / Math.pow(1024, 3)).toFixed(2),
-                docSpace: limitDocSpace === -1 ? '' : (limitDocSpace / Math.pow(1024, 3)).toFixed(2),
-            };
+            const { user: { roles } } = await ShareMgnt('Usrm_GetUserInfo', [userid])
             this.roles = roles;
-
-            // 如果是组织管理员，并且被限额，则限额复选框勾选并灰化，显示限额信息
-            const { userSpace, docSpace } = this.limitSpaceInfo
-            if (roles.some((item) => item.id === SystemRoleType.OrgManager) && (limitDocSpace !== -1 || limitUserSpace !== -1)) {
-                this.setState({
-                    limitUserSpace: userSpace,
-                    limitDocSpace: docSpace,
-                    isLimitUserSpace: limitUserSpace === -1 ? false : true,
-                    isLimitDocSpace: limitDocSpace === -1 ? false : true,
-                    limitCheckDisable: {
-                        limitUserCheckDisable: limitUserSpace === -1 ? false : true,
-                        limitDocCheckDisable: limitDocSpace === -1 ? false : true,
-                    },
-                })
-            } else {
-                this.setState({
-                    limitUserSpace: userSpace,
-                    limitDocSpace: docSpace,
-                    isLimitUserSpace: false,
-                    isLimitDocSpace: false,
-                    limitCheckDisable: {
-                        limitUserCheckDisable: false,
-                        limitDocCheckDisable: false,
-                    },
-                })
-            }
         } catch (error) {
 
         }
@@ -188,22 +135,13 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
      * 确定增加管理员
      */
     protected onConfirmAddManager = () => {
-        const checkDocResult = this.checkDocSpace();
-        const checkUserResult = this.checkUserSpace()
-        if (!checkDocResult || !checkUserResult) {
-            return
-        }
-        const limitSpaceInfo = {
-            limitUserSpace: this.state.isLimitUserSpace ? Math.ceil(Number(this.state.limitUserSpace) * Math.pow(1024, 3)) : -1,
-            limitDocSpace: this.state.isLimitDocSpace ? Math.ceil(Number(this.state.limitDocSpace) * Math.pow(1024, 3)) : -1,
-        }
         this.setState({
             managers: [...this.state.managers.filter((value) => {
                 return value.id !== this.state.currentUser.id
-            }), { ...this.state.currentUser, user: { ...this.state.currentUser.user, limitSpaceInfo: limitSpaceInfo } }],
+            }), { ...this.state.currentUser, user: { ...this.state.currentUser.user} }],
             isAddingManager: false,
         })
-        this.addedManagers = [...this.addedManagers, { ...this.state.currentUser, user: { ...this.state.currentUser.user, limitSpaceInfo: limitSpaceInfo } }];
+        this.addedManagers = [...this.addedManagers, { ...this.state.currentUser, user: { ...this.state.currentUser.user } }];
     }
 
     /**
@@ -258,8 +196,6 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
                     ncTManageDeptInfo: {
                         departmentIds: managerInfo.departmentIds,
                         departmentNames: managerInfo.departmentNames,
-                        limitUserSpaceSize: manager.user.limitSpaceInfo.limitUserSpace,
-                        limitDocSpaceSize: manager.user.limitSpaceInfo.limitDocSpace,
                     },
                 },
             }
@@ -306,8 +242,6 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
                     ncTManageDeptInfo: {
                         departmentIds: managerInfo.departmentIds,
                         departmentNames: managerInfo.departmentNames,
-                        limitUserSpaceSize: manager.user.limitSpaceInfo.limitUserSpace,
-                        limitDocSpaceSize: manager.user.limitSpaceInfo.limitDocSpace,
                     },
                 },
             }
@@ -340,72 +274,9 @@ export default class SetManagerByDepBase extends WebComponent<Console.SetManager
     }
 
     /**
-     * 检查用户输入框的合法性
-     */
-    private checkUserSpace() {
-        if (this.state.limitUserSpace === '' && this.state.isLimitUserSpace) {
-            this.setState({
-                limitUserSpaceState: ValidateState.Empty,
-            })
-            return false;
-        } else if ((Number(this.state.limitUserSpace) <= 0 || Number(this.state.limitUserSpace) > 1000000) && this.state.isLimitUserSpace) {
-            this.setState({
-                limitUserSpaceState: ValidateState.InvalidSpace,
-            })
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * 检查文档输入框的合法性
-     */
-    private checkDocSpace() {
-        if (this.state.limitDocSpace === '' && this.state.isLimitDocSpace) {
-            this.setState({
-                limitDocSpaceState: ValidateState.Empty,
-            })
-            return false;
-        } else if ((Number(this.state.limitDocSpace) <= 0 || Number(this.state.limitDocSpace) > 1000000) && this.state.isLimitDocSpace) {
-            this.setState({
-                limitDocSpaceState: ValidateState.InvalidSpace,
-            })
-            return false;
-        }
-        return true;
-    }
-
-    /**
      * 判断输入框的值是否是不超过 1000000 的正数，支持小数点后两位
      */
     protected isNumberPoint(input: any): boolean {
         return /^([1-9]\d{0,5}|0)(\.\d{0,2})?$|^1000000$/.test(String(input))
-    }
-
-    /**
-     * 输入框的值为空且失焦时气泡提示
-     */
-    protected handleOnBlur = (type: QuotaType): void => {
-        const { limitUserSpace, limitDocSpace } = this.state;
-
-        switch (type) {
-            case QuotaType.UserSpace:
-                if (limitUserSpace === '') {
-                    this.setState({
-                        limitUserSpaceState: ValidateState.Empty,
-                    })
-                }
-                break
-            case QuotaType.DocSpace:
-                if (limitDocSpace === '') {
-                    this.setState({
-                        limitDocSpaceState: ValidateState.Empty,
-                    })
-                }
-                break
-
-            default:
-                break
-        }
     }
 }

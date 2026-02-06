@@ -946,86 +946,6 @@ func TestGetAllOrgManagerIDsByDepartIDs(t *testing.T) {
 	})
 }
 
-func TestGetUserSpaceQuota(t *testing.T) {
-	Convey("getUserSpaceQuotaSingles, db is available", t, func() {
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-
-		department := newDepartmentDB(db)
-
-		Convey("getUserSpaceQuotaSingle departIds is nil", func() {
-			_, err = department.GetUserSpaceQuota(nil)
-
-			assert.Equal(t, err, nil)
-		})
-
-		Convey("success ", func() {
-			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"f_creature_id", "space_quota"}).AddRow(userID, 12).AddRow(userID, 13).AddRow(strID, 10))
-			out, err := department.getUserSpaceQuotaSingle([]string{userID})
-
-			assert.Equal(t, err, nil)
-			assert.Equal(t, len(out), 2)
-			assert.Equal(t, out[userID], 25)
-			assert.Equal(t, out[strID], 10)
-		})
-	})
-}
-
-func TestGetUserSpaceQuotaSingle(t *testing.T) {
-	Convey("GetUserSpaceQuota, db is available", t, func() {
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-
-		department := newDepartmentDB(db)
-
-		Convey("GetAllOrgManagerIDsByDepartIDs departIds is nil", func() {
-			_, err = department.getUserSpaceQuotaSingle(nil)
-
-			assert.Equal(t, err, nil)
-		})
-
-		Convey("sql error", func() {
-			mock.ExpectQuery("").WillReturnError(errors.New(""))
-			_, err = department.getUserSpaceQuotaSingle([]string{userID})
-
-			assert.NotEqual(t, err, nil)
-		})
-
-		Convey("success ", func() {
-			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"f_creature_id", "space_quota"}).AddRow(userID, 12).AddRow(userID, 13).AddRow(strID, 10))
-			out, err := department.getUserSpaceQuotaSingle([]string{userID})
-
-			assert.Equal(t, err, nil)
-			assert.Equal(t, len(out), 2)
-			assert.Equal(t, out[userID], 25)
-			assert.Equal(t, out[strID], 10)
-		})
-	})
-}
-
-func TestUpdateOrgManagerSpaceQuota(t *testing.T) {
-	Convey("UpdateOrgManagerSpaceQuota, db is available", t, func() {
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-
-		department := newDepartmentDB(db)
-
-		Convey("sql error", func() {
-			mock.ExpectExec("").WillReturnError(errors.New(""))
-			err = department.UpdateOrgManagerSpaceQuota("", 1)
-
-			assert.NotEqual(t, err, nil)
-		})
-
-		Convey("sql success", func() {
-			mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
-			err = department.UpdateOrgManagerSpaceQuota("", 1)
-
-			assert.Equal(t, err, nil)
-		})
-	})
-}
-
 func TestGetAllOrgManagerIDs(t *testing.T) {
 	Convey("GetAllOrgManagerIDs, db is available", t, func() {
 		db, mock, err := sqlx.New()
@@ -1051,35 +971,6 @@ func TestGetAllOrgManagerIDs(t *testing.T) {
 	})
 }
 
-func TestDeleteOrgManagerSpaceLimit(t *testing.T) {
-	Convey("DeleteOrgManagerSpaceLimit, db is available", t, func() {
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-
-		department := newDepartmentDB(db)
-
-		Convey("org manager id is nil", func() {
-			err = department.DeleteOrgManagerSpaceLimit(nil)
-
-			assert.Equal(t, err, nil)
-		})
-
-		Convey("sql error", func() {
-			mock.ExpectExec("").WillReturnError(errors.New(""))
-			err = department.DeleteOrgManagerSpaceLimit([]string{userID})
-
-			assert.NotEqual(t, err, nil)
-		})
-
-		Convey("sql success", func() {
-			mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
-			err = department.DeleteOrgManagerSpaceLimit([]string{userID})
-
-			assert.Equal(t, err, nil)
-		})
-	})
-}
-
 func TestDeleteDocAutoCleanStrategy(t *testing.T) {
 	Convey("DeleteDocAutoCleanStrategy, db is available", t, func() {
 		db, mock, err := sqlx.New()
@@ -1097,35 +988,6 @@ func TestDeleteDocAutoCleanStrategy(t *testing.T) {
 		Convey("sql success", func() {
 			mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
 			err = department.DeleteDocAutoCleanStrategy(userID)
-
-			assert.Equal(t, err, nil)
-		})
-	})
-}
-
-func TestDeleteDocDepartmentRelation(t *testing.T) {
-	Convey("DeleteDocDepartmentRelation, db is available", t, func() {
-		db, mock, err := sqlx.New()
-		assert.Equal(t, err, nil)
-
-		department := newDepartmentDB(db)
-
-		Convey("org manager id is nil", func() {
-			err = department.DeleteDocDepartmentRelation(nil)
-
-			assert.Equal(t, err, nil)
-		})
-
-		Convey("sql error", func() {
-			mock.ExpectExec("").WillReturnError(errors.New(""))
-			err = department.DeleteDocDepartmentRelation([]string{userID})
-
-			assert.NotEqual(t, err, nil)
-		})
-
-		Convey("sql success", func() {
-			mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
-			err = department.DeleteDocDepartmentRelation([]string{userID})
 
 			assert.Equal(t, err, nil)
 		})

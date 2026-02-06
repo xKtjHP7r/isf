@@ -113,6 +113,28 @@
             },
             "expires_at": {
                 "type": "string"
+            },
+            "ancestors": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "type",
+                        "name"
+                    ]
+                }
             }
         }
     }

@@ -164,13 +164,6 @@ export const getDepartmentOfUsersCount: Core.ShareMgnt.GetDepartmentOfUsersCount
 }
 
 /**
- * 获取所有用户
- */
-export const getAllUser: Core.ShareMgnt.GetALlUser = function ([start, end]) {
-    return ShareMgnt('Usrm_GetAllUsers', [start, end])
-}
-
-/**
  * 获取部门列表
  */
 export const getSubDepartments: Core.ShareMgnt.GetSubDepartments = function ([usid]) {
@@ -264,13 +257,6 @@ export const usrmGetDepartResponsiblePerson: Core.ShareMgnt.UsrmGetDepartRespons
 }
 
 /**
- * 获取个人文档状态
- */
-export const usrmGetUserDocStatus: Core.ShareMgnt.UsrmGetUserDocStatus = function () {
-    return ShareMgnt('Usrm_GetUserDocStatus');
-}
-
-/**
  * 获取所有域
  */
 export const usrmGetAllDomains: Core.ShareMgnt.UsrmGetAllDomains = function () {
@@ -289,13 +275,6 @@ export const usrmExpandDomainNode: Core.ShareMgnt.UsrmExpandDomainNode = functio
  */
 export const usrmSearchDomainInfoByName: Core.ShareMgnt.UsrmSearchDomainInfoByName = function ([domainId, name, start, limit]) {
     return ShareMgnt('Usrm_SearchDomainInfoByName', [domainId, name, start, limit])
-}
-
-/**
- * 获取个人文档大小
- */
-export const usrmGetDefaulSpaceSize: Core.ShareMgnt.UsrmGetDefaulSpaceSize = function () {
-    return ShareMgnt('Usrm_GetDefaulSpaceSize')
 }
 
 /**
@@ -433,13 +412,6 @@ export const setUserRolemMember: Core.ShareMgnt.SetUserRolemMember = function ([
  */
 export const getUserRolemMember: Core.ShareMgnt.GetUserRolemMember = function ([userId, roleId]) {
     return ShareMgnt('UsrRolem_GetMember', [userId, roleId])
-}
-
-/**
- * 在角色成员列表中根据用户名搜索用户
- */
-export const searchUserRolemMember: Core.ShareMgnt.SearchUserRolemMember = function ([userId, roleId, name]) {
-    return ShareMgnt('UsrRolem_SearchMember', [userId, roleId, name])
 }
 
 /**
@@ -979,25 +951,6 @@ export const getThirdPartyAuth: Core.ShareMgnt.GetThirdPartyAuth = function () {
  */
 export const getFreezeStatus: Core.ShareMgnt.GetFreezeStatus = function () {
     return ShareMgnt('Usrm_GetFreezeStatus')
-}
-
-/**
- * 创建导出报表任务
- * @param name : 报表文件的名字，拓展名为".csv"
- * @param objType : 统计的文档库类型，可取值：1/3/5
- * @param  operator_id : 操作者id
- * @return : 服务端生成的任务id
- */
-export const exportSpaceReport: Core.ShareMgnt.ExportSpaceReport = function ([name, objType, operator_id]) {
-    return ShareMgnt('ExportSpaceReport', [name, objType, operator_id])
-}
-
-/**
- * 获取导出报表任务状态
- */
-export const getGenSpaceReportStatus: Core.ShareMgnt.GetGenSpaceReportStatus = function ([taskId]) {
-    apiUpdateActivityStatus()
-    return ShareMgnt('GetGenSpaceReportStatus', [taskId])
 }
 
 /**

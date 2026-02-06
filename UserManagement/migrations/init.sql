@@ -161,4 +161,4 @@ CREATE TABLE IF NOT EXISTS `t_reserved_name` (
   `f_update_time` bigint(20) NOT NULL COMMENT '修改时间',
   PRIMARY KEY (`f_id`),
   KEY `idx_name` (`f_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='保留名称表';
+) ENGINE=InnoDB COMMENT='保留名称表';

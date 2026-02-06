@@ -112,6 +112,7 @@ func (d *policy) Create(ctx context.Context, policys []interfaces.PolicyInfo, tx
 		ResourceID   string
 		ResourceType string
 		ResourceName string
+		Ancestors    string
 		AccessorID   string
 		AccessorType interfaces.AccessorType
 		AccessorName string
@@ -128,11 +129,17 @@ func (d *policy) Create(ctx context.Context, policys []interfaces.PolicyInfo, tx
 			d.logger.Errorln(err)
 			return err
 		}
+		var ancestorsStr string
+		ancestorsStr, err = d.ancestorsInfoToString(policys[i].Ancestors)
+		if err != nil {
+			return err
+		}
 		tmpPolicy := tmpPolicyInfo{
 			ID:           policys[i].ID,
 			ResourceID:   policys[i].ResourceID,
 			ResourceType: policys[i].ResourceType,
 			ResourceName: policys[i].ResourceName,
+			Ancestors:    ancestorsStr,
 			AccessorID:   policys[i].AccessorID,
 			AccessorType: policys[i].AccessorType,
 			AccessorName: policys[i].AccessorName,
@@ -147,8 +154,8 @@ func (d *policy) Create(ctx context.Context, policys []interfaces.PolicyInfo, tx
 	var inserts []any
 	// 批量插入
 	for i := range createPolicys {
-		valuesStr = append(valuesStr, "(?,?,?,?,?,?,?,?,?,?,?,?)")
-		inserts = append(inserts, createPolicys[i].ID, createPolicys[i].ResourceID, createPolicys[i].ResourceType, createPolicys[i].ResourceName, createPolicys[i].AccessorID, createPolicys[i].AccessorType,
+		valuesStr = append(valuesStr, "(?,?,?,?,?,?,?,?,?,?,?,?,?)")
+		inserts = append(inserts, createPolicys[i].ID, createPolicys[i].ResourceID, createPolicys[i].ResourceType, createPolicys[i].ResourceName, createPolicys[i].Ancestors, createPolicys[i].AccessorID, createPolicys[i].AccessorType,
 			createPolicys[i].AccessorName, createPolicys[i].Operation, createPolicys[i].Condition, createPolicys[i].EndTime, curTime, curTime)
 	}
 	if len(valuesStr) == 0 {
@@ -157,7 +164,7 @@ func (d *policy) Create(ctx context.Context, policys []interfaces.PolicyInfo, tx
 	valueStr := strings.Join(valuesStr, ",")
 
 	strSQL := "insert into " + common.GetDBName(databaseName) +
-		".t_policy(f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time) values " + valueStr
+		".t_policy(f_id, f_resource_id, f_resource_type, f_resource_name, f_ancestors, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time) values " + valueStr
 
 	_, err = tx.Exec(strSQL, inserts...)
 	if err != nil {
@@ -206,7 +213,7 @@ func (d *policy) Delete(ctx context.Context, ids []string) (err error) {
 func (d *policy) GetByResourceIDs(ctx context.Context, resourceType string, resourceIDs []string) (policiesMap map[string][]interfaces.PolicyInfo, err error) {
 	policiesMap = make(map[string][]interfaces.PolicyInfo)
 	IDsSet, IDsGroup := getFindInSetSQL(resourceIDs)
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time from " +
+	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_ancestors, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time from " +
 		common.GetDBName(databaseName) + ".t_policy where f_resource_id in (" + IDsSet + ") and f_resource_type = ?"
 	var inserts []any
 	inserts = append(inserts, IDsGroup...)
@@ -228,14 +235,20 @@ func (d *policy) GetByResourceIDs(ctx context.Context, resourceType string, reso
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
+		var ancestorsStr string
 		err := rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType,
-			&policy.ResourceName, &policy.AccessorID, &policy.AccessorType, &policy.AccessorName,
+			&policy.ResourceName, &ancestorsStr, &policy.AccessorID, &policy.AccessorType, &policy.AccessorName,
 			&operationStr, &policy.Condition, &policy.EndTime, &policy.CreateTime)
 		if err != nil {
 			d.logger.Errorf("GetByResourceIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
 		}
 		policy.Operation, err = d.operationStrToInfo(operationStr)
+		if err != nil {
+			d.logger.Errorf("GetByResourceIDs sql: %s, err: %v", strSQL, err)
+			return nil, err
+		}
+		policy.Ancestors, err = d.ancestorsStrToInfo(ancestorsStr)
 		if err != nil {
 			d.logger.Errorf("GetByResourceIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -253,7 +266,7 @@ func (d *policy) GetByPolicyIDs(ctx context.Context, policyIDs []string) (polici
 	}
 
 	IDsSet, IDsGroup := getFindInSetSQL(policyIDs)
-	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time from " +
+	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_ancestors, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time from " +
 		common.GetDBName(databaseName) + ".t_policy where f_id in (" + IDsSet + ")"
 	rows, err := d.db.Query(strSQL, IDsGroup...)
 	if err != nil {
@@ -274,8 +287,9 @@ func (d *policy) GetByPolicyIDs(ctx context.Context, policyIDs []string) (polici
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
+		var ancestorsStr string
 		err := rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType,
-			&policy.ResourceName, &policy.AccessorID, &policy.AccessorType, &policy.AccessorName,
+			&policy.ResourceName, &ancestorsStr, &policy.AccessorID, &policy.AccessorType, &policy.AccessorName,
 			&operationStr, &policy.Condition, &policy.EndTime, &policy.CreateTime)
 		if err != nil {
 			d.logger.Errorf("GetByPolicyIDs sql: %s, err: %v", strSQL, err)
@@ -286,9 +300,30 @@ func (d *policy) GetByPolicyIDs(ctx context.Context, policyIDs []string) (polici
 			d.logger.Errorf("GetByPolicyIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
 		}
+		policy.Ancestors, err = d.ancestorsStrToInfo(ancestorsStr)
+		if err != nil {
+			d.logger.Errorf("GetByPolicyIDs sql: %s, err: %v", strSQL, err)
+			return nil, err
+		}
 		policies[policy.ID] = policy
 	}
 	return policies, nil
+}
+
+// UpdateResourceAncestors 更新资源实例祖先信息
+func (d *policy) UpdateResourceAncestors(ctx context.Context, resourceID, resourceType string, ancestors []interfaces.Ancestor) error {
+	d.logger.Debugf("UpdateResourceAncestors resourceID: %s, resourceType: %s, ancestorsLen: %d", resourceID, resourceType, len(ancestors))
+	ancestorsStr, err := d.ancestorsInfoToString(ancestors)
+	if err != nil {
+		return err
+	}
+	strSQL := "update " + common.GetDBName(databaseName) + ".t_policy set f_ancestors = ? where f_resource_id = ? and f_resource_type = ?"
+	_, err = d.db.Exec(strSQL, ancestorsStr, resourceID, resourceType)
+	if err != nil {
+		d.logger.Errorf("UpdateResourceAncestors sql: %s, err: %v", strSQL, err)
+		return err
+	}
+	return nil
 }
 
 // DeleteByResourceIDs 删除策略 根据资源id删除策略
@@ -343,7 +378,7 @@ func (d *policy) UpdateAccessorName(accessorID, name string) error {
 
 // UpdateResourceName 更新资源实例名称
 func (d *policy) UpdateResourceName(ctx context.Context, resourceID, resourceType, name string) error {
-	d.logger.Infof("UpdateResourceName resourceID: %s, resourceType: %s, name: %s", resourceID, resourceType, name)
+	d.logger.Debugf("UpdateResourceName resourceID: %s, resourceType: %s, name: %s", resourceID, resourceType, name)
 	strSQL := "update " + common.GetDBName(databaseName) + ".t_policy set f_resource_name = ? where f_resource_id = ? and f_resource_type = ?"
 	_, err := d.db.Exec(strSQL, name, resourceID, resourceType)
 	if err != nil {
@@ -408,7 +443,7 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.Accesso
 	}
 
 	args := []any{param.AccessorID, param.AccessorType}
-	sqlStr := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_operation, f_condition, f_end_time, f_create_time from " + dbName +
+	sqlStr := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_operation, f_condition, f_ancestors, f_end_time, f_create_time from " + dbName +
 		".t_policy where f_accessor_id = ? and f_accessor_type = ?"
 
 	if len(param.ResourceType) > 0 {
@@ -448,13 +483,19 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.Accesso
 	for rows.Next() {
 		var policy interfaces.PolicyInfo
 		var operationStr string
+		var ancestorsStr string
 		err = rows.Scan(&policy.ID, &policy.ResourceID, &policy.ResourceType,
-			&policy.ResourceName, &operationStr, &policy.Condition, &policy.EndTime, &policy.CreateTime)
+			&policy.ResourceName, &operationStr, &policy.Condition, &ancestorsStr, &policy.EndTime, &policy.CreateTime)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", sqlStr, err)
 			return
 		}
 		policy.Operation, err = d.operationStrToInfo(operationStr)
+		if err != nil {
+			d.logger.Errorf("sql: %s, err: %v", sqlStr, err)
+			return
+		}
+		policy.Ancestors, err = d.ancestorsStrToInfo(ancestorsStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", sqlStr, err)
 			return
@@ -498,6 +539,52 @@ func (d *policy) operationInfoToString(operationInfo interfaces.PolicyOperation)
 	}
 	resp = string(jsonBytes)
 	return
+}
+
+// ancestorsInfoToString 将祖先信息转换为字符串
+func (d *policy) ancestorsInfoToString(ancestors []interfaces.Ancestor) (string, error) {
+	ancestorsJson := []any{}
+	if len(ancestors) != 0 {
+		for i := range ancestors {
+			ancestors := map[string]string{
+				"id":   ancestors[i].ID,
+				"type": ancestors[i].Type,
+				"name": ancestors[i].Name,
+			}
+			ancestorsJson = append(ancestorsJson, ancestors)
+		}
+	}
+
+	d.logger.Infof("ancestorsJson: %v", ancestorsJson)
+	ancestorsJsonBytes, err := json.Marshal(ancestorsJson)
+	if err != nil {
+		return "", err
+	}
+	return string(ancestorsJsonBytes), nil
+}
+
+// ancestorsStrToInfo 将祖先信息字符串转换为结构体
+func (d *policy) ancestorsStrToInfo(ancestorsStr string) (resp []interfaces.Ancestor, err error) {
+	if ancestorsStr == "" {
+		return []interfaces.Ancestor{}, nil
+	}
+	var ancestorsJson []any
+	err = json.Unmarshal([]byte(ancestorsStr), &ancestorsJson)
+	if err != nil {
+		d.logger.Errorf("json.Unmarshal: %v", err)
+		return
+	}
+	ancestors := []interfaces.Ancestor{}
+	for _, v := range ancestorsJson {
+		item := v.(map[string]any)
+		ancestor := interfaces.Ancestor{
+			ID:   item["id"].(string),
+			Type: item["type"].(string),
+			Name: item["name"].(string),
+		}
+		ancestors = append(ancestors, ancestor)
+	}
+	return ancestors, nil
 }
 
 //nolint:dupl

@@ -46,15 +46,34 @@
                 "type": {
                     "type": "string",
                     "description": "资源类型"
+                },
+                "ancestors": {
+                    "type": "array",
+                    "description": "祖先信息",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "type"
+                        ]
+                    }
                 }
             }
         },
         "operation": {
             "description": "操作",
-            "type":"array",
+            "type": "array",
             "uniqueItems": true,
             "items": {
-              "type": "string"
+                "type": "string"
             }
         },
         "method": {

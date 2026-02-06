@@ -58,7 +58,8 @@ func (s *resourceTypeRestHandler) RegisterPublic(engine *gin.Engine) {
 	engine.GET("/api/authorization/v1/resource_type", s.get)
 	engine.PUT("/api/authorization/v1/resource_type/:id", s.set)
 	engine.GET("/api/authorization/v1/resource_type/:id", s.getByID)
-	engine.GET("/api/authorization/v1/resource_all_operation/", s.getAllOperation)
+	engine.GET("/api/authorization/v1/resource_all_operation", s.getAllOperation)
+	engine.GET("/api/authorization/v2/resource_all_operation", s.getAllOperationV2)
 	engine.DELETE("/api/authorization/v1/resource_type/:id", s.delete)
 }
 
@@ -213,7 +214,7 @@ func (r *resourceTypeRestHandler) getAllOperation(c *gin.Context) {
 		scopeType = interfaces.ScopeInstance
 	}
 
-	operationsInfo, err := r.resourceType.GetAllOperation(context.Background(), &visitor, resourceTypeID, scopeType)
+	operationsInfo, _, err := r.resourceType.GetAllOperation(context.Background(), &visitor, resourceTypeID, scopeType)
 	if err != nil {
 		rest.ReplyErrorV2(c, err)
 		return
@@ -227,6 +228,83 @@ func (r *resourceTypeRestHandler) getAllOperation(c *gin.Context) {
 		})
 	}
 	rest.ReplyOK(c, http.StatusOK, resp)
+}
+
+func (r *resourceTypeRestHandler) getAllOperationV2(c *gin.Context) {
+	visitor, err := verify(c, r.hydra)
+	if err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	resourceTypeID := c.Query("resource_type")
+	if resourceTypeID == "" {
+		err = gerrors.NewError(gerrors.PublicBadRequest, "resource_type is required")
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+	scope := c.Query("scope")
+	if scope == "" {
+		err = gerrors.NewError(gerrors.PublicBadRequest, "scope is required")
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+
+	var scopeType interfaces.OperationScopeType
+	if scope == "type" {
+		scopeType = interfaces.ScopeType
+	} else {
+		scopeType = interfaces.ScopeInstance
+	}
+
+	operationsInfo, childrenOperationsInfo, err := r.resourceType.GetAllOperation(context.Background(), &visitor, resourceTypeID, scopeType)
+	if err != nil {
+		rest.ReplyErrorV2(c, err)
+		return
+	}
+	rootOperationsResp := r.convertOperations(operationsInfo)
+
+	resp := map[string]any{
+		"operations": rootOperationsResp,
+	}
+
+	if len(childrenOperationsInfo) > 0 {
+		childrenOperationsResp := r.convertChildrenOperations(childrenOperationsInfo)
+		resp["children"] = childrenOperationsResp
+	}
+
+	rest.ReplyOK(c, http.StatusOK, resp)
+}
+
+// convertChildrenOperations 递归转换嵌套的childrenOperationsInfo为响应格式
+func (r *resourceTypeRestHandler) convertChildrenOperations(childrenOperations []interfaces.ChildrenResourceTypeOperation) []map[string]any {
+	result := make([]map[string]any, 0, len(childrenOperations))
+	for i := range childrenOperations {
+		child := childrenOperations[i]
+		childResp := map[string]any{
+			"id":         child.ResourceTypeID,
+			"name":       child.Name,
+			"operations": r.convertOperations(child.Operations),
+		}
+		if len(child.Children) > 0 {
+			childResp["children"] = r.convertChildrenOperations(child.Children)
+		}
+		result = append(result, childResp)
+	}
+	return result
+}
+
+// convertOperations 转换operations为响应格式
+func (r *resourceTypeRestHandler) convertOperations(operations []interfaces.ResourceTypeOperationResponse) []map[string]any {
+	result := make([]map[string]any, 0, len(operations))
+	for i := range operations {
+		result = append(result, map[string]any{
+			"id":          operations[i].ID,
+			"name":        operations[i].Name,
+			"description": operations[i].Description,
+		})
+	}
+	return result
 }
 
 func (r *resourceTypeRestHandler) get(c *gin.Context) {

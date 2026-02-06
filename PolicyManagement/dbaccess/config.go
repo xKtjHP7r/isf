@@ -2,6 +2,7 @@ package dbaccess
 
 import (
 	"context"
+	"fmt"
 	"policy_mgnt/common"
 	"sync"
 
@@ -39,7 +40,10 @@ func (d *config) GetConfig(ctx context.Context, key string) (value string, err e
 	defer func() { d.trace.TelemetrySpanEnd(span, err) }()
 
 	// 查询已授权用户数量
-	query := "SELECT value from user_management.option where `key` = ?"
+	query := "SELECT value from %s.option where `key` = ?"
+
+	dbName := common.GetDBName("user_management")
+	query = fmt.Sprintf(query, dbName)
 	rows, err := d.db.QueryContext(newCtx, query, key)
 	if err != nil {
 		d.log.Errorf("license GetConfig query err: %v", err)

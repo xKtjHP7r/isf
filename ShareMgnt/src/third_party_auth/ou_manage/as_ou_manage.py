@@ -241,7 +241,7 @@ class ASOuManage(BaseOuManage):
             raise_exception(exp_msg=_("IDS_INVALID_USER_CODE"),
                             exp_num=ncTShareMgntError.NCT_INVALID_USER_CODE)
 
-        
+
         select_sql = """
         select f_third_party_id from t_user where f_code = %s
         """
@@ -304,13 +304,13 @@ class ASOuManage(BaseOuManage):
         # 部门排序码如果是默认值则不覆盖
         if new_ou_info.priority and new_ou_info.priority != global_info.DEFAULT_DEPART_PRIORITY and new_ou_info.priority != old_ou_info.priority:
             return False
-        
+
         if new_ou_info.remark is not None and new_ou_info.remark != old_ou_info.remark:
             return False
 
         if new_ou_info.code is not None and new_ou_info.code != old_ou_info.code:
             return False
-        
+
         if new_ou_info.status is not None and new_ou_info.status != old_ou_info.status:
             return False
 
@@ -355,13 +355,13 @@ class ASOuManage(BaseOuManage):
         if new_user_info.type != ncTUsrmUserType.NCT_USER_TYPE_DOMAIN:
             if (new_user_info.csf_level and new_user_info.csf_level != old_user_info.csf_level) or old_user_info.csf_level != self.user_csf_level:
                 return False
-            
+
         if new_user_info.position is not None and new_user_info.position != old_user_info.position:
             return False
 
         if new_user_info.code is not None and new_user_info.code != old_user_info.code:
             return False
-        
+
         if new_user_info.csf_level2 and new_user_info.csf_level2 != old_user_info.csf_level2:
             return False
 
@@ -618,7 +618,7 @@ class ASOuManage(BaseOuManage):
                     if result['f_status'] == 1:
                         ou_info.status = True
                     else:
-                        ou_info.status = False  
+                        ou_info.status = False
                     ou_infos.append(ou_info)
 
         return ou_infos
@@ -1003,7 +1003,7 @@ class ASOuManage(BaseOuManage):
         ou_info.ou_name = self.get_unique_depart_name(parent_id,
                                                       ou_info,
                                                       as_ou_info.depart_id)
-        
+
         # 备注检查
         if ou_info.remark is not None:
             ou_info.remark = self.depart_manage._is_remark_valid(ou_info.remark)
@@ -1053,7 +1053,7 @@ class ASOuManage(BaseOuManage):
                 ou_info.ou_name = bytes.decode(ou_info.ou_name)
             pub_nsq_msg(TOPIC_ORG_NAME_MODIFY, {
                         "id": db_object["f_department_id"], "new_name": ou_info.ou_name, "type": "department"})
-            
+
         # 发送状态变更消息
         if as_ou_info.status != ou_info.status:
             pub_nsq_msg(TOPIC_DEPART_STATUS_MODIFIED, {"ids": [as_ou_info.depart_id], "status": ou_info.status})
@@ -1070,7 +1070,7 @@ class ASOuManage(BaseOuManage):
                       progress_info.total_num)
 
         return True
-    
+
     def check_third_party_depart_code(self, code, third_id=None):
         """
         检查部门编码格式 以及是否唯一
@@ -1086,7 +1086,7 @@ class ASOuManage(BaseOuManage):
             raise_exception(exp_msg=_("IDS_INVALID_DEPART_CODE"),
                             exp_num=ncTShareMgntError.NCT_INVALID_DEPART_CODE)
 
-        
+
         select_sql = """
         select f_third_party_id from t_department where f_code = %s
         """
@@ -1203,7 +1203,7 @@ class ASOuManage(BaseOuManage):
             SELECT `f_user_id`, `f_display_name`, `f_tel_number`, `f_mail_address` FROM `t_user` WHERE `f_user_id` = %s
         """
         db_obj = self.r_db.one(sql, user_id)
-        
+
         # 本地用户不覆盖密码
         if user_info.type == ncTUsrmUserType.NCT_USER_TYPE_LOCAL:
             if user_info.csf_level:
@@ -1546,7 +1546,7 @@ class ASOuManage(BaseOuManage):
             # 获取用户源部门的组织管理员id
             src_manager_ids = self.user_manage.get_parent_dept_responsbile_person(
                 as_user.user_id)
-            
+
             # 判断用户是否在未分配组
             b_belong_undistribute = self.check_is_belong_undistribute_user_group(as_user.user_id)
 
@@ -1928,7 +1928,7 @@ class ASOuManage(BaseOuManage):
             if b_send_nsq_msg:
                 pub_nsq_msg(TOPIC_USER_STATUS_CHANGED, {
                             "user_id": user_info.user_id, "status": False})
-            
+
             progress_info.moved_num += 1
             ShareMgnt_Log('从部门"%s":%s 移除用户"%s(%s)"成功   %d/%d',
                           ou_info.ou_name,
@@ -1969,30 +1969,6 @@ class ASOuManage(BaseOuManage):
             for responsible_person_id in responsible_person_ids:
                 managered_user_ids = self.depart_manage.get_user_ids_by_admin_id(
                     responsible_person_id["f_user_id"])
-                # 获取组织管理员管理的所有用户的总分配配额空间
-                user_quota, tmp = self.user_manage.get_user_space_quota(
-                    managered_user_ids)
-                # 更新组织管理员已分配配额空间
-                self.w_db.query(update_manager_limit_space_sql,
-                                user_quota, responsible_person_id["f_user_id"])
-
-            # 删除已经移除的组织管理员的配额空间限制记录
-            manager_ids = self.r_db.all(select_manager_ids)
-            for manager_id in manager_ids:
-                if manager_id["f_manager_id"] != NCT_USER_ADMIN:
-                    person_ids.append(manager_id["f_manager_id"])
-            groupStr = generate_group_str(person_ids)
-            # 获取某些用户中在某部门下的用户
-            select_user_ids_in_department = """
-                    SELECT `f_user_id` FROM `t_user_department_relation`
-                    WHERE `f_user_id` in ({0}) AND `f_path` = %s
-                    """.format(groupStr)
-            # 获取组织管理员配额记录表中在未分配组中的组织管理员id
-            remove_manager_ids = self.r_db.all(
-                select_user_ids_in_department, NCT_UNDISTRIBUTE_USER_GROUP)
-            for remove_manager_id in remove_manager_ids:
-                    self.w_db.query(
-                        delet_manager_limit_space_sql, remove_manager_id["f_user_id"])
 
     def get_undistributed_users(self):
         # 获取未分配的用户（只包括第三方的）
@@ -2032,7 +2008,7 @@ class ASOuManage(BaseOuManage):
         oss_info = get_oss_info(oss_info)
         if oss_info:
             return oss_info
-        
+
     def update_manager(self, user_manager_infos, depart_manager_infos):
         """
         更新用户上级和部门负责人
@@ -2126,12 +2102,12 @@ class ASOuManage(BaseOuManage):
         for depart_id, manager_id in depart_update_manager_map.items():
             self.w_db.query(update_depart_manager_sql, manager_id, depart_id)
             pub_nsq_msg(TOPIC_DEPART_MANAGER_MODIFIED, {"depart_id": depart_id, "original_manager_id": depart_id_manager_id_map[depart_id], "current_manager_id": manager_id})
-            
 
-            
 
-            
 
-            
+
+
+
+
 
 

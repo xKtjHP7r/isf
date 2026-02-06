@@ -99,7 +99,7 @@ export default class BindingQuery extends BindingQueryBase {
                                                                 case SearchField.User:
                                                                     return (
                                                                         <AutoCompleteList.Item key={index}>
-                                                                            <a href="javascript:void(0);" className={styles['search-item']} onClick={() => this.queryUser(item)}>
+                                                                            <span href="javascript:void(0);" className={styles['search-item']} onClick={() => this.queryUser(item)}>
 
                                                                                 <Title content={this.getDepName(item)}>
                                                                                     <div className={classnames(
@@ -114,15 +114,15 @@ export default class BindingQuery extends BindingQueryBase {
                                                                                         </div>
                                                                                     </div>
                                                                                 </Title>
-                                                                            </a>
+                                                                            </span>
                                                                         </AutoCompleteList.Item>
                                                                     )
                                                                 case SearchField.DeviceId:
                                                                     return (
                                                                         <AutoCompleteList.Item key={index}>
-                                                                            <a href="javascript:void(0);" className={styles['search-item']} onClick={() => this.renderDeviceId(item)}>
+                                                                            <span href="javascript:void(0);" className={styles['search-item']} onClick={() => this.renderDeviceId(item)}>
                                                                                 {item}
-                                                                            </a>
+                                                                            </span>
                                                                         </AutoCompleteList.Item>
                                                                     )
                                                             }

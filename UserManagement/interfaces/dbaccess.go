@@ -246,23 +246,11 @@ type DBDepartment interface {
 	// GetAllOrgManagerIDsByDepartIDs 根据部门ID获取所有的组织管理员
 	GetAllOrgManagerIDsByDepartIDs(departIds []string) (orgManagerIDs []string, err error)
 
-	// UpdateOrgManagerSpaceQuota 根据管辖用户更新组织管理员配额
-	UpdateOrgManagerSpaceQuota(orgManagerID string, spaceQuota int) (err error)
-
-	// GetUserSpaceQuota 获取用户个人文档库配额
-	GetUserSpaceQuota(scopeUserIDs []string) (quotas map[string]int, err error)
-
 	// GetAllOrgManagerIDs 获取所有的组织管理员ID
 	GetAllOrgManagerIDs() (ids []string, err error)
 
-	// DeleteOrgManagerSpaceLimit 删除部门管理员的配额信息
-	DeleteOrgManagerSpaceLimit(orgManagerIDs []string) (err error)
-
 	// DeleteDocAutoCleanStrategy 删除文档自动清理策略
 	DeleteDocAutoCleanStrategy(obj string) (err error)
-
-	// DeleteDocDepartmentRelation 删除文档库关联信息
-	DeleteDocDepartmentRelation(departID []string) (err error)
 
 	// DeleteDepartManager 清理部门负责人数据
 	DeleteDepartManager(userID string) (err error)

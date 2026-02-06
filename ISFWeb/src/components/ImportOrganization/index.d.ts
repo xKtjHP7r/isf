@@ -31,17 +31,6 @@ declare namespace Components {
         }
 
         interface State {
-
-            /**
-             * 默认开启个人文档状态
-             */
-            spaceStatus: boolean;
-
-            /**
-             * 个人文档默认的大小
-             */
-            spaceSize: number | string;
-
             /**
              * 选项配置
              */

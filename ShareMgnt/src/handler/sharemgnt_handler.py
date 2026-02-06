@@ -356,15 +356,6 @@ class ShareMgntHandler(object):
 
     @warp_exception
     @check_args
-    def Usrm_GetSupervisoryUsersUsedSpace(self, managerid):
-        """
-        Parameters:
-         - managerid: 管理员id
-        """
-        return self.depart_manage.get_supervisory_users_used_space(managerid)
-
-    @warp_exception
-    @check_args
     def Usrm_LocateUser(self, managerid, userid):
         """
         Parameters:
@@ -1557,70 +1548,6 @@ class ShareMgntHandler(object):
         return self.config_manage.get_max_csf_level()
 
     @warp_exception
-    def Usrm_EditLimitSpace(self, user_id, limit_user_spacesize, limit_doc_spacesize):
-        """
-        编辑组织管理员的限额
-        """
-        return self.depart_manage.edit_limit_space(user_id,
-                                                   limit_user_spacesize,
-                                                   limit_doc_spacesize)
-
-    @warp_exception
-    def Usrm_UpdateManagerDocSpace(self, user_id, space_size):
-        """
-        更新组织管理员的文档库已分配空间
-        """
-        return self.user_manage.update_responsible_person_doc_space(user_id, space_size)
-
-    @warp_exception
-    def Usrm_UpdateManagerUserSpace(self, user_id, space_size):
-        """
-        更新组织管理员的用户已分配空间
-        """
-        responsible_person_ids = self.user_manage.get_parent_dept_responsbile_person(
-            user_id)
-        return self.user_manage.update_responsible_person_space(responsible_person_ids, space_size)
-
-    @warp_exception
-    def Usrm_CheckHasEnoughSpace(self, user_ids, space_size, responsible_person_id):
-        """
-        批量修改配额前, 检查空间是否足够
-        """
-        self.user_manage.check_has_enough_space(
-            user_ids, space_size, responsible_person_id)
-
-    @warp_exception
-    def Usrm_CheckSpaceByDeptId(self, department_id, enable_sub, space_size, responsible_person_id):
-        """
-        批量修改配额前, 通过部门id检查空间是否足够
-        """
-        self.depart_manage.check_space_by_dept_id(department_id,
-                                                  enable_sub,
-                                                  space_size,
-                                                  responsible_person_id)
-
-    @warp_exception
-    def Usrm_CheckDocSpace(self, responsible_person_id, space_needed):
-        """
-        检查文档库的空间是否足够是否足够
-        """
-        self.user_manage.check_doc_space(responsible_person_id, space_needed)
-
-    @warp_exception
-    def Usrm_CheckUserSpace(self, responsible_person_id, space_needed):
-        """
-        检查用户配额空间
-        """
-        self.user_manage.check_user_space(space_needed, responsible_person_id)
-
-    @warp_exception
-    def Usrm_ReCalcAdminLimitSpace(self):
-        """
-        重新计算admin的限额空间
-        """
-        self.user_manage.re_calc_admin_limit_space()
-
-    @warp_exception
     def Usrm_GetSystemInitStatus(self):
         """
         获取系统初始化状态
@@ -2034,20 +1961,6 @@ class ShareMgntHandler(object):
         return self.limit_rate_manage.get_cnt(limitType)
 
     @warp_exception
-    def Usrm_GetLimitRateInfoByPage(self, start, limit, limitType):
-        """
-        分页获取限速信息
-        """
-        return self.limit_rate_manage.get(start, limit, limitType)
-
-    @warp_exception
-    def Usrm_SearchLimitRateInfoByPage(self, searchKey, start, limit, limitType):
-        """
-        搜索限速信息
-        """
-        return self.limit_rate_manage.search(searchKey, start, limit, limitType)
-
-    @warp_exception
     def Usrm_SearchLimitRateInfoCnt(self, searchKey, limitType):
         """
         搜索限速信息总数
@@ -2193,160 +2106,6 @@ class ShareMgntHandler(object):
         检查外链共享权限是否符合模板
         """
         self.link_template_manage.check_external_link_perm(linkInfo)
-
-####################################################################################
-#    网段文档库绑定管理
-####################################################################################
-    # @warp_exception
-    # def DocLimitm_SetStatus(self, status):
-    #     """
-    #     设置网段文档库绑定开关状态
-    #     """
-    #     return self.config_manage.set_net_docs_limit_status(status)
-
-    # @warp_exception
-    # def DocLimitm_GetStatus(self):
-    #     """
-    #     获取网段文档库绑定开关状态
-    #     """
-    #     return self.config_manage.get_net_docs_limit_status()
-
-    # @warp_exception
-    # def DocLimitm_AddNet(self, param):
-    #     """
-    #     添加网段设置
-    #     """
-    #     return self.net_docs_limit_manage.add_net(param)
-
-    # @warp_exception
-    # def DocLimitm_EditNet(self, param):
-    #     """
-    #     编辑网段设置
-    #     """
-    #     return self.net_docs_limit_manage.edit_net(param)
-
-    # @warp_exception
-    # def DocLimitm_DeleteNet(self, netId):
-    #     """
-    #     删除网段设置
-    #     """
-    #     return self.net_docs_limit_manage.delete_net(netId)
-
-    # @warp_exception
-    # def DocLimitm_GetNet(self):
-    #     """
-    #     获取网段设置
-    #     """
-    #     return self.net_docs_limit_manage.get_net()
-
-    # @warp_exception
-    # def DocLimitm_SearchNet(self, ip):
-    #     """
-    #     根据ip搜索网段设置
-    #     """
-    #     return self.net_docs_limit_manage.search_net(ip)
-
-    # @warp_exception
-    # def DocLimitm_AddDocs(self, netId, docIds):
-    #     """
-    #     添加绑定文档库设置
-    #     """
-    #     return self.net_docs_limit_manage.add_docs(netId, docIds)
-
-    # @warp_exception
-    # def DocLimitm_DeleteDocs(self, netId, docId):
-    #     """
-    #     删除绑定文档库设置
-    #     """
-    #     return self.net_docs_limit_manage.delete_docs(netId, docId)
-
-    # @warp_exception
-    # def DocLimitm_GetDocs(self, netId):
-    #     """
-    #     在指定网段设置中获取所有绑定的文档库信息
-    #     """
-    #     return self.net_docs_limit_manage.get_docs(netId)
-
-    # @warp_exception
-    # def DocLimitm_SearchDocs(self, netId, name):
-    #     """
-    #     在指定网段设置中搜索某个绑定的文档库信息
-    #     """
-    #     return self.net_docs_limit_manage.search_docs(netId, name)
-
-    # @warp_exception
-    # def DocLimitm_GetNetByDocId(self, docId):
-    #     """
-    #     根据文档库id获取其网段绑定信息
-    #     """
-    #     return self.net_docs_limit_manage.get_by_doc_id(docId)
-
-####################################################################################
-#    用户文档下载限制管理
-####################################################################################
-
-    # @warp_exception
-    # def Usrm_AddDocDownloadLimitInfo(self, param):
-    #     """
-    #     增加一条限制信息
-    #     """
-    #     return self.doc_download_limit_manage.add(param)
-
-    # @warp_exception
-    # def Usrm_EditDocDownloadLimitObject(self, editId, userList, deptList):
-    #     """
-    #     编辑一条限制信息中的限制对象
-    #     """
-    #     return self.doc_download_limit_manage.edit_object(editId, userList, deptList)
-
-    # @warp_exception
-    # def Usrm_EditDocDownloadLimitValue(self, editId, limitValue):
-    #     """
-    #     编辑一条限制信息中的文档上限配置
-    #     """
-    #     return self.doc_download_limit_manage.edit_value(editId, limitValue)
-
-    # @warp_exception
-    # def Usrm_DeleteDocDownloadLimitInfo(self, deleteId):
-    #     """
-    #     删除一条限制信息
-    #     """
-    #     return self.doc_download_limit_manage.delete(deleteId)
-
-    @warp_exception
-    def Usrm_GetDocDownloadLimitInfoCnt(self):
-        """
-        获取文档下载限制信息总数
-        """
-        return self.doc_download_limit_manage.get_cnt()
-
-    @warp_exception
-    def Usrm_GetDocDownloadLimitInfoByPage(self, start, limit):
-        """
-        分页获取文档下载限制信息
-        """
-        return self.doc_download_limit_manage.get(start, limit)
-
-    @warp_exception
-    def Usrm_SearchDocDownloadLimitInfoByPage(self, search_key, start, limit):
-        """
-        搜索文档下载限制信息
-        """
-        return self.doc_download_limit_manage.search(search_key, start, limit)
-
-    @warp_exception
-    def Usrm_SearchDocDownloadLimitInfoCnt(self, search_key):
-        """
-        搜索文档下载限制信息总数
-        """
-        return self.doc_download_limit_manage.search_cnt(search_key)
-
-    @warp_exception
-    def Usrm_GetUserDocDownloadLimitValue(self, userId):
-        """
-        获取用户的下载量限制值
-        """
-        return self.doc_download_limit_manage.get_limit_value_by_userid(userId)
 
     @warp_exception
     def Usrm_SetDDLEmailNotifyStatus(self, status):
@@ -2977,13 +2736,6 @@ class ShareMgntHandler(object):
         self.doc_auto_clean_manage.delete_auto_clean_config(strategyId)
 
     @warp_exception
-    def SearchAutoCleanConfigByPage(self, start, limit, searchKey):
-        """
-        分页搜索自动清理策略配置
-        """
-        return self.doc_auto_clean_manage.search_auto_clean_config_by_page(start, limit, searchKey)
-
-    @warp_exception
     def GetAutoCleanConfigCount(self, searchKey):
         """
         获取自动清理策略配置总数
@@ -3158,29 +2910,6 @@ class ShareMgntHandler(object):
         """
         return self.local_sync_manage.get_local_sync_config_by_userId(userId)
 
-####################################################################################
-#    用户空间使用信息导出管理
-####################################################################################
-    @warp_exception
-    def ExportSpaceReport(self, name, objType, operator_id):
-        """
-        创建生成报表任务
-        """
-        return self.space_report_manage.export_space_report(name, objType, operator_id)
-
-    @warp_exception
-    def GetGenSpaceReportStatus(self, taskId):
-        """
-        获取生成报表任务状态
-        """
-        return self.space_report_manage.get_gen_space_report_status(taskId)
-
-    @warp_exception
-    def GetSpaceReportFileInfo(self, taskId):
-        """
-        获取报表文件信息
-        """
-        return self.space_report_manage.get_space_report_file_info(taskId)
 
 ####################################################################################
 #    快速入门管理

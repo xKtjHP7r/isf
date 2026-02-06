@@ -50,7 +50,6 @@ from ShareMgnt.ttypes import (ncTUsrmGetUserInfo,
                               ncTUsrmPasswordConfig,
                               ncTUsrmOSSInfo,
                               ncTUsrmDirectDeptInfo,
-                              ncTLimitSpaceInfo,
                               ncTUsrmPwdControlConfig,
                               ncTSimpleUserInfo,
                               ncTRoleInfo,
@@ -417,16 +416,6 @@ class UserManage(DBConnector):
                 raise_exception(exp_msg=_("user type illegal"),
                                 exp_num=ncTShareMgntError.NCT_INVALID_USER_TYPE)
 
-        # 如果开启个人文档，检查配额
-        if self.config_manage.get_user_doc_status():
-            ShareMgnt_Log("文档库开关开启")
-            if user.space is not None:
-                if user.space <= 0:
-                    raise_exception(exp_msg=_("IDS_INVALID_USER_SPACE"),
-                                    exp_num=ncTShareMgntError.NCT_INVALID_USER_SPACE)
-            else:
-                user.space = ConfigManage().get_default_space_size()
-
         # 检查用户的排序权重
         if user.priority is not None:
             if user.priority < 1 or user.priority > 999:
@@ -534,7 +523,7 @@ class UserManage(DBConnector):
         if priority < 1 or priority > 999:
             raise_exception(exp_msg=_("IDS_INVALID_USER_PRIORITY"),
                             exp_num=ncTShareMgntError.NCT_INVALID_USER_PRIORITY)
-            
+
     def check_user_csflevel2(self, csflevel2):
         """
         检查用户密级2
@@ -982,10 +971,6 @@ class UserManage(DBConnector):
         if user.user.csfLevel2 is None:
             user.user.csfLevel2 = self.config_manage.get_min_csf_level2()
 
-        # 如果开启了个人文档, 则检查组织管理员用户空间是否足够
-        if self.config_manage.get_user_doc_status():
-            self.check_user_space(user.user.space, responsible_person_id)
-
         # 如果排序权重为空，则取999
         if user.user.priority is None:
             user.user.priority = 999
@@ -1034,7 +1019,7 @@ class UserManage(DBConnector):
             raise_exception(exp_msg=_("IDS_INVALID_USER_POSITION"),
                         exp_num=ncTShareMgntError.NCT_INVALID_USER_POSITION)
         return position
-        
+
     def check_user_code(self, code, user_id=None):
         """
         检查用户编码格式 以及是否唯一
@@ -1050,7 +1035,7 @@ class UserManage(DBConnector):
             raise_exception(exp_msg=_("IDS_INVALID_USER_CODE"),
                             exp_num=ncTShareMgntError.NCT_INVALID_USER_CODE)
 
-        
+
         select_sql = """
         select f_user_id from t_user where f_code = %s
         """
@@ -1066,57 +1051,6 @@ class UserManage(DBConnector):
         """
         from src.modules.role_manage import RoleManage
         return RoleManage().get_user_role_id(user_id)
-
-    def get_usable_user_space_by_id(self, responsible_person_id):
-        """
-        根据组织管理员id获取可用的用户管理空间
-        """
-        self.check_user_exists(responsible_person_id)
-
-        # 如果是超级管理员或系统管理员，直接返回-1
-        user_roles = self.__get_user_role_id(responsible_person_id)
-        if set(user_roles) & set([NCT_SYSTEM_ROLE_SUPPER, NCT_SYSTEM_ROLE_ADMIN]):
-            return -1
-
-        # 检查用户是否是管理员
-        if not self.check_is_responsible_person(responsible_person_id):
-            return 0
-
-        select_sql = """
-        SELECT `f_limit_user_space`, `f_allocated_limit_user_space`
-        FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
-        """
-
-        result = self.r_db.one(select_sql, responsible_person_id)
-        if result:
-            if result['f_limit_user_space'] == -1:
-                return -1
-            else:
-                return (result['f_limit_user_space'] - result['f_allocated_limit_user_space'])
-
-    def get_usable_doc_space_by_id(self, responsible_person_id):
-        """
-        根据组织管理员id获取可用的文档库空间
-        """
-        # 如果是超级管理员或系统管理员，直接返回-1, 无限制
-        user_roles = self.__get_user_role_id(responsible_person_id)
-        if set(user_roles) & set([NCT_SYSTEM_ROLE_SUPPER, NCT_SYSTEM_ROLE_ADMIN]):
-            return -1
-
-        # 检查用户是否是管理员
-        if not self.check_is_responsible_person(responsible_person_id):
-            return 0
-
-        select_sql = """
-        SELECT `f_limit_doc_space`, `f_allocated_limit_doc_space`
-        FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
-        """
-        result = self.r_db.one(select_sql, responsible_person_id)
-        if result:
-            if result['f_limit_doc_space'] == -1:
-                return -1
-            else:
-                return (result['f_limit_doc_space'] - result['f_allocated_limit_doc_space'])
 
     def get_parent_dept_responsbile_person(self, user_id):
         """
@@ -1141,72 +1075,6 @@ class UserManage(DBConnector):
             responsible_person_ids.append(result['f_user_id'])
 
         return responsible_person_ids
-
-    def update_responsible_person_space(self, responsible_person_ids, space_size, admin_id=NCT_USER_ADMIN):
-        """
-        更新指定组织管理员的已分配用户限额信息
-        """
-        # 更新admin的已分配空间
-        if admin_id:
-            responsible_person_ids.append(admin_id)
-
-        # 更新组织管理员的已分配用户限额
-        for responsible_person_id in responsible_person_ids:
-            select_sql = """
-            SELECT `f_allocated_limit_user_space` FROM `t_manager_limit_space`
-            WHERE `f_manager_id` = %s
-            """
-            result = self.r_db.one(select_sql, responsible_person_id)
-
-            if result:
-                update_sql = """
-                UPDATE `t_manager_limit_space` SET `f_allocated_limit_user_space` = %s
-                WHERE `f_manager_id` = %s
-                """
-
-                allocated_limit_user_space = result['f_allocated_limit_user_space'] + space_size
-                self.w_db.query(
-                    update_sql, allocated_limit_user_space, responsible_person_id)
-
-    def update_responsible_person_doc_space(self, user_id, space_size):
-        """
-        更新指定组织管理员的已分配文档库限额信息
-        """
-        # 更新文档库限额
-        select_sql = """
-        SELECT `f_allocated_limit_doc_space` FROM `t_manager_limit_space`
-        WHERE `f_manager_id` = %s
-        """
-
-        update_sql = """
-        UPDATE `t_manager_limit_space` SET `f_allocated_limit_doc_space` = %s
-        WHERE `f_manager_id` = %s
-        """
-
-        # 需要更新admin的空间
-        if user_id != NCT_USER_ADMIN:
-            result = self.r_db.one(select_sql, NCT_USER_ADMIN)
-            old_space = result['f_allocated_limit_doc_space']
-            self.w_db.query(update_sql, old_space + space_size, NCT_USER_ADMIN)
-
-        result = self.r_db.one(select_sql, user_id)
-        if result:
-            old_space = result['f_allocated_limit_doc_space']
-            self.w_db.query(update_sql, old_space + space_size, user_id)
-
-    def check_has_enough_space(self, user_ids, space_size, responsible_person_id):
-        """
-        批量修改用户配额前, 检查空间是否足够
-        """
-        self.check_user_exists(responsible_person_id)
-
-        user_ids = list(set(user_ids))
-
-        # 获取用户原来的总配额
-        user_total_quota, used_size_tmp = self.get_user_space_quota(user_ids)
-
-        self.check_user_space(len(user_ids) * space_size -
-                              user_total_quota, responsible_person_id)
 
     def get_status_before_add(self, user, user_uuid):
         """
@@ -1330,7 +1198,7 @@ class UserManage(DBConnector):
                                userStatus), now, now, guid, dn_path, ldap_type,
                            user.user.priority, user.user.csfLevel,
                            user.user.pwdControl, user.user.ossInfo.ossId, user.user.telNumber,
-                           user.user.expireTime, sha2Password, managerID, userCode, userPosi, 
+                           user.user.expireTime, sha2Password, managerID, userCode, userPosi,
                            user.user.csfLevel2))
 
             # 保存部门关系、索引
@@ -1369,11 +1237,6 @@ class UserManage(DBConnector):
                 VALUES (%s, %s)
                 """
                 cursor.executemany(sql, index_value)
-        # 添加用户自定义属性
-        ShareMgnt_Log("用户自定义属性 space")
-        ShareMgnt_Log(user.user.space)
-        custom_attr = {"document": {"space_quote": user.user.space}}
-        self.patch_user_custom_attr(user_uuid, custom_attr)
         try:
             pub_nsq_msg(TOPIC_USER_CREATE, {
                         "id": user_uuid, "name": user.user.displayName})
@@ -1456,10 +1319,6 @@ class UserManage(DBConnector):
             # 删除防泄密策略信息
             """
             DELETE FROM `t_leak_proof_strategy` WHERE `f_accessor_id` = %s
-            """,
-            # 删除用户限额信息
-            """
-            DELETE FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
             """,
             # 删除组织管理员关系
             """
@@ -1614,17 +1473,7 @@ class UserManage(DBConnector):
             user_info.directDeptInfo = self.__get_direct_dept_info(
                 depart_id, depart_name)
 
-        if get_quota:
-            user_ids_for_quota = [user_info.id]
-            user.space, user.usedSize = self.get_user_space_quota(
-                user_ids_for_quota)
-        else:
-            user.space = 0
-            user.usedSize = 0
-
         self.__get_departments_from_user(user_info.id, user)
-        user_info.user.limitSpaceInfo = self.__get_admin_limit_space(
-            user_info.id)
         from src.modules.role_manage import RoleManage
         user_info.user.roles = RoleManage().get_user_role(user_info.id)
 
@@ -1639,7 +1488,7 @@ class UserManage(DBConnector):
             user_info.user.managerID = db_user['f_manager_id']
             if user_info.user.managerID != '':
                 user_info.user.managerDisplayName = self.get_displayname_by_userid(user_info.user.managerID)
-        
+
         # 获取岗位
         if 'f_position' in db_user:
             user_info.user.position = db_user['f_position']
@@ -1649,37 +1498,6 @@ class UserManage(DBConnector):
             user_info.user.csfLevel2 = db_user['f_csf_level2']
 
         return user_info
-
-    def __get_admin_limit_space(self, user_id):
-        """
-        获取管理员的限额信息
-        """
-        # 先获取用户角色，
-        # 如果是系统管理员，超级管理员统一使用adminid的配额
-        # 如果用户为组织管理员, 则获取具体的限额信息
-        user_roles = self.__get_user_role_id(user_id)
-        limit_space_info = ncTLimitSpaceInfo()
-        result = None
-        if set(user_roles) & set([NCT_SYSTEM_ROLE_SUPPER, NCT_SYSTEM_ROLE_ADMIN]):
-            select_sql = """
-            SELECT * FROM `t_manager_limit_space` WHERE `f_manager_id` = %s
-            """
-            result = self.r_db.one(select_sql, NCT_USER_ADMIN)
-        elif set(user_roles) & set([NCT_SYSTEM_ROLE_ORG_MANAGER]):
-            select_sql = """
-            SELECT * FROM `t_manager_limit_space` as t
-            INNER JOIN t_department_responsible_person as r
-            ON t.f_manager_id = r.f_user_id
-            WHERE t.`f_manager_id` = %s
-            """
-            result = self.r_db.one(select_sql, user_id)
-        if result:
-            limit_space_info.limitUserSpace = result['f_limit_user_space']
-            limit_space_info.allocatedLimitUserSpace = result['f_allocated_limit_user_space']
-            limit_space_info.limitDocSpace = result['f_limit_doc_space']
-            limit_space_info.allocatedLimitDocSpace = result['f_allocated_limit_doc_space']
-
-            return limit_space_info
 
     def __get_direct_dept_info(self, depart_id, depart_name):
         """
@@ -1789,7 +1607,7 @@ class UserManage(DBConnector):
             u.`f_des_password`, u.`f_sha2_password`, u.`f_mail_address`, u.`f_auth_type`, u.`f_status`,
             u.`f_tel_number`, u.`f_idcard_number`, u.`f_expire_time`, u.`f_priority`,
             u.`f_csf_level`, u.`f_pwd_control`, u.`f_oss_id`, u.`f_freeze_status`,
-            u.`f_create_time`, u.`f_auto_disable_status`, u.`f_code`, u.`f_position`, u.`f_manager_id`, 
+            u.`f_create_time`, u.`f_auto_disable_status`, u.`f_code`, u.`f_position`, u.`f_manager_id`,
             u.`f_csf_level2`
         FROM `t_user` as u
         WHERE u.`f_user_id` <> '{0}'
@@ -1833,8 +1651,6 @@ class UserManage(DBConnector):
             elif db_user['f_sha2_password'] != '':
                 db_user['originalPwd'] = True if self.initSha2AdminPwd == db_user['f_sha2_password'] else False
             result.append(self.convert_user_info(db_user))
-
-        self.fill_user_quota(result)
 
         # 填充用户所属角色信息
         self.fill_user_roles(result)
@@ -1923,188 +1739,6 @@ class UserManage(DBConnector):
             user.csfLevel2 = db_user['f_csf_level2']
 
         return user_info
-
-    def fill_user_quota(self, user_infos):
-        """
-        填充用户配额空间数据
-        """
-        if not user_infos:
-            return
-
-        userid_set = set()
-        for user_info in user_infos:
-            userid_set.add(user_info.id)
-
-        groupStr = generate_group_str(userid_set)
-        if not groupStr:
-            return
-
-        sql = f"""
-            SELECT sum(s.quota) as total_quota, sum(s.usedsize) as total_usedsize, d.f_creater_id
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_doc_type = 1
-                    and d.f_creater_id in ({groupStr})
-                        and d.f_status = 1
-            group by d.f_creater_id;
-        """
-
-        results = self.r_db.all(sql)
-
-        quota_info_map = {}
-        for result in results:
-            quota_info = {}
-            quota_info['space'] = int(result['total_quota'])
-            quota_info['usedSize'] = int(result['total_usedsize'])
-            quota_info_map[result['f_creater_id']] = quota_info
-
-        for user_info in user_infos:
-            if user_info.id in quota_info_map:
-                user_info.user.space = quota_info_map[user_info.id]['space']
-                user_info.user.usedSize = quota_info_map[user_info.id]['usedSize']
-            else:
-                user_info.user.space = 0
-                user_info.user.usedSize = 0
-
-    def get_custom_doc_space_quota(self, user_id):
-        """
-        根据user_id，获取管理员创建的自定义归档库配额空间总大小、已用空间总大小
-        """
-        space_quota = 0
-        used_size = 0
-        if not user_id:
-            return space_quota, used_size
-
-        sql = f"""
-            SELECT sum(s.quota) as space_quota, sum(s.usedsize) as used_size
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_creater_id = %s
-                    and d.f_doc_type = 3
-                        and d.`f_status` = 1
-        """
-
-        result = self.r_db.one(sql, self.w_db.escape(user_id))
-        if result:
-            if result['space_quota']:
-                space_quota = int(result['space_quota'])
-            if result['used_size']:
-                used_size = int(result['used_size'])
-        return space_quota, used_size
-
-    def get_department_doc_space_quota(self, user_id):
-        """
-        根据user_id，获取管理员创建的部门文档库配额空间总大小、已用空间总大小
-        """
-        space_quota = 0
-        used_size = 0
-        if not user_id:
-            return space_quota, used_size
-
-        sql = f"""
-            SELECT sum(s.quota) as space_quota, sum(s.usedsize) as used_size
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_creater_id = %s
-                    and d.f_doc_type = 2
-                        and d.`f_status` = 1
-        """
-
-        result = self.r_db.one(sql, self.w_db.escape(user_id))
-        if result:
-            if result['space_quota']:
-                space_quota = int(result['space_quota'])
-            if result['used_size']:
-                used_size = int(result['used_size'])
-        return space_quota, used_size
-
-    def get_knowledge_doc_space_quota(self, user_id):
-        """
-        根据user_id，获取管理员创建的知识库配额空间总大小、已用空间总大小
-        """
-        space_quota = 0
-        used_size = 0
-        if not user_id:
-            return space_quota, used_size
-
-        sql = f"""
-            SELECT sum(s.quota) as space_quota, sum(s.usedsize) as used_size
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_creater_id = %s
-                    and d.f_doc_type = 6
-                        and d.`f_status` = 1
-        """
-
-        result = self.r_db.one(sql, self.w_db.escape(user_id))
-        if result:
-            if result['space_quota']:
-                space_quota = int(result['space_quota'])
-            if result['used_size']:
-                used_size = int(result['used_size'])
-        return space_quota, used_size
-
-    def get_archive_doc_space_quota(self, user_id):
-        """
-        根据user_id，获取管理员创建的归档库配额空间总大小、已用空间总大小
-        """
-        space_quota = 0
-        used_size = 0
-        if not user_id:
-            return space_quota, used_size
-
-        sql = f"""
-            SELECT sum(s.quota) as space_quota, sum(s.usedsize) as used_size
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_creater_id = %s
-                    and d.f_doc_type = 5
-                        and d.`f_status` = 1
-        """
-
-        result = self.r_db.one(sql, self.w_db.escape(user_id))
-        if result:
-            if result['space_quota']:
-                space_quota = int(result['space_quota'])
-            if result['used_size']:
-                used_size = int(result['used_size'])
-        return space_quota, used_size
-
-    def get_user_space_quota(self, user_ids):
-        """
-        根据user_ids获取用户总配额空间大小、总已用空间大小
-        """
-        space_quota = 0
-        used_size = 0
-        if not user_ids:
-            return space_quota, used_size
-
-        groupStr = generate_group_str(user_ids)
-        if not groupStr:
-            return space_quota, used_size
-
-        sql = f"""
-            SELECT sum(s.quota) as space_quota, sum(s.usedsize) as used_size
-            FROM {get_db_name('ets')}.space_quota as s
-            inner JOIN {get_db_name('anyshare')}.t_acs_doc as d
-            ON s.cid = d.f_doc_id
-                and d.f_doc_type = 1
-                    and d.f_creater_id in ({groupStr})
-                        and d.f_status = 1
-        """
-
-        result = self.r_db.one(sql)
-        if result:
-            if result['space_quota']:
-                space_quota = int(result['space_quota'])
-            if result['used_size']:
-                used_size = int(result['used_size'])
-        return space_quota, used_size
 
     def fill_user_departments(self, user_infos):
         """
@@ -2283,18 +1917,9 @@ class UserManage(DBConnector):
                 raise_exception(exp_msg=_("IDS_INVALID_USER_SPACE"),
                                 exp_num=ncTShareMgntError.NCT_INVALID_USER_SPACE)
 
-        # 获取被编辑用户原来的配额
-        user_ids_for_quota = [user_id]
-        user_total_quota, used_size_tmp = self.get_user_space_quota(
-            user_ids_for_quota)
-
         # 如果需要修改配额
-        if user_space is not None and user_total_quota != user_space:
+        if user_space is not None:
             self.check_user_exists(responsible_person_id)
-
-            # 检查管理员空间是否足够
-            self.check_user_space(
-                user_space - user_total_quota, responsible_person_id)
 
             # 添加用户自定义属性
             custom_attr = {"document": {"space_quote": user_space}}
@@ -2357,9 +1982,6 @@ class UserManage(DBConnector):
         # 检查密级2
         if param.csfLevel2 is not None:
             self.check_user_csflevel2(param.csfLevel2)
-
-        # 检查配额
-        self.modify_user_space(param.id, param.space, responsible_person_id)
 
         # 检查密码合法性
         if param.pwd:
@@ -2427,7 +2049,7 @@ class UserManage(DBConnector):
         if param.displayName:
             tmp += ("f_display_name='%s'," %
                     escape_format_percent(self.w_db.escape(param.displayName)))
-            
+
             if result and result['f_display_name'] != param.displayName:
                 change_Name = True
         if param.remark is not None:
@@ -2489,7 +2111,7 @@ class UserManage(DBConnector):
             # 发送用户显示名更新nsq消息
             pub_nsq_msg(TOPIC_ORG_NAME_MODIFY, {
                         "id": param.id, "new_name": param.displayName, "type": "user"})
-            
+
         if len(user_modify_info) > 0:
             # 发送用户信息更新nsq消息
             user_modify_info["user_id"] = param.id
@@ -3321,29 +2943,6 @@ class UserManage(DBConnector):
 
         return b_locked
 
-    def check_user_space(self, space_needed, responsible_person_id):
-        """
-        检查组织管理员的用户限额空间是否足够
-        """
-        self.check_user_exists(responsible_person_id)
-
-        usable_space = self.get_usable_user_space_by_id(responsible_person_id)
-        if usable_space != -1 and space_needed > usable_space:
-            raise_exception(exp_msg=_("IDS_SPACE_ALLOCATED_FOR_USER_EXCEEDS_THE_MAX_LIMIT"),
-                            exp_num=ncTShareMgntError.NCT_SPACE_ALLOCATED_FOR_USER_EXCEEDS_THE_MAX_LIMIT)
-
-    def check_doc_space(self, responsible_person_id, space_needed):
-        """
-        检查文档库空间是否足够
-        """
-        self.check_user_exists(responsible_person_id)
-
-        space_available = self.get_usable_doc_space_by_id(
-            responsible_person_id)
-        if space_available != -1 and space_needed > space_available:
-            raise_exception(exp_msg=_("IDS_SPACE_ALLOCATED_FOR_USER_EXCEEDS_THE_MAX_LIMIT"),
-                            exp_num=ncTShareMgntError.NCT_SPACE_ALLOCATED_FOR_USER_EXCEEDS_THE_MAX_LIMIT)
-
     def check_is_responsible_person(self, user_id):
         """
         检查用户是否是管理员
@@ -3402,58 +3001,6 @@ class UserManage(DBConnector):
             ret_infos[result["f_third_party_id"]] = result["f_user_id"]
 
         return ret_infos
-
-    def get_all_user_quota(self):
-        """
-        获取所有用户的{user_id:quota}字典
-        """
-        sql = """
-        SELECT `f_user_id` FROM `t_user`
-        WHERE `f_user_id` != %s
-        AND `f_user_id` != %s
-        AND `f_user_id` != %s
-        AND `f_user_id` != %s
-        """
-        results = self.r_db.all(
-            sql, NCT_USER_ADMIN, NCT_USER_AUDIT, NCT_USER_SYSTEM, NCT_USER_SECURIT)
-
-        user_ids = [res['f_user_id'] for res in results]
-        user_quota, used_size_tmp = self.get_user_space_quota(user_ids)
-        return user_quota
-
-    def re_calc_admin_limit_space(self):
-        """
-        重新计算admin的限额空间
-        """
-        # 获取用户所管理的所有用户的配额空间
-        all_user_quota = self.get_all_user_quota()
-
-        # 获取管理员创建的归档库/文档库配额
-        all_doc_quota = 0
-
-        cdoc_spaceQuota, cdoc_usedSize = self.get_custom_doc_space_quota(
-            NCT_USER_ADMIN)
-        adoc_spaceQuota, adoc_usedSize = self.get_archive_doc_space_quota(
-            NCT_USER_ADMIN)
-        ddoc_spaceQuota, ddoc_usedSize = self.get_department_doc_space_quota(
-            NCT_USER_ADMIN)
-        kdoc_spaceQuota, kdoc_usedSize = self.get_knowledge_doc_space_quota(
-            NCT_USER_ADMIN)
-
-        all_doc_quota += cdoc_spaceQuota
-        all_doc_quota += adoc_spaceQuota
-        all_doc_quota += ddoc_spaceQuota
-        all_doc_quota += kdoc_spaceQuota
-
-        # 更新admin配额空间
-        update_sql = """
-        UPDATE `t_manager_limit_space`
-        SET `f_limit_user_space` = %s, `f_allocated_limit_user_space` = %s,
-            `f_limit_doc_space` = %s, `f_allocated_limit_doc_space` = %s
-        WHERE `f_manager_id` = %s
-        """
-        self.w_db.query(update_sql, -1, all_user_quota, -
-                        1, all_doc_quota, NCT_USER_ADMIN)
 
     def update_t_user_fields(self, user_id, fields):
         """
@@ -3639,41 +3186,6 @@ class UserManage(DBConnector):
         if user_id:
             return user_id['f_department_id']
         return
-
-    def __get_admin_quota_space(self, manager_id):
-        """
-        获取管理员的配额信息
-        """
-        # 获取管理员创建的用户配额
-        from src.modules.department_manage import DepartmentManage
-        manage_user_ids = DepartmentManage().get_supervisory_user_ids(manager_id)
-        total_quota = 0
-        used_quota = 0
-
-        user_spaceQuota, user_usedSize = self.get_user_space_quota(
-            manage_user_ids)
-        total_quota += user_spaceQuota
-        used_quota += user_usedSize
-
-        # 获取管理员创建的归档库/文档库配额
-        cdoc_spaceQuota, cdoc_usedSize = self.get_custom_doc_space_quota(
-            manager_id)
-        adoc_spaceQuota, adoc_usedSize = self.get_archive_doc_space_quota(
-            manager_id)
-        ddoc_spaceQuota, ddoc_usedSize = self.get_department_doc_space_quota(
-            manager_id)
-        kdoc_spaceQuota, kdoc_usedSize = self.get_knowledge_doc_space_quota(
-            manager_id)
-
-        total_quota += cdoc_spaceQuota
-        used_quota += cdoc_usedSize
-        total_quota += adoc_spaceQuota
-        used_quota += adoc_usedSize
-        total_quota += ddoc_spaceQuota
-        used_quota += ddoc_usedSize
-        total_quota += kdoc_spaceQuota
-        used_quota += kdoc_usedSize
-        return total_quota, used_quota
 
     def get_online_user_count(self):
         """

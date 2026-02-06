@@ -65,20 +65,9 @@ declare namespace Console {
             allRoles: Array<any>;
 
             /**
-             * 当前登录用户限额信息
-             */
-            limitSpaceInfo: SpaceInfo;
-
-            /**
              * 当前登录用户角色信息
              */
             roles: ReadonlyArray<any>;
-        }
-
-        // 当前登录用户限额信息
-        interface SpaceInfo {
-            limitDocSpace: number;
-            limitUserSpace: number;
         }
     }
 }

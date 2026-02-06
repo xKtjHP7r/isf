@@ -39,11 +39,6 @@ interface Validate {
     remark: ValidateState;
 
     /**
-     * 配额空间错误提示
-     */
-    quotaSpace: ValidateState;
-
-    /**
      * 手机号错误提示
      */
     telNum: ValidateState;
@@ -151,7 +146,6 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
             email: '',
             telNum: '',
             idCard: '',
-            usedSize: '',
             expireTime: null,
         },
         csfOptions: [],
@@ -163,7 +157,6 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
             remark: ValidateState.Normal,
             email: ValidateState.Normal,
             telNum: ValidateState.Normal,
-            quotaSpace: ValidateState.Normal,
         },
         managerInfo: [],
         isIDNumEdit: false,
@@ -186,7 +179,7 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
             this.isSecurit = session.get('isf.userInfo').user.roles.some((role) => [SystemRoleType.Securit].includes(role.id))
 
             const { userInfo, validateState } = this.state;
-            const { expireTime, loginName, displayName, code, managerID, managerDisplayName, position, remark, userType, email, telNumber, idcardNumber, csfLevel, csfLevel2, usedSize } = data.user;
+            const { expireTime, loginName, displayName, code, managerID, managerDisplayName, position, remark, userType, email, telNumber, idcardNumber, csfLevel, csfLevel2 } = data.user;
 
             if (data.id === session.get('isf.userid')) {
                 await Message2.info({ message: __('您无法编辑自身账号。') })
@@ -206,7 +199,6 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
                         idCard: idcardNumber,
                         csfLevel,
                         csfLevel2,
-                        usedSize,
                         expireTime: expireTime === -1 ? -1 : expireTime * 1000 * 1000,
                     },
                     managerInfo: managerID && managerDisplayName ? [{ id: managerID, name: managerDisplayName, type: 'user' }] : [],
@@ -322,7 +314,7 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
     * 检查表单合法性
     */
     private checkForm = (): boolean => {
-        const { displayName, code, position, remark, telNum, quotaSpace, email, idCard } = this.state.userInfo;
+        const { displayName, code, position, remark, telNum, email, idCard } = this.state.userInfo;
         const validateDisplayName = isUserNormalName(trim(displayName));
         const validateCode = isNormalCode(trim(code));
         const validatePosition = isNormalPosition(trim(position));
@@ -531,25 +523,6 @@ export default class EditUserBase extends WebComponent<EditUserProps, EditUserSt
                                 this.setState({
                                     validateState: { ...validateState, displayName: ValidateState.DisplayNameInvalid },
                                 })
-                                break;
-
-                            case ErrorCode.LimitAssignUserSpace:
-                                getUserInfo([userid]).then(function (userInfo) {
-                                    const remainSpace = Math.max(0, userInfo.user.limitSpaceInfo.limitUserSpace - userInfo.user.limitSpaceInfo.allocatedLimitUserSpace);
-                                    if (!remainSpace) {
-                                        Message2.info({
-                                            message: __('当前用户管理剩余可分配空间为${quota}。', {
-                                                quota: formatSize(remainSpace, 2, { minUnit: 'GB' }),
-                                            }),
-                                        })
-                                    } else {
-                                        Message2.info({
-                                            message: __('当前用户管理剩余可分配空间为${quota}，请重新输入。', {
-                                                quota: formatSize(remainSpace, 2, { minUnit: 'GB' }),
-                                            }),
-                                        })
-                                    }
-                                });
                                 break;
 
                             case ErrorCode.NameOccupiedByDoc:

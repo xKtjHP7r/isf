@@ -107,11 +107,6 @@ export default i18n([
         'Expiration:',
     ],
     [
-        '配额空间：',
-        '配額空間：',
-        'Quota:',
-    ],
-    [
         '当前已占用',
         '當前已佔用',
         'Used:',
@@ -156,11 +151,6 @@ export default i18n([
         '手機號只能包含 數字、長度範圍1~20個字元，請重新輸入。',
         'The mobilephone number can only contain numbers; and the length should be between 1~20 characters, please re-enter.',
     ],
-    [
-        '配额空间值为不超过 1000000 的正数，支持小数点后两位，请重新输入。',
-        '配額空間值為不超過 1000000 的正數，支援小數點後兩位，請重新輸入。',
-        'Quota should be a positive number with up to two decimal places, please re-enter.',
-    ],
 
     [
         '永久有效',
@@ -196,16 +186,6 @@ export default i18n([
         '该日期已过期，请重新选择。',
         '該日期已過期，請重新選擇。',
         'The date has expired, please reselect.',
-    ],
-    [
-        '当前用户管理剩余可分配空间为${quota}。',
-        '當前用戶管理剩餘可分配空間為${quota}。',
-        'Remaining space allocated for user is ${quota}.',
-    ],
-    [
-        '当前用户管理剩余可分配空间为${quota}，请重新输入。',
-        '當前用戶管理剩餘可分配空間為${quota}，請重新輸入。',
-        'Remaining space allocated for user is ${quota}, please re-enter.',
     ],
     [
         '该邮箱已被占用。',

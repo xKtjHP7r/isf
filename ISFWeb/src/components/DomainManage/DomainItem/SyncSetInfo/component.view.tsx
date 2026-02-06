@@ -39,11 +39,10 @@ export default class SyncSetInfo extends SyncSetInfoBase {
         const { selection, actionType, domainInfo: { id, name } } = this.props;
         const {
             syncSettingInfo: {
-                periodicSyncStatus, syncObject, syncInterval, syncIntervalPlaceholder, syncIntervalUnit, expireTime, syncTarget, spaceQuota, userStatus, syncMode, csfLevel, csfOptions,
+                periodicSyncStatus, syncObject, syncInterval, syncIntervalPlaceholder, syncIntervalUnit, expireTime, syncTarget, userStatus, syncMode, csfLevel, csfOptions,
             },
             validateStatus: {
                 syncIntervalValidateStatus,
-                spaceQuotaValidateStatus,
             },
             isSyncSettingEditStatus,
             isShowsyncObjectDialog,

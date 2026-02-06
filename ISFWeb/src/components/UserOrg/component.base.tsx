@@ -183,26 +183,6 @@ export default class UserOrgMgnt extends WebComponent<any, UserOrgMgntState> {
     }
 
     /**
-     * 交接工作成功的回调
-     */
-    protected handleWorkHandoverSuccess = (users, includeUserDocLib) => {
-        const { selectedUsers } = this.state
-
-        // 如果是从删除用户跳转至交接工作，回调则显示删除用户；根据是否交接文档库来决定是否需要输入密码删除文档库
-        if (this.isShowPrePosition) {
-            this.changeAction(Action.DelUser)
-            this.setState({
-                selectedUsers: includeUserDocLib ?
-                    selectedUsers.map((item) => ({ ...item, user: { ...item.user, space: 0 } }))
-                    : selectedUsers,
-            })
-        } else {
-            this.changeAction(Action.None)
-            this.userGrid.updateCurrentPage()
-        }
-    }
-
-    /**
      * 新建组织/部门成功
      */
     protected addTreeNode = (depInfo: Core.ShareMgnt.ncTDepartmentInfo, action: Action): void => {
@@ -318,15 +298,6 @@ export default class UserOrgMgnt extends WebComponent<any, UserOrgMgntState> {
     private getErrorMsg = (ex: any): string | undefined => {
         if (ex && ex.error && ex.error.errID) {
             switch (ex.error.errID) {
-                case ErrorCode.ExportFailed:
-                    return __('导出用户空间使用情况报表任务失败')
-
-                case ErrorCode.Exporting:
-                    return __('导出用户空间使用情况报表任务在进行中')
-
-                case ErrorCode.ExportNotExist:
-                    return __('导出用户空间使用情况报表任务不存在')
-
                 case ErrorCode.ExportProcessing:
                     return __('正在处理中，请稍候...')
 
