@@ -58,6 +58,14 @@
                                 "type"
                             ]
                         }
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }

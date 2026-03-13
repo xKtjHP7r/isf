@@ -19,7 +19,7 @@ func loadString(key string) string {
 	return resMap[key]
 }
 
-//nolint:funlen
+//nolint:funlen,dupl
 func initResMap() {
 	switch common.SvcConfig.Lang {
 	case "zh_CN":
@@ -51,6 +51,10 @@ func initResMap() {
 		resMap["IDS_APP_TOKEN_GENERATED_SUCCESS"] = "重新生成应用账户“%s”的token成功"
 		resMap["IDS_SET_CSF_LEVEL_ENUM_SUCCESS"] = "将用户密级从低到高自定义为“%s”成功"
 		resMap["IDS_SET_CSF_LEVEL2_ENUM_SUCCESS"] = "将用户密级2从低到高自定义为“%s”成功"
+		resMap["IDS_DISABLE_EXPIRED_USER"] = "禁用 用户“%s(%s)”成功"
+		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "禁用原因：用户账号过期"
+		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "禁用 用户“%s(%s)”成功"
+		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "禁用原因：用户长时间未登录"
 
 	case "zh_TW":
 		resMap["IDS_GROUP_CREATED_SUCCESS"] = "新建 用戶組 成功"
@@ -81,6 +85,10 @@ func initResMap() {
 		resMap["IDS_APP_TOKEN_GENERATED_SUCCESS"] = "重新生成應用帳戶“%s”的token成功"
 		resMap["IDS_SET_CSF_LEVEL_ENUM_SUCCESS"] = "將用戶密級從低到高自訂為“%s”成功"
 		resMap["IDS_SET_CSF_LEVEL2_ENUM_SUCCESS"] = "將用戶密級2從低到高自訂為“%s”成功"
+		resMap["IDS_DISABLE_EXPIRED_USER"] = "停用 使用者“%s(%s)”成功"
+		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "停用原因：使用者帳戶已過期"
+		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "停用 使用者“%s(%s)”成功"
+		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "停用原因：使用者長時間未登入"
 
 	case "en_US":
 		resMap["IDS_GROUP_CREATED_SUCCESS"] = "create group successfully"
@@ -111,6 +119,10 @@ func initResMap() {
 		resMap["IDS_APP_TOKEN_GENERATED_SUCCESS"] = "The token for application account \"%s\" has been regenerated successfully."
 		resMap["IDS_SET_CSF_LEVEL_ENUM_SUCCESS"] = "Customizing user security levels from lowest to highest \"%s\" successful."
 		resMap["IDS_SET_CSF_LEVEL2_ENUM_SUCCESS"] = "Customizing user security levels 2 from lowest to highest \"%s\" successful."
+		resMap["IDS_DISABLE_EXPIRED_USER"] = "Disable User\"%s(%s)\"Successfully."
+		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "Disable reason:The user account has expired."
+		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "Disable User\"%s(%s)\"Successfully."
+		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "Disable reason:The user has not logged in for a long time."
 
 	default:
 		common.NewLogger().Fatalln("service language not set")

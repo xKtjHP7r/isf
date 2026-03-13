@@ -3,9 +3,8 @@ package logics
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
+	"github.com/stretchr/testify/assert"
 
 	"Authorization/interfaces/mock"
 )

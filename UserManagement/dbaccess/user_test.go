@@ -26,6 +26,10 @@ func newUserDB(ptrDB *sqlx.DB) *user {
 	return &user{
 		db:     ptrDB,
 		logger: common.NewLogger(),
+		lockKeyMap: map[interfaces.DistributedLockType]string{
+			interfaces.UserExpiredDisableLock:  "user_expired_disable_lock",
+			interfaces.UserNotLoginDisableLock: "user_not_login_disable_lock",
+		},
 	}
 }
 
@@ -1242,6 +1246,210 @@ func TestGetAllUserCount(t *testing.T) {
 			out, httpErr := user.GetAllUserCount(ctx)
 			assert.Equal(t, httpErr, nil)
 			assert.Equal(t, out, 1)
+		})
+	})
+}
+
+func TestUserGetLock(t *testing.T) {
+	Convey("GetLockConfig, db is available", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		trace := mocks.NewMockTraceClient(ctrl)
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		common.InitARTrace("test")
+
+		user := newUserDB(db)
+		user.dbTrace = db
+		user.trace = trace
+
+		ctx := context.Background()
+
+		Convey("execute error", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnError(errors.New("unknown"))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			err = user.GetLock(ctx, interfaces.UserExpiredDisableLock, tx)
+			assert.NotEqual(t, err, nil)
+		})
+
+		Convey("success", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"f_value"}).AddRow("1"))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			err = user.GetLock(ctx, interfaces.UserExpiredDisableLock, tx)
+			assert.Equal(t, err, nil)
+		})
+	})
+}
+
+func TestGetExpiredNeedDisableUserInfos(t *testing.T) {
+	Convey("GetExpiredNeedDisableUserInfos, db is available", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		trace := mocks.NewMockTraceClient(ctrl)
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		common.InitARTrace("test")
+
+		user := newUserDB(db)
+		user.dbTrace = db
+		user.trace = trace
+
+		ctx := context.Background()
+
+		Convey("execute error", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnError(errors.New(""))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			_, httpErr := user.GetExpiredNeedDisableUserInfos(ctx, tx)
+			assert.NotEqual(t, httpErr, nil)
+		})
+
+		Convey("success", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"f_user_id", "f_display_name", "f_login_name"}).AddRow(strID, strAsc, strID1))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			userInfos, httpErr := user.GetExpiredNeedDisableUserInfos(ctx, tx)
+			assert.Equal(t, httpErr, nil)
+			assert.Equal(t, len(userInfos), 1)
+			assert.Equal(t, userInfos[0].ID, strID)
+			assert.Equal(t, userInfos[0].Name, strAsc)
+			assert.Equal(t, userInfos[0].Account, strID1)
+		})
+	})
+}
+
+func TestGetNotLoginNeedDisableUserInfos(t *testing.T) {
+	Convey("GetNotLoginNeedDisableUserInfos, db is available", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		trace := mocks.NewMockTraceClient(ctrl)
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		common.InitARTrace("test")
+
+		user := newUserDB(db)
+		user.dbTrace = db
+		user.trace = trace
+
+		ctx := context.Background()
+
+		Convey("execute error", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnError(errors.New(""))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			_, httpErr := user.GetNotLoginNeedDisableUserInfos(ctx, 0, tx)
+			assert.NotEqual(t, httpErr, nil)
+		})
+
+		Convey("success", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectQuery("").WillReturnRows(sqlmock.NewRows([]string{"f_user_id", "f_display_name", "f_login_name"}).AddRow(strID, strAsc, strID1))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			userInfos, httpErr := user.GetNotLoginNeedDisableUserInfos(ctx, 0, tx)
+			assert.Equal(t, httpErr, nil)
+			assert.Equal(t, len(userInfos), 1)
+			assert.Equal(t, userInfos[0].ID, strID)
+			assert.Equal(t, userInfos[0].Name, strAsc)
+			assert.Equal(t, userInfos[0].Account, strID1)
+		})
+	})
+}
+
+func TestSetAutoDisableStatus(t *testing.T) {
+	Convey("SetAutoDisableStatus, db is available", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		trace := mocks.NewMockTraceClient(ctrl)
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		common.InitARTrace("test")
+
+		user := newUserDB(db)
+		user.dbTrace = db
+		user.trace = trace
+
+		ctx := context.Background()
+
+		Convey("execute error", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectExec("").WillReturnError(errors.New(""))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			err = user.SetAutoDisableStatus(ctx, []string{strID}, interfaces.ExpiredDisabled, tx)
+			assert.NotEqual(t, err, nil)
+		})
+
+		Convey("success", func() {
+			trace.EXPECT().SetClientSpanName(gomock.Any()).AnyTimes()
+			trace.EXPECT().AddClientTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+			trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+			mock.ExpectBegin()
+			mock.ExpectExec("").WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectCommit()
+			tx, err := db.Begin()
+			assert.Equal(t, err, nil)
+
+			err = user.SetAutoDisableStatus(ctx, []string{strID}, interfaces.ExpiredDisabled, tx)
+			assert.Equal(t, err, nil)
 		})
 	})
 }

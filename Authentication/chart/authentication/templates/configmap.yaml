@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-yaml
+  namespace: {{ .Values.namespace }}
+data:
+  authentication.yaml: |
+
+    # 配置文件路径/sysvol/conf/authentication.yaml
+    lang: {{ .Values.service.language }} #系统语言
+
+    # Authentication服务
+    svc_host: 0.0.0.0
+    svc_public_port: {{ .Values.service.port }}
+    svc_private_port: {{ add1 .Values.service.port }}
+
+    # 数据库
+    max_open_conns: {{ .Values.depServices.rds.maxConnections }}
+    timeout: {{ .Values.depServices.rds.timeout }}
+    read_timeout: {{ .Values.depServices.rds.readTimeout }}
+    write_timeout: {{ .Values.depServices.rds.writeTimeout }}
+    system_id: {{ .Values.depServices.rds.system_id | quote }}
+
+    #eacp
+    eacp_private_host: {{ .Values.depServices.eacp.privateHttpHost | quote }}
+    eacp_private_port: {{ .Values.depServices.eacp.privateHttpPort }}
+
+    #user-management
+    user_management_private_host: {{ index .Values "depServices" "user-management" "privateHost" | quote }}
+    user_management_private_port: {{ index .Values "depServices" "user-management" "privatePort" }}
+
+    #授权服务
+    oauth_public_host: {{ .Values.depServices.hydra.publicHost | quote }}
+    oauth_public_port: {{ .Values.depServices.hydra.publicPort }}
+    oauth_admin_host: {{ .Values.depServices.hydra.administrativeHost | quote }}
+    oauth_admin_port: {{ .Values.depServices.hydra.administrativePort }}
+
+    #sharemgnt
+    sharemgnt_host: {{ .Values.depServices.sharemgnt.host | quote }}
+    sharemgnt_port: {{ .Values.depServices.sharemgnt.port }}
+
+    # SSL证书
+    ssl_on: {{ .Values.service.sslOn }}
+    cert_file: {{ .Values.service.certFile }}
+    key_file: {{ .Values.service.keyFile }}
+
+    # 系统业务时间
+    business_time_offset: {{ .Values.service.businessTimeOffset }}
+
+    # flow 清理时间
+    flow_expired_time: {{ .Values.service.flowExpiredTime }}
+    flow_clean_time: {{ .Values.service.flowCleanTime }}
+
+    # 日志等级
+    log_level: {{ .Values.service.logLevel }}
+
+    #redis服务
+    redis:
+      connectType: {{.Values.depServices.redis.connectType | quote }}
+      enableSSL: {{.Values.depServices.redis.enableSSL }}
+      connectInfo:
+        host: {{.Values.depServices.redis.connectInfo.host | quote }}
+        port: {{.Values.depServices.redis.connectInfo.port }}
+        masterHost: {{.Values.depServices.redis.connectInfo.masterHost | quote }}
+        masterPort: {{.Values.depServices.redis.connectInfo.masterPort }}
+        slaveHost: {{.Values.depServices.redis.connectInfo.slaveHost | quote }}
+        slavePort: {{.Values.depServices.redis.connectInfo.slavePort }}
+        sentinelHost: {{.Values.depServices.redis.connectInfo.sentinelHost | quote }}
+        sentinelPort: {{.Values.depServices.redis.connectInfo.sentinelPort }}
+        masterGroupName: {{.Values.depServices.redis.connectInfo.masterGroupName | quote }}
+      secretName: {{.Values.depServices.redis.secretName }}
+      caName: {{.Values.depServices.redis.caName }}
+      certName: {{.Values.depServices.redis.certName }}
+      keyName: {{.Values.depServices.redis.keyName }}
+
+  mq_config.yaml: |
+    {{- toYaml .Values.depServices.mq | nindent 4 }}

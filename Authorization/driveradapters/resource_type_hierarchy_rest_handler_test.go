@@ -13,10 +13,10 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"go.uber.org/mock/gomock"
 
-	gerrors "devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/go-lib/error"
+	gerrors "github.com/kweaver-ai/go-lib/error"
 
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces/mock"
+	"Authorization/interfaces"
+	"Authorization/interfaces/mock"
 )
 
 //nolint:funlen

@@ -4,6 +4,7 @@ package logics
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
@@ -38,6 +39,17 @@ func newPolicy(db interfaces.DBPolicy, userMgnt interfaces.DrivenUserMgnt, role 
 	}
 }
 
+func noCondRules(allowOps, denyOps []interfaces.PolicyOperationItem) interfaces.PolicyRules {
+	var rules interfaces.PolicyRules
+	if allowOps != nil {
+		rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowOps}}
+	}
+	if denyOps != nil {
+		rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyOps}}
+	}
+	return rules
+}
+
 func TestPolicyGetPagination(t *testing.T) {
 	Convey("获取策略分页接口, 请求接口异常情况", t, func() {
 		ctrl := gomock.NewController(t)
@@ -61,7 +73,7 @@ func TestPolicyGetPagination(t *testing.T) {
 		params := interfaces.PolicyPagination{
 			ResourceID:   resourceID,
 			ResourceType: resourceTypeDoc,
-			Offset:       1,
+			Offset:       0,
 			Limit:        10,
 		}
 		roleTypes := []interfaces.SystemRoleType{}
@@ -97,7 +109,7 @@ func TestPolicyGetPagination(t *testing.T) {
 		Convey("超级管理员调用，获取策略接口出错", func() {
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(0, nil, testErr)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(nil, testErr)
 			_, _, err := policy.GetPagination(ctx, &visitor, params)
 			assert.Equal(t, err, testErr)
 		})
@@ -105,7 +117,7 @@ func TestPolicyGetPagination(t *testing.T) {
 		Convey("超级管理员调用，获取策略接口正常，结果无策略", func() {
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(0, nil, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(nil, nil)
 			_, policies, err := policy.GetPagination(ctx, &visitor, params)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, err, nil)
@@ -114,7 +126,7 @@ func TestPolicyGetPagination(t *testing.T) {
 		Convey("系统管理员调用，获取策略接口正常，结果无策略", func() {
 			roleTypes = []interfaces.SystemRoleType{interfaces.SystemAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(0, nil, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(nil, nil)
 			_, policies, err := policy.GetPagination(ctx, &visitor, params)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, err, nil)
@@ -123,7 +135,7 @@ func TestPolicyGetPagination(t *testing.T) {
 		Convey("安全管理员调用，获取策略接口正常，结果无策略", func() {
 			roleTypes = []interfaces.SystemRoleType{interfaces.SecurityAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(0, nil, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(nil, nil)
 			_, policies, err := policy.GetPagination(ctx, &visitor, params)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, err, nil)
@@ -135,18 +147,21 @@ func TestPolicyGetPagination(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorDepartment,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID:   "1",
 							Name: "1",
 						},
 					},
-				},
+					nil,
+				),
 			},
 		}
 
 		Convey("获取策略接口正常，结果有策略, 获取资源类型出错", func() {
+			paramsTmp := params
+			paramsTmp.Offset = 0
 			resourceTypeInfoMap := map[string]interfaces.ResourceType{
 				resourceTypeDoc: {
 					ID:   resourceTypeDoc,
@@ -155,13 +170,15 @@ func TestPolicyGetPagination(t *testing.T) {
 			}
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(policies, nil)
 			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, testErr)
-			_, _, err := policy.GetPagination(ctx, &visitor, params)
+			_, _, err := policy.GetPagination(ctx, &visitor, paramsTmp)
 			assert.Equal(t, err, testErr)
 		})
 
 		Convey("获取策略接口正常，结果有策略, 获取部门父部门信息出错", func() {
+			paramsTmp := params
+			paramsTmp.Offset = 0
 			resourceTypeInfoMap := map[string]interfaces.ResourceType{
 				resourceTypeDoc: {
 					ID:   resourceTypeDoc,
@@ -170,14 +187,16 @@ func TestPolicyGetPagination(t *testing.T) {
 			}
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(policies, nil)
 			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, nil)
 			userMgnt.EXPECT().GetParentDepartmentsByDepartmentID(gomock.Any(), gomock.Any()).Return(nil, testErr)
-			_, _, err := policy.GetPagination(ctx, &visitor, params)
+			_, _, err := policy.GetPagination(ctx, &visitor, paramsTmp)
 			assert.Equal(t, err, testErr)
 		})
 
 		Convey("获取策略接口正常，结果有策略, 获取用户父部门信息出错", func() {
+			paramsTmp := params
+			paramsTmp.Offset = 0
 			resourceTypeInfoMap := map[string]interfaces.ResourceType{
 				resourceTypeDoc: {
 					ID:   resourceTypeDoc,
@@ -190,22 +209,23 @@ func TestPolicyGetPagination(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{
 								ID:   "1",
 								Name: "1",
 							},
 						},
-					},
+						nil,
+					),
 				},
 			}
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(policies, nil)
 			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(gomock.Any(), gomock.Any()).Return(nil, testErr)
-			_, _, err := policy.GetPagination(ctx, &visitor, params)
+			_, _, err := policy.GetPagination(ctx, &visitor, paramsTmp)
 			assert.Equal(t, err, testErr)
 		})
 	})
@@ -235,7 +255,7 @@ func TestPolicyGetPagination1(t *testing.T) {
 		params := interfaces.PolicyPagination{
 			ResourceID:   resourceID,
 			ResourceType: resourceTypeDoc,
-			Offset:       1,
+			Offset:       0,
 			Limit:        10,
 		}
 		roleTypes := []interfaces.SystemRoleType{interfaces.SuperAdmin}
@@ -245,8 +265,8 @@ func TestPolicyGetPagination1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "delete",
 						},
@@ -254,15 +274,17 @@ func TestPolicyGetPagination1(t *testing.T) {
 							ID: "display",
 						},
 					},
-				},
+					nil,
+				),
 			},
 			{
 				ResourceType: resourceTypeDoc,
 				ResourceID:   resourceID,
 				AccessorID:   accessorID2,
 				AccessorType: interfaces.AccessorDepartment,
-				Operation: interfaces.PolicyOperation{
-					Deny: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					nil,
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "display",
 						},
@@ -273,7 +295,7 @@ func TestPolicyGetPagination1(t *testing.T) {
 							ID: "create",
 						},
 					},
-				},
+				),
 			},
 		}
 		resourceTypeInfoMap := map[string]interfaces.ResourceType{
@@ -347,7 +369,7 @@ func TestPolicyGetPagination1(t *testing.T) {
 		userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).AnyTimes().Return(roleTypes, nil)
 		userMgnt.EXPECT().GetParentDepartmentsByDepartmentID(gomock.Any(), gomock.Any()).AnyTimes().Return(dep, nil)
 		userMgnt.EXPECT().BatchGetUserInfoByID(gomock.Any(), gomock.Any()).Return(batchGetUserInfoByID, nil)
-		tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(2, policies, nil)
+		tmpDB.EXPECT().GetPagination(gomock.Any(), gomock.Any()).Return(policies, nil)
 		Convey("超级管理员调用接口, 检查用户来自，检查部门的来自，检查操作顺序", func() {
 			resourceType.EXPECT().GetByIDsInternal(gomock.Any(), gomock.Any()).Return(resourceTypeInfoMap, nil)
 			count, policies, err := policy.GetPagination(ctx, &visitor, params)
@@ -358,21 +380,21 @@ func TestPolicyGetPagination1(t *testing.T) {
 			assert.Equal(t, policies[0].ResourceID, resourceID)
 			assert.Equal(t, policies[0].AccessorID, accessorID)
 			assert.Equal(t, policies[0].AccessorType, interfaces.AccessorUser)
-			assert.Equal(t, policies[0].Operation.Allow[0].ID, "display")
-			assert.Equal(t, policies[0].Operation.Allow[0].Name, "显示")
-			assert.Equal(t, policies[0].Operation.Allow[1].ID, "delete")
-			assert.Equal(t, policies[0].Operation.Allow[1].Name, "删除")
+			assert.Equal(t, policies[0].Rules.Allow[0].Operations[0].ID, "display")
+			assert.Equal(t, policies[0].Rules.Allow[0].Operations[0].Name, "显示")
+			assert.Equal(t, policies[0].Rules.Allow[0].Operations[1].ID, "delete")
+			assert.Equal(t, policies[0].Rules.Allow[0].Operations[1].Name, "删除")
 			assert.Equal(t, policies[0].ParentDeps, batchGetUserInfoByID[accessorID].ParentDeps)
 			assert.Equal(t, policies[1].ResourceType, resourceTypeDoc)
 			assert.Equal(t, policies[1].ResourceID, resourceID)
 			assert.Equal(t, policies[1].AccessorID, accessorID2)
 			assert.Equal(t, policies[1].AccessorType, interfaces.AccessorDepartment)
-			assert.Equal(t, policies[1].Operation.Deny[0].ID, "display")
-			assert.Equal(t, policies[1].Operation.Deny[0].Name, "显示")
-			assert.Equal(t, policies[1].Operation.Deny[1].ID, "create")
-			assert.Equal(t, policies[1].Operation.Deny[1].Name, "新建")
-			assert.Equal(t, policies[1].Operation.Deny[2].ID, "delete")
-			assert.Equal(t, policies[1].Operation.Deny[2].Name, "删除")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[0].ID, "display")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[0].Name, "显示")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[1].ID, "create")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[1].Name, "新建")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[2].ID, "delete")
+			assert.Equal(t, policies[1].Rules.Deny[0].Operations[2].Name, "删除")
 			assert.Equal(t, policies[1].ParentDeps, [][]interfaces.Department{dep})
 		})
 	})
@@ -390,7 +412,14 @@ func TestPolicyDelete(t *testing.T) {
 		resourceTypeHierarchy := mock.NewMockLogicsResourceTypeHierarchy(ctrl)
 		policyCalc := mock.NewMockLogicsPolicyCalc(ctrl)
 		policy := newPolicy(tmpDB, userMgnt, role, resourceType, policyCalc, resourceTypeHierarchy)
-
+		dbPool, txMock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+		defer func() {
+			if closeErr := dbPool.Close(); closeErr != nil {
+				assert.Equal(t, 1, 1)
+			}
+		}()
+		policy.pool = dbPool
 		testErr := errors.New("some error")
 		var ctx context.Context
 		ctx = context.Background()
@@ -447,7 +476,9 @@ func TestPolicyDelete(t *testing.T) {
 			tmpDB.EXPECT().GetByPolicyIDs(gomock.Any(), gomock.Any()).Return(policyMap, nil)
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().Delete(gomock.Any(), []string{"1"}).Return(testErr)
+			tmpDB.EXPECT().Delete(gomock.Any(), []string{"1"}, gomock.Any()).Return(testErr)
+			txMock.ExpectBegin()
+			txMock.ExpectRollback()
 			err := policy.Delete(ctx, &visitor, []string{policyID})
 			assert.Equal(t, err, testErr)
 		})
@@ -456,7 +487,9 @@ func TestPolicyDelete(t *testing.T) {
 			tmpDB.EXPECT().GetByPolicyIDs(gomock.Any(), gomock.Any()).Return(policyMap, nil)
 			roleTypes = []interfaces.SystemRoleType{interfaces.SuperAdmin}
 			userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).Return(roleTypes, nil)
-			tmpDB.EXPECT().Delete(gomock.Any(), []string{"1"}).Return(nil)
+			tmpDB.EXPECT().Delete(gomock.Any(), []string{"1"}, gomock.Any()).Return(nil)
+			txMock.ExpectBegin()
+			txMock.ExpectCommit()
 			err := policy.Delete(ctx, &visitor, []string{policyID})
 			assert.Equal(t, err, nil)
 		})
@@ -554,13 +587,14 @@ func TestPolicyUpdate1(t *testing.T) {
 			ResourceID:   resourceID,
 			AccessorID:   accessorID,
 			AccessorType: interfaces.AccessorUser,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{
 						ID: "create",
 					},
 				},
-			},
+				nil,
+			),
 			EndTime: -1,
 		}
 
@@ -592,10 +626,10 @@ func TestPolicyUpdate1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{},
-					Deny:  []interfaces.PolicyOperationItem{},
-				},
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{},
+					[]interfaces.PolicyOperationItem{},
+				),
 				EndTime: -1,
 			}
 			err := policy.Update(ctx, &visitor, []interfaces.PolicyInfo{policyInfoEmpty})
@@ -609,14 +643,14 @@ func TestPolicyUpdate1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "delete",
 						},
 					},
-					Deny: []interfaces.PolicyOperationItem{},
-				},
+					[]interfaces.PolicyOperationItem{},
+				),
 				EndTime: -1,
 			}
 			err := policy.Update(ctx, &visitor, []interfaces.PolicyInfo{policyInfoEmpty})
@@ -630,14 +664,14 @@ func TestPolicyUpdate1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "delete",
 						},
 					},
-					Deny: []interfaces.PolicyOperationItem{},
-				},
+					[]interfaces.PolicyOperationItem{},
+				),
 				EndTime: -1,
 			}
 			err := policy.Update(ctx, &visitor, []interfaces.PolicyInfo{policyInfoEmpty})
@@ -679,13 +713,14 @@ func TestPolicyUpdate2(t *testing.T) {
 			ResourceID:   resourceID,
 			AccessorID:   accessorID,
 			AccessorType: interfaces.AccessorUser,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{
 						ID: "create",
 					},
 				},
-			},
+				nil,
+			),
 			EndTime: -1,
 		}
 
@@ -716,14 +751,14 @@ func TestPolicyUpdate2(t *testing.T) {
 			ResourceID:   resourceID,
 			AccessorID:   accessorID,
 			AccessorType: interfaces.AccessorUser,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{
 						ID: "display",
 					},
 				},
-				Deny: []interfaces.PolicyOperationItem{},
-			},
+				[]interfaces.PolicyOperationItem{},
+			),
 			EndTime: -1,
 		}
 
@@ -827,13 +862,14 @@ func TestPolicyCreate1(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "delete",
 						},
 					},
-				},
+					nil,
+				),
 			}
 			_, err := policy.Create(ctx, &visitor, []interfaces.PolicyInfo{policyInfo})
 			assert.NotEqual(t, err, nil)
@@ -846,13 +882,14 @@ func TestPolicyCreate1(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "display",
 						},
 					},
-				},
+					nil,
+				),
 			}
 			_, err := policy.Create(ctx, &visitor, []interfaces.PolicyInfo{policyInfo, policyInfo})
 			assert.NotEqual(t, err, nil)
@@ -865,13 +902,14 @@ func TestPolicyCreate1(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorRole,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{
 							ID: "display",
 						},
 					},
-				},
+					nil,
+				),
 			}
 			roleInfoMap := make(map[string]interfaces.RoleInfo)
 			role.EXPECT().GetRolesByIDs(gomock.Any(), gomock.Any()).Return(roleInfoMap, nil)
@@ -931,13 +969,14 @@ func TestPolicyCreate2(t *testing.T) {
 			AccessorID:   accessorID,
 			AccessorType: interfaces.AccessorRole,
 			EndTime:      -1,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{
 						ID: "display",
 					},
 				},
-			},
+				nil,
+			),
 		}
 		roleInfoMap := make(map[string]interfaces.RoleInfo)
 		roleInfoMap[accessorID] = interfaces.RoleInfo{
@@ -1025,10 +1064,10 @@ func TestCheckPolicyOperationValid(t *testing.T) {
 
 		Convey("当允许和拒绝都为空时，应该返回错误", func() {
 			policyInfo := &interfaces.PolicyInfo{
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{},
-					Deny:  []interfaces.PolicyOperationItem{},
-				},
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{},
+					[]interfaces.PolicyOperationItem{},
+				),
 			}
 			err := policy.checkPolicyOperationValid(operationIDMap, policyInfo)
 			assert.NotEqual(t, err, nil)
@@ -1036,24 +1075,24 @@ func TestCheckPolicyOperationValid(t *testing.T) {
 
 		Convey("当允许操作不在定义的操作中时，应该返回错误", func() {
 			policyInfo := &interfaces.PolicyInfo{
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "invalid-operation"},
 					},
-					Deny: []interfaces.PolicyOperationItem{},
-				},
+					[]interfaces.PolicyOperationItem{},
+				),
 			}
 			err := policy.checkPolicyOperationValid(operationIDMap, policyInfo)
 			assert.NotEqual(t, err, nil)
 		})
 		Convey("当拒绝操作不在定义的操作中时，应该返回错误", func() {
 			policyInfo := &interfaces.PolicyInfo{
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{},
-					Deny: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{},
+					[]interfaces.PolicyOperationItem{
 						{ID: "invalid-operation"},
 					},
-				},
+				),
 			}
 			err := policy.checkPolicyOperationValid(operationIDMap, policyInfo)
 			assert.NotEqual(t, err, nil)
@@ -1061,14 +1100,14 @@ func TestCheckPolicyOperationValid(t *testing.T) {
 
 		Convey("当允许和拒绝包含相同操作时，应该返回错误", func() {
 			policyInfo := &interfaces.PolicyInfo{
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-					Deny: []interfaces.PolicyOperationItem{
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+				),
 			}
 			err := policy.checkPolicyOperationValid(operationIDMap, policyInfo)
 			assert.NotEqual(t, err, nil)
@@ -1076,17 +1115,130 @@ func TestCheckPolicyOperationValid(t *testing.T) {
 
 		Convey("当操作都合法时，应该返回nil", func() {
 			policyInfo := &interfaces.PolicyInfo{
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-					Deny: []interfaces.PolicyOperationItem{
+					[]interfaces.PolicyOperationItem{
 						{ID: "write"},
 					},
-				},
+				),
 			}
 			err := policy.checkPolicyOperationValid(operationIDMap, policyInfo)
 			assert.Equal(t, err, nil)
+		})
+	})
+}
+
+// TestIsConditionEmpty 测试判断条件是否为空
+func TestIsConditionEmpty(t *testing.T) {
+	Convey("isConditionEmpty", t, func() {
+		Convey("nil 应返回 true", func() {
+			assert.True(t, isConditionEmpty(nil))
+		})
+		Convey("空 map[string]any 应返回 true", func() {
+			assert.True(t, isConditionEmpty(map[string]any{}))
+		})
+		Convey("非空 map 应返回 false", func() {
+			assert.False(t, isConditionEmpty(map[string]any{"key": "val"}))
+		})
+		Convey("其他类型应返回 false", func() {
+			assert.False(t, isConditionEmpty(""))
+			assert.False(t, isConditionEmpty(0))
+			assert.False(t, isConditionEmpty(false))
+			assert.False(t, isConditionEmpty([]string{}))
+		})
+	})
+}
+
+// TestGetPolicyNoConditionOperations 测试获取策略中无条件的允许和拒绝
+func TestGetPolicyNoConditionOperations(t *testing.T) {
+	Convey("getPolicyNoConditionOperations", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
+
+		Convey("无任何规则时返回 nil allow 和 nil deny", func() {
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: interfaces.PolicyRules{},
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Nil(t, allow)
+			assert.Nil(t, deny)
+		})
+
+		Convey("仅有无条件 allow 时返回对应操作", func() {
+			allowOps := []interfaces.PolicyOperationItem{
+				{ID: "read"},
+				{ID: "write"},
+			}
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: noCondRules(allowOps, nil),
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Equal(t, len(allow), 2)
+			assert.Equal(t, allow[0].ID, "read")
+			assert.Equal(t, allow[1].ID, "write")
+			assert.Nil(t, deny)
+		})
+
+		Convey("仅有无条件 deny 时返回对应操作", func() {
+			denyOps := []interfaces.PolicyOperationItem{
+				{ID: "delete"},
+			}
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: noCondRules(nil, denyOps),
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Nil(t, allow)
+			assert.Equal(t, len(deny), 1)
+			assert.Equal(t, deny[0].ID, "delete")
+		})
+
+		Convey("同时有无条件 allow 和 deny 时都返回", func() {
+			allowOps := []interfaces.PolicyOperationItem{{ID: "read"}}
+			denyOps := []interfaces.PolicyOperationItem{{ID: "delete"}}
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: noCondRules(allowOps, denyOps),
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Equal(t, len(allow), 1)
+			assert.Equal(t, allow[0].ID, "read")
+			assert.Equal(t, len(deny), 1)
+			assert.Equal(t, deny[0].ID, "delete")
+		})
+
+		Convey("先有条件项后有无条件项时返回第一个无条件项", func() {
+			uncondAllow := []interfaces.PolicyOperationItem{{ID: "write"}}
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"k": "v"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+						{Condition: nil, Operations: uncondAllow},
+					},
+					Deny: []interfaces.PolicyRuleItem{},
+				},
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Equal(t, len(allow), 1)
+			assert.Equal(t, allow[0].ID, "write")
+			assert.Nil(t, deny)
+		})
+
+		Convey("仅有条件项时返回 nil", func() {
+			policyInfo := &interfaces.PolicyInfo{
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"key": "val"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+					},
+					Deny: []interfaces.PolicyRuleItem{
+						{Condition: "non-empty", Operations: []interfaces.PolicyOperationItem{{ID: "delete"}}},
+					},
+				},
+			}
+			allow, deny := policy.getPolicyNoConditionOperations(policyInfo)
+			assert.Nil(t, allow)
+			assert.Nil(t, deny)
 		})
 	})
 }
@@ -1101,29 +1253,29 @@ func TestCmpPolicy(t *testing.T) {
 
 		oldPolicy := &interfaces.PolicyInfo{
 			EndTime: 1000,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{ID: "read"},
 					{ID: "write"},
 				},
-				Deny: []interfaces.PolicyOperationItem{
+				[]interfaces.PolicyOperationItem{
 					{ID: "delete"},
 				},
-			},
+			),
 		}
 
 		Convey("当过期时间不同时，应该返回false", func() {
 			newPolicy := &interfaces.PolicyInfo{
 				EndTime: 2000,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 						{ID: "write"},
 					},
-					Deny: []interfaces.PolicyOperationItem{
+					[]interfaces.PolicyOperationItem{
 						{ID: "delete"},
 					},
-				},
+				),
 			}
 			result := policy.cmpPolicy(oldPolicy, newPolicy)
 			assert.False(t, result)
@@ -1132,11 +1284,12 @@ func TestCmpPolicy(t *testing.T) {
 		Convey("当新策略的操作是旧策略的子集时，应该返回true", func() {
 			newPolicy := &interfaces.PolicyInfo{
 				EndTime: 1000,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 			result := policy.cmpPolicy(oldPolicy, newPolicy)
 			assert.True(t, result)
@@ -1145,13 +1298,14 @@ func TestCmpPolicy(t *testing.T) {
 		Convey("当新策略包含旧策略没有的操作时，应该返回false", func() {
 			newPolicy := &interfaces.PolicyInfo{
 				EndTime: 1000,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 						{ID: "write"},
 						{ID: "new-operation"},
 					},
-				},
+					nil,
+				),
 			}
 			result := policy.cmpPolicy(oldPolicy, newPolicy)
 			assert.False(t, result)
@@ -1160,23 +1314,255 @@ func TestCmpPolicy(t *testing.T) {
 		Convey("当策略完全相同时，应该返回true", func() {
 			newPolicy := &interfaces.PolicyInfo{
 				EndTime: 1000,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 						{ID: "write"},
 					},
-					Deny: []interfaces.PolicyOperationItem{
+					[]interfaces.PolicyOperationItem{
 						{ID: "delete"},
 					},
-				},
+				),
 			}
 			result := policy.cmpPolicy(oldPolicy, newPolicy)
 			assert.True(t, result)
+		})
+
+		Convey("当操作相同但义务不同时，应该返回false", func() {
+			// 旧策略：read 带义务 A
+			oldWithObligation := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
+						{
+							ID: "read",
+							Obligations: []interfaces.PolicyObligationItem{
+								{TypeID: "oblig-1", ID: "id-1", Value: "v1"},
+							},
+						},
+						{ID: "write"},
+					},
+					[]interfaces.PolicyOperationItem{{ID: "delete"}},
+				),
+			}
+			// 新策略：操作相同，但 read 的义务改为 B
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
+						{
+							ID: "read",
+							Obligations: []interfaces.PolicyObligationItem{
+								{TypeID: "oblig-1", ID: "id-1", Value: "v2"},
+							},
+						},
+						{ID: "write"},
+					},
+					[]interfaces.PolicyOperationItem{{ID: "delete"}},
+				),
+			}
+			result := policy.cmpPolicy(oldWithObligation, newPolicy)
+			assert.False(t, result)
+		})
+	})
+}
+
+// TestCmpPolicyWithCondition 测试带条件的策略比较
+func TestCmpPolicyWithCondition(t *testing.T) {
+	Convey("cmpPolicyWithCondition", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		policy := newPolicy(nil, nil, nil, nil, nil, nil)
+
+		oldPolicy := &interfaces.PolicyInfo{
+			EndTime: 1000,
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
+					{ID: "read"},
+					{ID: "write"},
+				},
+				[]interfaces.PolicyOperationItem{{ID: "delete"}},
+			),
+		}
+
+		Convey("过期时间不同时应返回 false", func() {
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 2000,
+				Rules:   oldPolicy.Rules,
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldPolicy, newPolicy))
+		})
+
+		Convey("仅无条件且新是旧子集、义务相同时应返回 true", func() {
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules:   noCondRules([]interfaces.PolicyOperationItem{{ID: "read"}}, nil),
+			}
+			assert.True(t, policy.cmpPolicyWithCondition(oldPolicy, newPolicy))
+		})
+
+		Convey("仅无条件但新包含旧没有的操作时应返回 false", func() {
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
+						{ID: "read"},
+						{ID: "write"},
+						{ID: "extra"},
+					},
+					nil,
+				),
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldPolicy, newPolicy))
+		})
+
+		Convey("仅无条件、操作相同但义务不同时应返回 false", func() {
+			oldWithObl := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
+						{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o1"}}},
+						{ID: "write"},
+					},
+					[]interfaces.PolicyOperationItem{{ID: "delete"}},
+				),
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
+						{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o2"}}},
+						{ID: "write"},
+					},
+					[]interfaces.PolicyOperationItem{{ID: "delete"}},
+				),
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldWithObl, newPolicy))
+		})
+
+		Convey("完全相同时应返回 true", func() {
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules:   oldPolicy.Rules,
+			}
+			assert.True(t, policy.cmpPolicyWithCondition(oldPolicy, newPolicy))
+		})
+
+		Convey("带条件规则，条件相同且新操作是旧子集、义务相同时应返回 true", func() {
+			oldWithCond := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "read"}, {ID: "write"}}},
+						{
+							Condition:  map[string]any{"ip": "1.1.1.1"},
+							Operations: []interfaces.PolicyOperationItem{{ID: "preview"}, {ID: "download"}},
+						},
+					},
+					Deny: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "delete"}}},
+					},
+				},
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+						{
+							Condition:  map[string]any{"ip": "1.1.1.1"},
+							Operations: []interfaces.PolicyOperationItem{{ID: "preview"}},
+						},
+					},
+					Deny: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "delete"}}},
+					},
+				},
+			}
+			assert.True(t, policy.cmpPolicyWithCondition(oldWithCond, newPolicy))
+		})
+
+		Convey("带条件规则，新条件在旧中不存在时应返回 false", func() {
+			oldWithCond := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"a": "1"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+					},
+					Deny: nil,
+				},
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"b": "2"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+					},
+					Deny: nil,
+				},
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldWithCond, newPolicy))
+		})
+
+		Convey("带条件规则，条件相同但新操作不在旧中时应返回 false", func() {
+			oldWithCond := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"k": "v"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}},
+					},
+					Deny: nil,
+				},
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: map[string]any{"k": "v"}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}, {ID: "write"}}},
+					},
+					Deny: nil,
+				},
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldWithCond, newPolicy))
+		})
+
+		Convey("带条件规则，条件相同、操作相同但义务不同时应返回 false", func() {
+			oldWithCond := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{
+							Condition: map[string]any{"k": "v"},
+							Operations: []interfaces.PolicyOperationItem{
+								{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o1"}}},
+							},
+						},
+					},
+					Deny: nil,
+				},
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{
+							Condition: map[string]any{"k": "v"},
+							Operations: []interfaces.PolicyOperationItem{
+								{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o2"}}},
+							},
+						},
+					},
+					Deny: nil,
+				},
+			}
+			assert.False(t, policy.cmpPolicyWithCondition(oldWithCond, newPolicy))
 		})
 	})
 }
 
 // TestMergeNewPolicy 测试合并策略
+//
+//nolint:gocritic
 func TestMergeNewPolicy(t *testing.T) {
 	Convey("测试合并策略", t, func() {
 		ctrl := gomock.NewController(t)
@@ -1191,28 +1577,28 @@ func TestMergeNewPolicy(t *testing.T) {
 			AccessorID:   accessorID,
 			AccessorType: interfaces.AccessorUser,
 			EndTime:      1000,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{ID: "read"},
 					{ID: "write"},
 				},
-				Deny: []interfaces.PolicyOperationItem{
+				[]interfaces.PolicyOperationItem{
 					{ID: "delete"},
 				},
-			},
+			),
 		}
 
 		newPolicy := &interfaces.PolicyInfo{
 			EndTime: 500,
-			Operation: interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
+			Rules: noCondRules(
+				[]interfaces.PolicyOperationItem{
 					{ID: "write"},
 					{ID: "create"},
 				},
-				Deny: []interfaces.PolicyOperationItem{
+				[]interfaces.PolicyOperationItem{
 					{ID: "update"},
 				},
-			},
+			),
 		}
 
 		Convey("合并策略应该正确合并操作和过期时间", func() {
@@ -1225,8 +1611,9 @@ func TestMergeNewPolicy(t *testing.T) {
 			assert.Equal(t, int64(500), result.EndTime) // 应该返回较小的过期时间
 
 			// 检查允许操作
+			resultAllowOps, resultDenyOps := policy.getPolicyNoConditionOperations(&result)
 			allowIDs := make(map[string]bool)
-			for _, op := range result.Operation.Allow {
+			for _, op := range resultAllowOps {
 				allowIDs[op.ID] = true
 			}
 			assert.True(t, allowIDs["read"])
@@ -1235,7 +1622,7 @@ func TestMergeNewPolicy(t *testing.T) {
 
 			// 检查拒绝操作
 			denyIDs := make(map[string]bool)
-			for _, op := range result.Operation.Deny {
+			for _, op := range resultDenyOps {
 				denyIDs[op.ID] = true
 			}
 			assert.True(t, denyIDs["delete"])
@@ -1245,19 +1632,20 @@ func TestMergeNewPolicy(t *testing.T) {
 		Convey("当新策略的拒绝操作与旧策略的允许操作冲突时，拒绝应该优先", func() {
 			newPolicy := &interfaces.PolicyInfo{
 				EndTime: 1500,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{},
-					Deny: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{},
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"}, // 拒绝旧策略中允许的操作
 					},
-				},
+				),
 			}
 
 			result := policy.mergeNewPolicy(oldPolicy, newPolicy)
 
 			// 检查允许操作中不应该包含被拒绝的操作
+			resultAllowOps, resultDenyOps := policy.getPolicyNoConditionOperations(&result)
 			allowIDs := make(map[string]bool)
-			for _, op := range result.Operation.Allow {
+			for _, op := range resultAllowOps {
 				allowIDs[op.ID] = true
 			}
 			assert.False(t, allowIDs["read"]) // read应该被拒绝
@@ -1265,12 +1653,210 @@ func TestMergeNewPolicy(t *testing.T) {
 
 			// 检查拒绝操作
 			denyIDs := make(map[string]bool)
-			for _, op := range result.Operation.Deny {
+			for _, op := range resultDenyOps {
 				denyIDs[op.ID] = true
 			}
 			assert.True(t, denyIDs["read"])
 			assert.True(t, denyIDs["delete"])
 		})
+
+		Convey("旧策略中有条件规则时，合并后应保留旧策略的有条件规则", func() {
+			// 旧策略：无条件的 allow/deny + 有条件的 allow/deny 各一条
+			oldWithCond := &interfaces.PolicyInfo{
+				ID:           "old-id",
+				ResourceID:   resourceID,
+				ResourceType: resourceTypeDoc,
+				AccessorID:   accessorID,
+				AccessorType: interfaces.AccessorUser,
+				EndTime:      1000,
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "read"}, {ID: "write"}}},
+						{
+							Condition:  map[string]any{"key": "val"},
+							Operations: []interfaces.PolicyOperationItem{{ID: "preview"}},
+						},
+					},
+					Deny: []interfaces.PolicyRuleItem{
+						{Condition: nil, Operations: []interfaces.PolicyOperationItem{{ID: "delete"}}},
+						{
+							Condition:  map[string]any{"cond": "deny"},
+							Operations: []interfaces.PolicyOperationItem{{ID: "admin"}},
+						},
+					},
+				},
+			}
+			newPolicy := &interfaces.PolicyInfo{
+				EndTime: 500,
+				Rules:   noCondRules([]interfaces.PolicyOperationItem{{ID: "create"}}, nil),
+			}
+			result := policy.mergeNewPolicy(oldWithCond, newPolicy)
+
+			// 无条件部分：合并后应包含 read, write, create（无 delete 冲突）
+			resultAllowOps, _ := policy.getPolicyNoConditionOperations(&result)
+			allowIDs := make(map[string]bool)
+			for _, op := range resultAllowOps {
+				allowIDs[op.ID] = true
+			}
+			assert.True(t, allowIDs["read"])
+			assert.True(t, allowIDs["write"])
+			assert.True(t, allowIDs["create"])
+
+			// 有条件的 Allow 规则应保留
+			var foundCondAllow bool
+			for _, item := range result.Rules.Allow {
+				if !isConditionEmpty(item.Condition) {
+					foundCondAllow = true
+					assert.Equal(t, map[string]any{"key": "val"}, item.Condition)
+					assert.Equal(t, 1, len(item.Operations))
+					assert.Equal(t, "preview", item.Operations[0].ID)
+					break
+				}
+			}
+			assert.True(t, foundCondAllow, "应保留旧策略中有条件的 Allow 规则")
+
+			// 有条件的 Deny 规则应保留
+			var foundCondDeny bool
+			for _, item := range result.Rules.Deny {
+				if !isConditionEmpty(item.Condition) {
+					foundCondDeny = true
+					assert.Equal(t, map[string]any{"cond": "deny"}, item.Condition)
+					assert.Equal(t, 1, len(item.Operations))
+					assert.Equal(t, "admin", item.Operations[0].ID)
+					break
+				}
+			}
+			assert.True(t, foundCondDeny, "应保留旧策略中有条件的 Deny 规则")
+		})
+	})
+}
+
+func TestMergeNewPolicyWithCondition(t *testing.T) {
+	Convey("测试 mergeNewPolicyWithCondition", t, func() {
+		p := newPolicy(nil, nil, nil, nil, nil, nil)
+
+		oldPolicy := &interfaces.PolicyInfo{
+			ID:      "old-id",
+			EndTime: 1000,
+			Rules: interfaces.PolicyRules{
+				Allow: []interfaces.PolicyRuleItem{
+					{
+						Condition: nil,
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o-old"}}},
+							{ID: "write", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t2"}}},
+						},
+					},
+					{
+						Condition: map[string]any{"ip": "1.1.1.1"},
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "create", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t3", ID: "o3"}}},
+						},
+					},
+				},
+				Deny: []interfaces.PolicyRuleItem{
+					{
+						Condition: map[string]any{"mfa": true},
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "delete", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t9", ID: "o9-old"}}},
+						},
+					},
+				},
+			},
+		}
+
+		newInfo := &interfaces.PolicyInfo{
+			EndTime: 500,
+			Rules: interfaces.PolicyRules{
+				Allow: []interfaces.PolicyRuleItem{
+					{
+						Condition: nil,
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "read", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t1", ID: "o-new"}}}, // 覆盖旧义务
+							{ID: "list", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t4"}}},              // 新增操作
+						},
+					},
+					{
+						Condition: map[string]any{"region": "cn"},
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "export"},
+						},
+					},
+				},
+				Deny: []interfaces.PolicyRuleItem{
+					{
+						Condition: map[string]any{"mfa": true},
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "delete", Obligations: []interfaces.PolicyObligationItem{{TypeID: "t9", ID: "o9-new"}}}, // 覆盖旧义务
+							{ID: "share"},
+						},
+					},
+					{
+						Condition: map[string]any{"device": "mobile"},
+						Operations: []interfaces.PolicyOperationItem{
+							{ID: "download"},
+						},
+					},
+				},
+			},
+		}
+
+		result := p.mergeNewPolicyWithCondition(oldPolicy, newInfo)
+		assert.Equal(t, "old-id", result.ID)
+		assert.Equal(t, int64(500), result.EndTime)
+
+		// Allow：同条件(nil)合并；read 用 new 的义务覆盖；write 保留；list 追加
+		var allowNil *interfaces.PolicyRuleItem
+		var allowRegion *interfaces.PolicyRuleItem
+		var allowIP *interfaces.PolicyRuleItem
+		for i := range result.Rules.Allow {
+			if isConditionEmpty(result.Rules.Allow[i].Condition) {
+				allowNil = &result.Rules.Allow[i]
+				continue
+			}
+			if reflect.DeepEqual(result.Rules.Allow[i].Condition, map[string]any{"region": "cn"}) {
+				allowRegion = &result.Rules.Allow[i]
+				continue
+			}
+			if reflect.DeepEqual(result.Rules.Allow[i].Condition, map[string]any{"ip": "1.1.1.1"}) {
+				allowIP = &result.Rules.Allow[i]
+				continue
+			}
+		}
+		assert.NotNil(t, allowNil)
+		assert.NotNil(t, allowRegion) // 条件不同：追加
+		assert.NotNil(t, allowIP)     // old 中未命中：保留
+
+		allowNilMap := map[string]interfaces.PolicyOperationItem{}
+		for _, op := range allowNil.Operations {
+			allowNilMap[op.ID] = op
+		}
+		assert.Equal(t, "o-new", allowNilMap["read"].Obligations[0].ID)
+		assert.True(t, allowNilMap["write"].ID == "write")
+		assert.True(t, allowNilMap["list"].ID == "list")
+
+		// Deny：同条件(mfa)合并，delete 用 new 覆盖，share 追加；device 条件追加
+		var denyMfa *interfaces.PolicyRuleItem
+		var denyMobile *interfaces.PolicyRuleItem
+		for i := range result.Rules.Deny {
+			if reflect.DeepEqual(result.Rules.Deny[i].Condition, map[string]any{"mfa": true}) {
+				denyMfa = &result.Rules.Deny[i]
+				continue
+			}
+			if reflect.DeepEqual(result.Rules.Deny[i].Condition, map[string]any{"device": "mobile"}) {
+				denyMobile = &result.Rules.Deny[i]
+				continue
+			}
+		}
+		assert.NotNil(t, denyMfa)
+		assert.NotNil(t, denyMobile)
+
+		denyMfaMap := map[string]interfaces.PolicyOperationItem{}
+		for _, op := range denyMfa.Operations {
+			denyMfaMap[op.ID] = op
+		}
+		assert.Equal(t, "o9-new", denyMfaMap["delete"].Obligations[0].ID)
+		assert.True(t, denyMfaMap["share"].ID == "share")
 	})
 }
 
@@ -1307,11 +1893,12 @@ func TestCreatePrivate(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 
 			err := policy.CreatePrivate(ctx, []interfaces.PolicyInfo{policyInfo})
@@ -1335,11 +1922,12 @@ func TestCreatePrivate(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "invalid-operation"},
 					},
-				},
+					nil,
+				),
 			}
 
 			err := policy.CreatePrivate(ctx, []interfaces.PolicyInfo{policyInfo})
@@ -1363,11 +1951,12 @@ func TestCreatePrivate(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 
 			err := policy.CreatePrivate(ctx, []interfaces.PolicyInfo{policyInfo, policyInfo})
@@ -1415,11 +2004,12 @@ func TestInitPolicy(t *testing.T) {
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
 				EndTime:      -1,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 
 			err := policy.InitPolicy(ctx, []interfaces.PolicyInfo{policyInfo})
@@ -1433,11 +2023,12 @@ func TestInitPolicy(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 			txMock.ExpectBegin()
 			txMock.ExpectCommit()
@@ -1455,11 +2046,12 @@ func TestInitPolicy(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 			txMock.ExpectBegin()
 			txMock.ExpectRollback()
@@ -1504,11 +2096,12 @@ func TestInitPolicy1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 
 			policyInfo2 := interfaces.PolicyInfo{
@@ -1516,11 +2109,12 @@ func TestInitPolicy1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "delete"},
 					},
-				},
+					nil,
+				),
 			}
 			policsMap := make(map[string][]interfaces.PolicyInfo)
 			policsMap[resourceID] = []interfaces.PolicyInfo{policyInfo}
@@ -1539,11 +2133,12 @@ func TestInitPolicy1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "read"},
 					},
-				},
+					nil,
+				),
 			}
 
 			policyInfo2 := interfaces.PolicyInfo{
@@ -1551,11 +2146,12 @@ func TestInitPolicy1(t *testing.T) {
 				ResourceID:   resourceID,
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: noCondRules(
+					[]interfaces.PolicyOperationItem{
 						{ID: "delete"},
 					},
-				},
+					nil,
+				),
 			}
 			policsMap := make(map[string][]interfaces.PolicyInfo)
 			policsMap[resourceID] = []interfaces.PolicyInfo{policyInfo}
@@ -1937,7 +2533,7 @@ func TestGetAccessorPolicy(t *testing.T) {
 			}
 
 			testErr := errors.New("database error")
-			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(0, nil, testErr)
+			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(nil, testErr)
 
 			_, _, _, err := policy.GetAccessorPolicy(ctx, &visitor, param)
 			assert.Equal(t, testErr, err)
@@ -1947,6 +2543,7 @@ func TestGetAccessorPolicy(t *testing.T) {
 			param := interfaces.AccessorPolicyParam{
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
+				Limit:        -1,
 			}
 
 			policies := []interfaces.PolicyInfo{
@@ -1956,14 +2553,14 @@ func TestGetAccessorPolicy(t *testing.T) {
 					ResourceType: resourceTypeDoc,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{{ID: "write"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						[]interfaces.PolicyOperationItem{{ID: "write"}},
+					),
 				},
 			}
 
-			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(0, policies, nil)
+			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(policies, nil)
 			testErr := errors.New("get resource type operations error")
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(nil, testErr)
 
@@ -1975,6 +2572,7 @@ func TestGetAccessorPolicy(t *testing.T) {
 			param := interfaces.AccessorPolicyParam{
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
+				Limit:        -1,
 			}
 
 			policies := []interfaces.PolicyInfo{
@@ -1984,10 +2582,10 @@ func TestGetAccessorPolicy(t *testing.T) {
 					ResourceType: resourceTypeDoc,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{{ID: "write"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						[]interfaces.PolicyOperationItem{{ID: "write"}},
+					),
 				},
 				{
 					ID:           "policy2",
@@ -1995,10 +2593,10 @@ func TestGetAccessorPolicy(t *testing.T) {
 					ResourceType: resourceTypeDoc,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "create"}},
-						Deny:  []interfaces.PolicyOperationItem{},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "create"}},
+						[]interfaces.PolicyOperationItem{},
+					),
 				},
 			}
 
@@ -2031,7 +2629,7 @@ func TestGetAccessorPolicy(t *testing.T) {
 				},
 			}
 
-			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(1, policies, nil)
+			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(policies, nil)
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 
 			_, result, _, err := policy.GetAccessorPolicy(ctx, &visitor, param)
@@ -2041,18 +2639,19 @@ func TestGetAccessorPolicy(t *testing.T) {
 			assert.Equal(t, "policy2", result[1].ID)
 
 			// 验证操作名称已正确填充
-			assert.Equal(t, "读取", result[0].Operation.Allow[0].Name)
-			assert.Equal(t, "写入", result[0].Operation.Deny[0].Name)
-			assert.Equal(t, "创建", result[1].Operation.Allow[0].Name)
+			assert.Equal(t, "读取", result[0].Rules.Allow[0].Operations[0].Name)
+			assert.Equal(t, "写入", result[0].Rules.Deny[0].Operations[0].Name)
+			assert.Equal(t, "创建", result[1].Rules.Allow[0].Operations[0].Name)
 		})
 
 		Convey("当策略列表为空时，应该返回空列表", func() {
 			param := interfaces.AccessorPolicyParam{
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
+				Limit:        -1,
 			}
 
-			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(0, []interfaces.PolicyInfo{}, nil)
+			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return([]interfaces.PolicyInfo{}, nil)
 
 			_, result, _, err := policy.GetAccessorPolicy(ctx, &visitor, param)
 			assert.Nil(t, err)
@@ -2063,6 +2662,7 @@ func TestGetAccessorPolicy(t *testing.T) {
 			param := interfaces.AccessorPolicyParam{
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
+				Limit:        -1,
 			}
 
 			policies := []interfaces.PolicyInfo{
@@ -2072,10 +2672,10 @@ func TestGetAccessorPolicy(t *testing.T) {
 					ResourceType: resourceTypeDoc,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						[]interfaces.PolicyOperationItem{},
+					),
 				},
 				{
 					ID:           "policy2",
@@ -2083,10 +2683,10 @@ func TestGetAccessorPolicy(t *testing.T) {
 					ResourceType: resourceTypeMcp,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "display"}},
-						Deny:  []interfaces.PolicyOperationItem{},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "display"}},
+						[]interfaces.PolicyOperationItem{},
+					),
 				},
 			}
 
@@ -2115,14 +2715,14 @@ func TestGetAccessorPolicy(t *testing.T) {
 				},
 			}
 
-			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(0, policies, nil)
+			tmpDB.EXPECT().GetAccessorPolicy(ctx, param).Return(policies, nil)
 			resourceType.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc, resourceTypeMcp}).Return(resourceTypeInfo, nil)
 
 			_, result, _, err := policy.GetAccessorPolicy(ctx, &visitor, param)
 			assert.Nil(t, err)
 			assert.Equal(t, 2, len(result))
-			assert.Equal(t, "读取", result[0].Operation.Allow[0].Name)
-			assert.Equal(t, "显示", result[1].Operation.Allow[0].Name)
+			assert.Equal(t, "读取", result[0].Rules.Allow[0].Operations[0].Name)
+			assert.Equal(t, "显示", result[1].Rules.Allow[0].Operations[0].Name)
 		})
 	})
 }
@@ -2197,7 +2797,7 @@ func TestGetResourcePolicy(t *testing.T) {
 		Convey("数据库查询失败", func() {
 			testErr := errors.New("database error")
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(0, nil, testErr)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(nil, testErr)
 
 			_, _, _, err := policy.GetResourcePolicy(ctx, visitor, params)
 			assert.Equal(t, testErr, err)
@@ -2205,7 +2805,7 @@ func TestGetResourcePolicy(t *testing.T) {
 
 		Convey("策略列表为空", func() {
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(0, []interfaces.PolicyInfo{}, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return([]interfaces.PolicyInfo{}, nil)
 
 			count, policies, _, err := policy.GetResourcePolicy(ctx, visitor, params)
 			assert.Nil(t, err)
@@ -2221,14 +2821,15 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						nil,
+					),
 				},
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(nil, testErr)
 
 			_, _, _, err := policy.GetResourcePolicy(ctx, visitor, params)
@@ -2243,9 +2844,10 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   "dep-id",
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						nil,
+					),
 				},
 			}
 
@@ -2264,7 +2866,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().GetParentDepartmentsByDepartmentID(ctx, "dep-id").Return(nil, testErr)
 
@@ -2280,9 +2882,10 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						nil,
+					),
 				},
 			}
 
@@ -2301,7 +2904,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(nil, testErr)
 
@@ -2317,15 +2920,15 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{ID: "read"},
 							{ID: "write"},
 						},
-						Deny: []interfaces.PolicyOperationItem{
+						[]interfaces.PolicyOperationItem{
 							{ID: "delete"},
 						},
-					},
+					),
 				},
 			}
 
@@ -2363,7 +2966,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(userInfo, nil)
 
@@ -2372,9 +2975,9 @@ func TestGetResourcePolicy(t *testing.T) {
 			assert.Equal(t, 1, count)
 			assert.Equal(t, 1, len(result))
 			assert.Equal(t, "policy1", result[0].ID)
-			assert.Equal(t, "读取", result[0].Operation.Allow[0].Name)
-			assert.Equal(t, "写入", result[0].Operation.Allow[1].Name)
-			assert.Equal(t, "删除", result[0].Operation.Deny[0].Name)
+			assert.Equal(t, "读取", result[0].Rules.Allow[0].Operations[0].Name)
+			assert.Equal(t, "写入", result[0].Rules.Allow[0].Operations[1].Name)
+			assert.Equal(t, "删除", result[0].Rules.Deny[0].Operations[0].Name)
 			assert.Equal(t, 0, len(includeResp.ObligationTypes))
 			assert.Equal(t, 0, len(includeResp.Obligations))
 		})
@@ -2387,8 +2990,8 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{
 								ID: "read",
 								Obligations: []interfaces.PolicyObligationItem{
@@ -2397,7 +3000,8 @@ func TestGetResourcePolicy(t *testing.T) {
 								},
 							},
 						},
-					},
+						nil,
+					),
 				},
 			}
 
@@ -2432,7 +3036,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(userInfo, nil)
 			obligationTypeSvc.EXPECT().GetByIDSInternal(ctx, gomock.Any()).Return(obligationTypes, nil)
@@ -2442,7 +3046,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			assert.Nil(t, err)
 			assert.Equal(t, 1, count)
 			assert.Equal(t, 1, len(result))
-			assert.Equal(t, 2, len(result[0].Operation.Allow[0].Obligations))
+			assert.Equal(t, 2, len(result[0].Rules.Allow[0].Operations[0].Obligations))
 		})
 
 		Convey("成功获取资源策略 - 带include参数", func() {
@@ -2461,8 +3065,8 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{
 								ID: "read",
 								Obligations: []interfaces.PolicyObligationItem{
@@ -2470,7 +3074,8 @@ func TestGetResourcePolicy(t *testing.T) {
 								},
 							},
 						},
-					},
+						nil,
+					),
 				},
 			}
 
@@ -2504,7 +3109,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(userInfo, nil)
 			obligationTypeSvc.EXPECT().GetByIDSInternal(ctx, gomock.Any()).Return(obligationTypes, nil)
@@ -2528,8 +3133,8 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{
 								ID: "read",
 								Obligations: []interfaces.PolicyObligationItem{
@@ -2538,7 +3143,8 @@ func TestGetResourcePolicy(t *testing.T) {
 								},
 							},
 						},
-					},
+						nil,
+					),
 				},
 			}
 
@@ -2573,7 +3179,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(userInfo, nil)
 			obligationTypeSvc.EXPECT().GetByIDSInternal(ctx, gomock.Any()).Return(obligationTypes, nil)
@@ -2582,8 +3188,8 @@ func TestGetResourcePolicy(t *testing.T) {
 			_, result, _, err := policy.GetResourcePolicy(ctx, visitor, params)
 			assert.Nil(t, err)
 			// 应该过滤掉无效的义务类型
-			assert.Equal(t, 1, len(result[0].Operation.Allow[0].Obligations))
-			assert.Equal(t, obligationTypeID1, result[0].Operation.Allow[0].Obligations[0].TypeID)
+			assert.Equal(t, 1, len(result[0].Rules.Allow[0].Operations[0].Obligations))
+			assert.Equal(t, obligationTypeID1, result[0].Rules.Allow[0].Operations[0].Obligations[0].TypeID)
 		})
 
 		Convey("过滤无效的义务", func() {
@@ -2594,8 +3200,8 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{
 							{
 								ID: "read",
 								Obligations: []interfaces.PolicyObligationItem{
@@ -2604,7 +3210,8 @@ func TestGetResourcePolicy(t *testing.T) {
 								},
 							},
 						},
-					},
+						nil,
+					),
 				},
 			}
 
@@ -2639,7 +3246,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().BatchGetUserInfoByID(ctx, []string{accessorID}).Return(userInfo, nil)
 			obligationTypeSvc.EXPECT().GetByIDSInternal(ctx, gomock.Any()).Return(obligationTypes, nil)
@@ -2648,8 +3255,8 @@ func TestGetResourcePolicy(t *testing.T) {
 			_, result, _, err := policy.GetResourcePolicy(ctx, visitor, params)
 			assert.Nil(t, err)
 			// 应该过滤掉无效的义务
-			assert.Equal(t, 1, len(result[0].Operation.Allow[0].Obligations))
-			assert.Equal(t, obligationID1, result[0].Operation.Allow[0].Obligations[0].ID)
+			assert.Equal(t, 1, len(result[0].Rules.Allow[0].Operations[0].Obligations))
+			assert.Equal(t, obligationID1, result[0].Rules.Allow[0].Operations[0].Obligations[0].ID)
 		})
 
 		Convey("处理部门访问者的父部门信息", func() {
@@ -2661,9 +3268,10 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   depID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						nil,
+					),
 				},
 			}
 
@@ -2686,7 +3294,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 			userMgnt.EXPECT().GetParentDepartmentsByDepartmentID(ctx, depID).Return(parentDeps, nil)
 
@@ -2706,9 +3314,10 @@ func TestGetResourcePolicy(t *testing.T) {
 					ResourceID:   resourceID,
 					AccessorID:   rootDepID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-					},
+					Rules: noCondRules(
+						[]interfaces.PolicyOperationItem{{ID: "read"}},
+						nil,
+					),
 				},
 			}
 
@@ -2727,7 +3336,7 @@ func TestGetResourcePolicy(t *testing.T) {
 			}
 
 			userMgnt.EXPECT().GetUserRolesByUserID(ctx, accessorID).Return(roleTypes, nil)
-			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(1, policies, nil)
+			tmpDB.EXPECT().GetPagination(ctx, gomock.Any()).Return(policies, nil)
 			resourceTypeSvc.EXPECT().GetByIDsInternal(ctx, []string{resourceTypeDoc}).Return(resourceTypeInfo, nil)
 
 			_, result, _, err := policy.GetResourcePolicy(ctx, visitor, params)

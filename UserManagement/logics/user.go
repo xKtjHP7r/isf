@@ -3,7 +3,9 @@ package logics
 
 import (
 	"context"
+	"math/rand"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -38,13 +40,16 @@ type user struct {
 	event         interfaces.LogicsEvent
 	i18n          *common.I18n
 	reservedName  interfaces.LogicsReservedName
+	eacpLog       interfaces.DrivenEacpLog
+	messageBroker interfaces.DrivenMessageBroker
 }
 
 var (
 	uOnce   sync.Once
 	uLogics *user
 
-	nOffsetTime = 5
+	nOffsetTime     = 5
+	randomTimeRange = 300
 )
 
 // NewUser 创建新的user对象
@@ -81,8 +86,13 @@ func NewUser() *user {
 					interfaces.AmericanEnglish:    "This user does not exist",
 				},
 			}),
-			reservedName: NewReservedName(),
+			reservedName:  NewReservedName(),
+			eacpLog:       dnEacpLog,
+			messageBroker: dnMessageBroker,
 		}
+
+		uLogics.ob.RegisterHandlers(outboxUserExpiredAutoDisabled, uLogics.userExpiredAutoDisabled)
+		uLogics.ob.RegisterHandlers(outboxUserNotLoginAutoDisabled, uLogics.userNotLoginAutoDisabled)
 
 		uLogics.ob.RegisterHandlers(outboxUserPWDModified, func(content interface{}) error {
 			contentJSON := content.(map[string]interface{})
@@ -94,9 +104,55 @@ func NewUser() *user {
 		})
 
 		uLogics.event.RegisterUserDeleted(uLogics.onUserDeleted)
+
+		go uLogics.userAutoDisableThread()
 	})
 
 	return uLogics
+}
+
+// userNotLoginAutoDisabled 用户长时间未登录自动禁用
+func (u *user) userNotLoginAutoDisabled(content interface{}) (err error) {
+	contentJSON := content.(map[string]interface{})
+	userID := contentJSON["id"].(string)
+	displayName := contentJSON["display_name"].(string)
+	loginName := contentJSON["login_name"].(string)
+
+	// 发送mq消息
+	err = u.messageBroker.UserStatusChanged(userID, false)
+	if err != nil {
+		u.logger.Errorf("userNotLoginAutoDisabled messageBroker UserStatusChanged error:%v", err)
+		return err
+	}
+
+	// 记录日志
+	err = u.eacpLog.OpUserNotLoginDisabled(displayName, loginName)
+	if err != nil {
+		u.logger.Errorf("userNotLoginAutoDisabled err:%v", err)
+	}
+	return err
+}
+
+// userExpiredAutoDisabled 用户过期自动禁用
+func (u *user) userExpiredAutoDisabled(content interface{}) (err error) {
+	contentJSON := content.(map[string]interface{})
+	userID := contentJSON["id"].(string)
+	displayName := contentJSON["display_name"].(string)
+	loginName := contentJSON["login_name"].(string)
+
+	// 发送mq消息
+	err = u.messageBroker.UserStatusChanged(userID, false)
+	if err != nil {
+		u.logger.Errorf("userExpiredAutoDisabled messageBroker UserStatusChanged error:%v", err)
+		return err
+	}
+
+	// 记录日志
+	err = u.eacpLog.OpUserExpiredDisabled(displayName, loginName)
+	if err != nil {
+		u.logger.Errorf("userExpiredAutoDisabled err:%v", err)
+	}
+	return err
 }
 
 // 权限检查
@@ -1675,4 +1731,199 @@ func (u *user) CheckUserNameExistd(ctx context.Context, name string) (result boo
 	}
 
 	return false, nil
+}
+
+// 用户自动禁用
+func (u *user) userExpiredAutoDisable(ctx context.Context) (err error) {
+	// trace
+	u.trace.SetInternalSpanName("业务逻辑-用户自动禁用")
+	newCtx, span := u.trace.AddInternalTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	// 获取事务处理器
+	tx, err := u.pool.Begin()
+	if err != nil {
+		return
+	}
+
+	// 异常时Rollback
+	defer func() {
+		switch err {
+		case nil:
+			// 提交事务
+			if err = tx.Commit(); err != nil {
+				u.logger.Errorf("user auto disable transaction commit error: %v", err)
+				return
+			}
+
+			// notify outbox推送线程
+			u.ob.NotifyPushOutboxThread()
+		default:
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				u.logger.Errorf("user auto disable transaction rollback error: %v", rollbackErr)
+			}
+		}
+	}()
+
+	// 获取锁
+	err = u.userDB.GetLock(newCtx, interfaces.UserExpiredDisableLock, tx)
+	if err != nil {
+		return err
+	}
+
+	// 获取需要禁用的用户信息
+	userInfos, err := u.userDB.GetExpiredNeedDisableUserInfos(newCtx, tx)
+	if err != nil {
+		return err
+	}
+
+	// 获取用户ids,并且排序，保证事务处理的顺序性
+	userIDs := make([]string, 0)
+	for k := range userInfos {
+		userIDs = append(userIDs, userInfos[k].ID)
+	}
+	sort.Strings(userIDs)
+
+	// 禁用用户
+	err = u.userDB.SetAutoDisableStatus(newCtx, userIDs, interfaces.ExpiredDisabled, tx)
+	if err != nil {
+		return err
+	}
+
+	// 记录用户自动禁用事件
+	for k := range userInfos {
+		// 插入outbox 信息
+		contentJSON := make(map[string]interface{})
+		contentJSON["id"] = userInfos[k].ID
+		contentJSON["display_name"] = userInfos[k].Name
+		contentJSON["login_name"] = userInfos[k].Account
+
+		err = u.ob.AddOutboxInfo(outboxUserExpiredAutoDisabled, contentJSON, tx)
+		if err != nil {
+			u.logger.Errorf("Add Outbox Info err:%v", err)
+			return
+		}
+	}
+
+	return nil
+}
+
+// userNotLoginAutoDisable
+func (u *user) userNotLoginAutoDisable(ctx context.Context) (err error) {
+	// trace
+	u.trace.SetInternalSpanName("业务逻辑-用户长时间未登录自动禁用")
+	newCtx, span := u.trace.AddInternalTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	// 获取配置
+	cfg, err := u.config.GetConfig(map[interfaces.ConfigKey]bool{
+		interfaces.AutoDisable: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	// 如果配置未开启则跳过
+	if !cfg.AutoDisableEnabled {
+		return nil
+	}
+
+	// 获取事务处理器
+	tx, err := u.pool.Begin()
+	if err != nil {
+		return
+	}
+
+	// 异常时Rollback
+	defer func() {
+		switch err {
+		case nil:
+			// 提交事务
+			if err = tx.Commit(); err != nil {
+				u.logger.Errorf("user not login auto disable transaction commit error: %v", err)
+				return
+			}
+
+			// notify outbox推送线程
+			u.ob.NotifyPushOutboxThread()
+		default:
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				u.logger.Errorf("user not login auto disable transaction rollback error: %v", rollbackErr)
+			}
+		}
+	}()
+
+	// 获取锁
+	err = u.userDB.GetLock(newCtx, interfaces.UserNotLoginDisableLock, tx)
+	if err != nil {
+		return err
+	}
+
+	// 获取需要禁用的用户
+	userInfos, err := u.userDB.GetNotLoginNeedDisableUserInfos(newCtx, cfg.AutoDisableTime, tx)
+	if err != nil {
+		return err
+	}
+
+	// 获取用户ids,并且排序，保证事务处理的顺序性
+	userIDs := make([]string, 0)
+	for k := range userInfos {
+		userIDs = append(userIDs, userInfos[k].ID)
+	}
+	sort.Strings(userIDs)
+
+	// 禁用用户
+	err = u.userDB.SetAutoDisableStatus(newCtx, userIDs, interfaces.NotLoginDisabled, tx)
+	if err != nil {
+		return err
+	}
+
+	// 记录用户自动禁用事件
+	for k := range userInfos {
+		// 插入outbox 信息
+		contentJSON := make(map[string]interface{})
+		contentJSON["id"] = userInfos[k].ID
+		contentJSON["display_name"] = userInfos[k].Name
+		contentJSON["login_name"] = userInfos[k].Account
+
+		err = u.ob.AddOutboxInfo(outboxUserNotLoginAutoDisabled, contentJSON, tx)
+		if err != nil {
+			u.logger.Errorf("Add Outbox Info err:%v", err)
+			return
+		}
+	}
+
+	return nil
+}
+
+// 用户过期自动禁用
+func (u *user) userAutoDisableThread() {
+	for {
+		u.logger.Infoln("**************** user long time not login disable start *****************")
+
+		// 自动禁用过期用户
+		ctx := context.Background()
+		err := u.userNotLoginAutoDisable(ctx)
+		if err != nil {
+			u.logger.Errorf("user auto disable error: %v", err)
+		}
+
+		u.logger.Infoln("**************** user long time not login disable end *****************")
+
+		u.logger.Infoln("**************** user expire disable start *****************")
+
+		// 自动禁用过期用户
+		err = u.userExpiredAutoDisable(ctx)
+		if err != nil {
+			u.logger.Errorf("user auto disable error: %v", err)
+		}
+
+		u.logger.Infoln("**************** user expire disable end *****************")
+
+		// 每天的23：59：59之后5分钟内执行一次，增加抖动时间，减少锁竞争
+		randomTime := time.Duration(rand.Intn(randomTimeRange)) * time.Second
+		now := common.Now()
+		next := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.Local).Add(randomTime)
+		time.Sleep(next.Sub(now))
+	}
 }

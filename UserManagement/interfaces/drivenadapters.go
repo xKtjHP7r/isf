@@ -64,6 +64,12 @@ type DrivenEacpLog interface {
 
 	// OpDeleteDepart 删除部门
 	OpDeleteDepart(visitor *Visitor, departName string, isRoot bool) error
+
+	// OpUserExpiredDisabled 用户状态变更
+	OpUserExpiredDisabled(displayName, loginName string) error
+
+	// OpUserNotLoginDisabled 用户长时间未登录自动禁用
+	OpUserNotLoginDisabled(displayName, loginName string) error
 }
 
 // DrivenHydra 授权服务接口
@@ -111,6 +117,9 @@ const (
 
 	// AppNameChanged 应用账户名变更消息类型
 	AppNameChanged
+
+	// UserStatusChanged 用户状态变更消息类型
+	UserStatusChanged
 )
 
 // DrivenMessageBroker 消息发送对象
@@ -132,6 +141,9 @@ type DrivenMessageBroker interface {
 
 	// OrgManagerChanged 更新配额
 	OrgManagerChanged(ids []string) (err error)
+
+	// UserStatusChanged 用户状态变更
+	UserStatusChanged(id string, status bool) (err error)
 }
 
 // OSSInfo 对象存储信息

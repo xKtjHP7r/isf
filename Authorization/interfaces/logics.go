@@ -284,13 +284,17 @@ type LogicsPolicy interface {
 	InitPolicy(ctx context.Context, policys []PolicyInfo) error
 }
 
+type CreatedByInfo struct {
+	ID string
+}
+
 // ResourceInfo 资源对象信息, 用于策略计算
-// 其他字段为系统字段，id,type为必传字段
 type ResourceInfo struct {
 	ID        string
 	Type      string
 	Name      string
 	Ancestors []Ancestor
+	CreatedBy CreatedByInfo
 }
 
 // AccessorInfo 访问者对象信息, 用于策略计算

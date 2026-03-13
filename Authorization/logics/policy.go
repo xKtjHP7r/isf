@@ -107,7 +107,27 @@ type operationInfo struct {
 	name string
 }
 
+// applyPagination 对切片做安全分页：offset >= 0, limit 1-1000，返回 [start:end] 且不越界。limit -1 返回所有
+func applyPagination[T any](list []T, offset, limit int) []T {
+	if limit == -1 {
+		return list
+	}
+	n := len(list)
+	if n == 0 || offset >= n {
+		return nil
+	}
+	start := offset
+	end := offset + limit
+	if end > n {
+		end = n
+	}
+	return list[start:end]
+}
+
 // GetPagination 获取策略
+// 内存分页，只返回无条件的允许和拒绝操作的策略
+//
+//nolint:gocyclo
 func (r *policy) GetPagination(ctx context.Context, visitor *interfaces.Visitor, params interfaces.PolicyPagination) (count int, policies []interfaces.PolicyInfo, err error) {
 	// 权限检查 visitor
 	tmpMap := make(map[string]map[string]bool)
@@ -118,17 +138,53 @@ func (r *policy) GetPagination(ctx context.Context, visitor *interfaces.Visitor,
 		r.logger.Errorf("GetPagination: checkVisitorAuthorize %v", err)
 		return
 	}
-
-	count, policies, err = r.db.GetPagination(ctx, params)
+	policiesTmp, err := r.db.GetPagination(ctx, params)
 	if err != nil {
 		r.logger.Errorf("GetPagination db: %v", err)
 		return
 	}
 
-	if len(policies) == 0 {
+	if len(policiesTmp) == 0 {
 		return
 	}
+	r.logger.Debugf("GetPagination policiesTmp len: %v", len(policiesTmp))
+	policies = make([]interfaces.PolicyInfo, 0, len(policiesTmp))
+	for i := range policiesTmp {
+		// 获取 无条件的 允许和拒绝操作
+		allowOperations, denyOperations := r.getPolicyNoConditionOperations(&policiesTmp[i])
+		// 无条件的允许和拒绝操作都为空，则过滤
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
 
+		if len(allowOperations) > 0 {
+			policiesTmp[i].Rules.Allow = []interfaces.PolicyRuleItem{
+				{
+					Operations: allowOperations,
+				},
+			}
+		}
+		if len(denyOperations) > 0 {
+			policiesTmp[i].Rules.Deny = []interfaces.PolicyRuleItem{
+				{
+					Operations: denyOperations,
+				},
+			}
+		}
+		policies = append(policies, policiesTmp[i])
+	}
+
+	count = len(policies)
+	if count == 0 {
+		return count, policies, nil
+	}
+
+	// 只返回分页数据
+	policies = applyPagination(policies, params.Offset, params.Limit)
+	if len(policies) == 0 {
+		return count, policies, nil
+	}
+	r.logger.Debugf("GetPagination policies len: %v", len(policies))
 	// 获取操作名称
 	operationInfoMap, err := r.getResourceTypesOperation(ctx, visitor, []string{policies[0].ResourceType})
 	if err != nil {
@@ -153,12 +209,19 @@ func (r *policy) GetPagination(ctx context.Context, visitor *interfaces.Visitor,
 		} else {
 			policies[i].ParentDeps = [][]interfaces.Department{}
 		}
-
-		// 填充操作名称和矫正权限顺序
-		policies[i].Operation.Allow,
-			policies[i].Operation.Deny = r.sortOperationAndFillName(policies[i].Operation.Allow, policies[i].Operation.Deny, opeInfo)
+		// 填充操作名称和矫正权限顺序（每条策略单独取 allow/deny）
+		allowOps, denyOps := r.getPolicyNoConditionOperations(&policies[i])
+		allowFilled, denyFilled := r.sortOperationAndFillName(allowOps, denyOps, opeInfo)
+		// 清空原有配置
+		policies[i].Rules = interfaces.PolicyRules{}
+		if len(allowFilled) > 0 {
+			policies[i].Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowFilled}}
+		}
+		if len(denyFilled) > 0 {
+			policies[i].Rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyFilled}}
+		}
 	}
-
+	r.logger.Debugf("GetPagination policies: %+v", policies)
 	return count, policies, nil
 }
 
@@ -246,28 +309,30 @@ func (r *policy) getParentDeps(ctx context.Context, policies []interfaces.Policy
 	return parentDepsMap, nil
 }
 
-// checkPolicyOperationValid 检查策略操作是否合法
+// checkPolicyOperationValid 检查策略操作是否合法, 该函数只能处理条件为空的策略
 /*
     一条策略， 检查操作枚举是否定义
 	一条策略， 拒绝和允许不能同时为空
 	一条策略， 拒绝和允许不能存在相同的操作
 */
 func (d *policy) checkPolicyOperationValid(operationIDMap map[string]bool, policy *interfaces.PolicyInfo) (err error) {
+	// 获取策略中无条件的允许和拒绝
+	allowOperations, denyOperations := d.getPolicyNoConditionOperations(policy)
 	// 允许和拒绝不能同时为空
-	if len(policy.Operation.Allow) == 0 && len(policy.Operation.Deny) == 0 {
+	if len(allowOperations) == 0 && len(denyOperations) == 0 {
 		err = gerrors.NewError(gerrors.PublicBadRequest, "allow and deny cannot be empty at the same time")
 		return
 	}
 
 	denyOperationMap := make(map[string]bool)
-	for _, deny := range policy.Operation.Deny {
+	for _, deny := range denyOperations {
 		if !operationIDMap[deny.ID] {
 			err = gerrors.NewError(gerrors.PublicBadRequest, fmt.Sprintf("operation %s not found", deny.ID))
 			return
 		}
 		denyOperationMap[deny.ID] = true
 	}
-	for _, allow := range policy.Operation.Allow {
+	for _, allow := range allowOperations {
 		if !operationIDMap[allow.ID] {
 			err = gerrors.NewError(gerrors.PublicBadRequest, fmt.Sprintf("operation %s not found", allow.ID))
 			return
@@ -280,7 +345,8 @@ func (d *policy) checkPolicyOperationValid(operationIDMap map[string]bool, polic
 	return
 }
 
-// cmpPolicy 检查新策略是否有修改
+// cmpPolicy 检查新策略是否有修改，
+// newPolicy的Rules里只有无条件的允许和拒绝
 // 以下条件认为无修改，结果返回true
 // 1. 过期时间是否相等
 // 2. 新策略的操作是否是旧策略的子集, 且操作的义务是否相等
@@ -291,18 +357,23 @@ func (d *policy) cmpPolicy(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
 		return
 	}
 
-	oldAllowMap := make(map[string]interfaces.PolicyOperationItem, len(old.Operation.Allow))
-	oldDenyMap := make(map[string]interfaces.PolicyOperationItem, len(old.Operation.Deny))
-	for _, deny := range old.Operation.Deny {
+	// 先找到旧策略的无条件允许和拒绝
+	oldAllowOperations, oldDenyOperations := d.getPolicyNoConditionOperations(old)
+	oldAllowMap := make(map[string]interfaces.PolicyOperationItem, len(oldAllowOperations))
+	oldDenyMap := make(map[string]interfaces.PolicyOperationItem, len(oldDenyOperations))
+	for _, deny := range oldDenyOperations {
 		oldDenyMap[deny.ID] = deny
 	}
-	for _, allow := range old.Operation.Allow {
+	for _, allow := range oldAllowOperations {
 		oldAllowMap[allow.ID] = allow
 	}
 
+	// 新策略的无条件允许和拒绝
+	newAllowOperations, newDenyOperations := d.getPolicyNoConditionOperations(newInfo)
+
 	// 新权限 如果是 旧的子集，则无变化
 	isSame = true
-	for _, allow := range newInfo.Operation.Allow {
+	for _, allow := range newAllowOperations {
 		// 旧权限如果不存在 ， 则有变化
 		oldAllow, ok := oldAllowMap[allow.ID]
 		if !ok {
@@ -316,7 +387,7 @@ func (d *policy) cmpPolicy(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
 		}
 	}
 
-	for _, deny := range newInfo.Operation.Deny {
+	for _, deny := range newDenyOperations {
 		// 旧权限如果不存在 ， 则有变化
 		oldDeny, ok := oldDenyMap[deny.ID]
 		if !ok {
@@ -333,16 +404,24 @@ func (d *policy) cmpPolicy(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
 }
 
 // mergeNewPolicy 合并策略 , 操作、到期时间
+// newInfo的无条件允许和拒绝合并到old的无条件允许和拒绝中，old有条件规则保持不变
 // 为了方便，新的的义务会覆盖旧的义务
 func (d *policy) mergeNewPolicy(old, newInfo *interfaces.PolicyInfo) (newPolicy interfaces.PolicyInfo) {
+	d.logger.Debugf("mergeNewPolicy start, old: %+v, newInfo: %+v", old, newInfo)
 	allowMap := make(map[string]interfaces.PolicyOperationItem)
 	denyMap := make(map[string]interfaces.PolicyOperationItem)
+
+	// 旧策略的无条件允许和拒绝
+	oldAllowOperations, oldDenyOperations := d.getPolicyNoConditionOperations(old)
+	// 新策略的无条件允许和拒绝
+	newAllowOperations, newDenyOperations := d.getPolicyNoConditionOperations(newInfo)
+
 	// 合并权限时 拒绝优先
-	for _, deny := range newInfo.Operation.Deny {
+	for _, deny := range newDenyOperations {
 		denyMap[deny.ID] = deny
 	}
 
-	for _, deny := range old.Operation.Deny {
+	for _, deny := range oldDenyOperations {
 		// 已存在使用newInfo的义务
 		if _, ok := denyMap[deny.ID]; ok {
 			continue
@@ -351,14 +430,14 @@ func (d *policy) mergeNewPolicy(old, newInfo *interfaces.PolicyInfo) (newPolicy 
 		denyMap[deny.ID] = deny
 	}
 
-	for _, allow := range newInfo.Operation.Allow {
+	for _, allow := range newAllowOperations {
 		if _, ok := denyMap[allow.ID]; ok {
 			continue
 		}
 		allowMap[allow.ID] = allow
 	}
 
-	for _, allow := range old.Operation.Allow {
+	for _, allow := range oldAllowOperations {
 		if _, ok := denyMap[allow.ID]; ok {
 			continue
 		}
@@ -378,8 +457,27 @@ func (d *policy) mergeNewPolicy(old, newInfo *interfaces.PolicyInfo) (newPolicy 
 	}
 
 	newPolicy.ID = old.ID
-	newPolicy.Operation.Allow = allow
-	newPolicy.Operation.Deny = deny
+	newPolicy.Rules = interfaces.PolicyRules{}
+
+	if len(allow) > 0 {
+		newPolicy.Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allow}}
+	}
+	if len(deny) > 0 {
+		newPolicy.Rules.Deny = []interfaces.PolicyRuleItem{{Operations: deny}}
+	}
+	// 旧策略 的Rules里 如果有条件则保留，没有条件则使用新的覆盖
+	for i := range old.Rules.Allow {
+		if isConditionEmpty(old.Rules.Allow[i].Condition) {
+			continue
+		}
+		newPolicy.Rules.Allow = append(newPolicy.Rules.Allow, old.Rules.Allow[i])
+	}
+	for i := range old.Rules.Deny {
+		if isConditionEmpty(old.Rules.Deny[i].Condition) {
+			continue
+		}
+		newPolicy.Rules.Deny = append(newPolicy.Rules.Deny, old.Rules.Deny[i])
+	}
 	newPolicy.ResourceID = old.ResourceID
 	newPolicy.ResourceType = old.ResourceType
 	newPolicy.ResourceName = old.ResourceName
@@ -708,7 +806,7 @@ func (d *policy) CreatePrivate(ctx context.Context, policys []interfaces.PolicyI
 
 // Update 更新策略
 //
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func (d *policy) Update(ctx context.Context, visitor *interfaces.Visitor, policys []interfaces.PolicyInfo) (err error) {
 	if len(policys) == 0 {
 		return
@@ -764,18 +862,56 @@ func (d *policy) Update(ctx context.Context, visitor *interfaces.Visitor, policy
 	}
 
 	for i := range policys {
+		policyID := policys[i].ID
 		// 策略不存在直接跳过
-		if _, ok := oldPoliciesMap[policys[i].ID]; !ok {
+		if _, ok := oldPoliciesMap[policyID]; !ok {
 			continue
 		}
-		err = d.checkPolicyOperationValid(resourceTypeOperationIDMap[oldPoliciesMap[policys[i].ID].ResourceType], &policys[i])
+		oldPolicy := oldPoliciesMap[policyID]
+		err = d.checkPolicyOperationValid(resourceTypeOperationIDMap[oldPolicy.ResourceType], &policys[i])
 		if err != nil {
 			d.logger.Errorf("Update: %v", err)
 			return
 		}
-
+		newAllowOperations, newDenyOperations := d.getPolicyNoConditionOperations(&policys[i])
+		// 保留旧策略中有条件的允许和拒绝，无条件的使用新的覆盖
+		hasNoCondition := false
+		for j := range oldPolicy.Rules.Allow {
+			if isConditionEmpty(oldPolicy.Rules.Allow[j].Condition) {
+				oldPolicy.Rules.Allow[j].Operations = newAllowOperations
+				hasNoCondition = true
+				break
+			}
+		}
+		// 如果没有无条件
+		if !hasNoCondition {
+			tmp := []interfaces.PolicyRuleItem{
+				{
+					Operations: newAllowOperations,
+				},
+			}
+			oldPolicy.Rules.Allow = append(tmp, oldPolicy.Rules.Allow...)
+		}
+		hasNoCondition = false
+		for j := range oldPolicy.Rules.Deny {
+			if isConditionEmpty(oldPolicy.Rules.Deny[j].Condition) {
+				oldPolicy.Rules.Deny[j].Operations = newDenyOperations
+				hasNoCondition = true
+				break
+			}
+		}
+		// 如果没有无条件
+		if !hasNoCondition {
+			tmp := []interfaces.PolicyRuleItem{
+				{
+					Operations: newDenyOperations,
+				},
+			}
+			oldPolicy.Rules.Deny = append(tmp, oldPolicy.Rules.Deny...)
+		}
+		policys[i].Rules = oldPolicy.Rules
 		// 如果策略存在，则更新
-		oldPoliciesMap[policys[i].ID] = policys[i]
+		oldPoliciesMap[policyID] = policys[i]
 	}
 
 	var tx *sql.Tx
@@ -810,6 +946,8 @@ func (d *policy) Update(ctx context.Context, visitor *interfaces.Visitor, policy
 }
 
 // Delete 删除策略
+//
+//nolint:gocyclo
 func (d *policy) Delete(ctx context.Context, visitor *interfaces.Visitor, ids []string) (err error) {
 	if len(ids) == 0 {
 		return nil
@@ -836,7 +974,86 @@ func (d *policy) Delete(ctx context.Context, visitor *interfaces.Visitor, ids []
 		return
 	}
 
-	return d.db.Delete(ctx, ids)
+	// 如果之前的策略只有无条件则是删除整个策略，如果有条件则是更新策略
+	deletePolicyIDs := []string{}
+	updatePolicys := []interfaces.PolicyInfo{}
+	for i := range oldPoliciesMap {
+		hasCondition := false
+		policy := oldPoliciesMap[i]
+		for j := range policy.Rules.Allow {
+			if !isConditionEmpty(policy.Rules.Allow[j].Condition) {
+				hasCondition = true
+				break
+			}
+		}
+		for j := range policy.Rules.Deny {
+			if !isConditionEmpty(policy.Rules.Deny[j].Condition) {
+				hasCondition = true
+				break
+			}
+		}
+
+		if hasCondition {
+			// 只保留有条件的规则
+			rulesTmp := interfaces.PolicyRules{
+				Allow: []interfaces.PolicyRuleItem{},
+				Deny:  []interfaces.PolicyRuleItem{},
+			}
+			for j := range policy.Rules.Allow {
+				if !isConditionEmpty(policy.Rules.Allow[j].Condition) {
+					rulesTmp.Allow = append(rulesTmp.Allow, policy.Rules.Allow[j])
+				}
+			}
+			for j := range policy.Rules.Deny {
+				if !isConditionEmpty(policy.Rules.Deny[j].Condition) {
+					rulesTmp.Deny = append(rulesTmp.Deny, policy.Rules.Deny[j])
+				}
+			}
+			policy.Rules = rulesTmp
+			updatePolicys = append(updatePolicys, policy)
+		} else {
+			deletePolicyIDs = append(deletePolicyIDs, policy.ID)
+		}
+	}
+
+	var tx *sql.Tx
+	tx, err = d.pool.Begin()
+	if err != nil {
+		return
+	}
+	// 异常时Rollback
+	defer func() {
+		switch err {
+		case nil:
+			// 提交事务
+			err = tx.Commit()
+			if err != nil {
+				d.logger.Errorf("Delete Transaction Commit Error:%v", err)
+				return
+			}
+		default:
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				d.logger.Errorf("Delete Rollback Error:%v", rollbackErr)
+			}
+		}
+	}()
+
+	if len(updatePolicys) > 0 {
+		err = d.db.Update(ctx, updatePolicys, tx)
+		if err != nil {
+			d.logger.Errorf("call db.Update error: %v", err)
+			return
+		}
+	}
+	if len(deletePolicyIDs) > 0 {
+		err = d.db.Delete(ctx, deletePolicyIDs, tx)
+		if err != nil {
+			d.logger.Errorf("call db.Delete error: %v", err)
+			return
+		}
+	}
+	return nil
 }
 
 // DeleteByResourceIDs 删除策略 根据资源id删除策略
@@ -893,7 +1110,7 @@ func (d *policy) InitPolicy(ctx context.Context, policys []interfaces.PolicyInfo
 		}
 	}
 
-	newPolicy, updatePolicy, _, err := d.getCreateAndUpdatePolicy(ctx, policys, resourceTypeMap, idNameMap)
+	newPolicy, updatePolicy, _, err := d.getCreateAndUpdatePolicyWithCondition(ctx, policys, resourceTypeMap, idNameMap)
 	if err != nil {
 		return
 	}
@@ -1050,7 +1267,7 @@ func (d *policy) getAccessorName(ctx context.Context, visitor *interfaces.Visito
 // 2. 获取访问者名称
 // 3. 获取创建和更新的策略, 过滤掉无变化的策略
 //
-//nolint:gocritic
+//nolint:gocritic,dupl
 func (d *policy) getCreateAndUpdatePolicy(ctx context.Context, policys []interfaces.PolicyInfo,
 	resourceTypeMap map[string][]string, idNameMap map[string]string) (
 	newPolicy []interfaces.PolicyInfo, updatePolicy []interfaces.PolicyInfo, policyIDs []string, err error,
@@ -1128,7 +1345,7 @@ func (d *policy) getCreateAndUpdatePolicy(ctx context.Context, policys []interfa
 
 // GetAccessorPolicy 获取访问者策略
 //
-//nolint:gocritic,gocyclo
+//nolint:gocritic,gocyclo,funlen
 func (d *policy) GetAccessorPolicy(ctx context.Context, visitor *interfaces.Visitor, param interfaces.AccessorPolicyParam) (count int, policies []interfaces.PolicyInfo,
 	includeResp interfaces.PolicyIncludeResp, err error,
 ) {
@@ -1143,14 +1360,44 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, visitor *interfaces.Visi
 		return
 	}
 
-	count, policies, err = d.db.GetAccessorPolicy(ctx, param)
+	policiesTmp, err := d.db.GetAccessorPolicy(ctx, param)
 	if err != nil {
 		d.logger.Errorf("GetAccessorPolicy: %v", err)
 		return
 	}
-	if len(policies) == 0 {
+	if len(policiesTmp) == 0 {
 		return
 	}
+
+	policies = make([]interfaces.PolicyInfo, 0, len(policiesTmp))
+	for i := range policiesTmp {
+		// 获取 无条件的 允许和拒绝操作
+		allowOperations, denyOperations := d.getPolicyNoConditionOperations(&policiesTmp[i])
+		// 无条件的允许和拒绝操作都为空，则过滤
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
+
+		if len(allowOperations) > 0 {
+			policiesTmp[i].Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowOperations}}
+		}
+		if len(denyOperations) > 0 {
+			policiesTmp[i].Rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyOperations}}
+		}
+		policies = append(policies, policiesTmp[i])
+	}
+
+	count = len(policies)
+	if count == 0 {
+		return count, policies, includeResp, nil
+	}
+
+	// 只返回分页数据
+	policies = applyPagination(policies, param.Offset, param.Limit)
+	if len(policies) == 0 {
+		return count, policies, includeResp, nil
+	}
+
 	d.logger.Debugf("GetAccessorPolicy policies len: %d", len(policies))
 	resourceTypeMap := make(map[string]bool)
 	resourceTypeIDs := make([]string, 0, len(policies))
@@ -1170,15 +1417,22 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, visitor *interfaces.Visi
 	// 收集义务类型和义务
 	obligationTypeMap := make(map[string]bool)
 	obligationMap := make(map[string]bool)
-
 	for i := range policies {
 		opeNames := operationInfoMap[policies[i].ResourceType]
+		// 获取 无条件的 允许和拒绝操作
+		allowOperations, denyOperations := d.getPolicyNoConditionOperations(&policies[i])
 		// 填充操作名称和矫正权限顺序
-		policies[i].Operation.Allow,
-			policies[i].Operation.Deny = d.sortOperationAndFillName(policies[i].Operation.Allow, policies[i].Operation.Deny, opeNames)
-
+		allowOperationsTmp, denyOperationsTmp := d.sortOperationAndFillName(allowOperations, denyOperations, opeNames)
+		// 清空原有配置
+		policies[i].Rules = interfaces.PolicyRules{}
+		if len(allowOperationsTmp) > 0 {
+			policies[i].Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowOperationsTmp}}
+		}
+		if len(denyOperationsTmp) > 0 {
+			policies[i].Rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyOperationsTmp}}
+		}
 		// 收集义务类型和义务
-		for _, ope := range policies[i].Operation.Allow {
+		for _, ope := range allowOperations {
 			for _, obligation := range ope.Obligations {
 				obligationTypeMap[obligation.TypeID] = true
 				if obligation.ID != "" {
@@ -1220,22 +1474,24 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, visitor *interfaces.Visi
 
 	// 去掉策略中无效的义务类型和义务
 	for i := range policies {
-		for j := range policies[i].Operation.Allow {
-			obligationsTmp := policies[i].Operation.Allow[j].Obligations
-			var obligationsValid []interfaces.PolicyObligationItem
-			for _, obligation := range obligationsTmp {
-				// 义务类型不存在 直接过滤
-				if !validObligationTypesMap[obligation.TypeID] {
-					continue
-				}
+		for j := range policies[i].Rules.Allow {
+			for k := range policies[i].Rules.Allow[j].Operations {
+				obligationsTmp := policies[i].Rules.Allow[j].Operations[k].Obligations
+				var obligationsValid []interfaces.PolicyObligationItem
+				for _, obligation := range obligationsTmp {
+					// 义务类型不存在 直接过滤
+					if !validObligationTypesMap[obligation.TypeID] {
+						continue
+					}
 
-				// 使用了义务，但是义务不存在
-				if obligation.ID != "" && !validObligationMap[obligation.ID] {
-					continue
+					// 使用了义务，但是义务不存在
+					if obligation.ID != "" && !validObligationMap[obligation.ID] {
+						continue
+					}
+					obligationsValid = append(obligationsValid, obligation)
 				}
-				obligationsValid = append(obligationsValid, obligation)
+				policies[i].Rules.Allow[j].Operations[k].Obligations = obligationsValid
 			}
-			policies[i].Operation.Allow[j].Obligations = obligationsValid
 		}
 	}
 
@@ -1249,7 +1505,7 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, visitor *interfaces.Visi
 		}
 	}
 
-	return
+	return count, policies, includeResp, nil
 }
 
 /*
@@ -1291,7 +1547,7 @@ func (d *policy) sortOperationAndFillName(allow, deny []interfaces.PolicyOperati
 
 // GetResourcePolicy 获取资源策略分页
 //
-//nolint:gocyclo
+//nolint:gocyclo,funlen
 func (p *policy) GetResourcePolicy(ctx context.Context, visitor *interfaces.Visitor, params interfaces.ResourcePolicyPagination) (count int,
 	policies []interfaces.PolicyInfo, includeResp interfaces.PolicyIncludeResp, err error,
 ) {
@@ -1311,15 +1567,40 @@ func (p *policy) GetResourcePolicy(ctx context.Context, visitor *interfaces.Visi
 		Offset:       params.Offset,
 		Limit:        params.Limit,
 	}
-	count, policies, err = p.db.GetPagination(ctx, paramsTmp)
+	policiesTmp, err := p.db.GetPagination(ctx, paramsTmp)
 	if err != nil {
 		p.logger.Errorf("GetResourcePolicy db GetPagination: %v", err)
 		return
 	}
 
-	if len(policies) == 0 {
+	if len(policiesTmp) == 0 {
 		return
 	}
+
+	policies = make([]interfaces.PolicyInfo, 0, len(policiesTmp))
+	for i := range policiesTmp {
+		// 获取 无条件的 允许和拒绝操作
+		allowOperations, denyOperations := p.getPolicyNoConditionOperations(&policiesTmp[i])
+		// 无条件的允许和拒绝操作都为空，则过滤
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
+
+		if len(allowOperations) > 0 {
+			policiesTmp[i].Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowOperations}}
+		}
+		if len(denyOperations) > 0 {
+			policiesTmp[i].Rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyOperations}}
+		}
+		policies = append(policies, policiesTmp[i])
+	}
+
+	count = len(policies)
+	if count == 0 {
+		return count, policies, includeResp, nil
+	}
+	// 只返回分页数据
+	policies = applyPagination(policies, params.Offset, params.Limit)
 
 	// 获取操作名称
 	operationInfoMap, err := p.getResourceTypesOperation(ctx, visitor, []string{policies[0].ResourceType})
@@ -1351,12 +1632,20 @@ func (p *policy) GetResourcePolicy(ctx context.Context, visitor *interfaces.Visi
 			policies[i].ParentDeps = [][]interfaces.Department{}
 		}
 
-		// 填充操作名称和矫正权限顺序
-		policies[i].Operation.Allow,
-			policies[i].Operation.Deny = p.sortOperationAndFillName(policies[i].Operation.Allow, policies[i].Operation.Deny, opeInfo)
+		// 填充操作名称和矫正权限顺序（每条策略单独取 allow/deny）
+		allowOps, denyOps := p.getPolicyNoConditionOperations(&policies[i])
+		allowFilled, denyFilled := p.sortOperationAndFillName(allowOps, denyOps, opeInfo)
+		// 清空原有配置
+		policies[i].Rules = interfaces.PolicyRules{}
+		if len(allowFilled) > 0 {
+			policies[i].Rules.Allow = []interfaces.PolicyRuleItem{{Operations: allowFilled}}
+		}
+		if len(denyFilled) > 0 {
+			policies[i].Rules.Deny = []interfaces.PolicyRuleItem{{Operations: denyFilled}}
+		}
 
 		// 收集义务类型和义务
-		for _, ope := range policies[i].Operation.Allow {
+		for _, ope := range allowOps {
 			for _, obligation := range ope.Obligations {
 				obligationTypeMap[obligation.TypeID] = true
 				if obligation.ID != "" {
@@ -1395,28 +1684,28 @@ func (p *policy) GetResourcePolicy(ctx context.Context, visitor *interfaces.Visi
 			validObligationMap[obligation.ID] = true
 		}
 	}
-
 	// 去掉策略中无效的义务类型和义务
 	for i := range policies {
-		for j := range policies[i].Operation.Allow {
-			obligationsTmp := policies[i].Operation.Allow[j].Obligations
-			var obligationsValid []interfaces.PolicyObligationItem
-			for _, obligation := range obligationsTmp {
-				// 义务类型不存在 直接过滤
-				if !validObligationTypesMap[obligation.TypeID] {
-					continue
-				}
+		for j := range policies[i].Rules.Allow {
+			for k := range policies[i].Rules.Allow[j].Operations {
+				obligationsTmp := policies[i].Rules.Allow[j].Operations[k].Obligations
+				var obligationsValid []interfaces.PolicyObligationItem
+				for _, obligation := range obligationsTmp {
+					// 义务类型不存在 直接过滤
+					if !validObligationTypesMap[obligation.TypeID] {
+						continue
+					}
 
-				// 使用了义务，但是义务不存在
-				if obligation.ID != "" && !validObligationMap[obligation.ID] {
-					continue
+					// 使用了义务，但是义务不存在
+					if obligation.ID != "" && !validObligationMap[obligation.ID] {
+						continue
+					}
+					obligationsValid = append(obligationsValid, obligation)
 				}
-				obligationsValid = append(obligationsValid, obligation)
+				policies[i].Rules.Allow[j].Operations[k].Obligations = obligationsValid
 			}
-			policies[i].Operation.Allow[j].Obligations = obligationsValid
 		}
 	}
-
 	// 补全include信息
 	for _, includeType := range params.Include {
 		switch includeType {
@@ -1486,4 +1775,292 @@ func (p *policy) checkResourceIDAndAncestors(ctx context.Context, visitor *inter
 		}
 	}
 	return nil
+}
+
+// isConditionEmpty 判断 Condition 是否为空（nil 或空map）
+func isConditionEmpty(c any) bool {
+	if c == nil {
+		return true
+	}
+	// 检查是否是空 map
+	if m, ok := c.(map[string]any); ok && len(m) == 0 {
+		return true
+	}
+	return false
+}
+
+// 获取策略中无条件的允许和拒绝
+func (p *policy) getPolicyNoConditionOperations(policy *interfaces.PolicyInfo) (allow, deny []interfaces.PolicyOperationItem) {
+	for _, allowOperationItem := range policy.Rules.Allow {
+		if isConditionEmpty(allowOperationItem.Condition) {
+			allow = allowOperationItem.Operations
+			break
+		}
+	}
+	for _, denyOperationItem := range policy.Rules.Deny {
+		if isConditionEmpty(denyOperationItem.Condition) {
+			deny = denyOperationItem.Operations
+			break
+		}
+	}
+	return allow, deny
+}
+
+/* getCreateAndUpdatePolicyWithCondition 获取创建和更新的策略, 包含条件
+1. 获取资源类型和对应的资源实例ID
+2. 获取访问者名称
+3. 获取创建和更新的策略, 过滤掉无变化的策略
+*/
+//nolint:gocritic,dupl
+func (d *policy) getCreateAndUpdatePolicyWithCondition(ctx context.Context, policys []interfaces.PolicyInfo,
+	resourceTypeMap map[string][]string, idNameMap map[string]string) (
+	newPolicy []interfaces.PolicyInfo, updatePolicy []interfaces.PolicyInfo, policyIDs []string, err error,
+) {
+	resourceTypeOldPoliciesMap := make(map[string]map[string][]interfaces.PolicyInfo)
+	for resourceTypeID, resourceIDs := range resourceTypeMap {
+		var oldPoliciesMap map[string][]interfaces.PolicyInfo
+		oldPoliciesMap, err = d.db.GetByResourceIDs(ctx, resourceTypeID, resourceIDs)
+		if err != nil {
+			d.logger.Errorf("getCreateAndUpdatePolicy  GetByResourceIDs error: %v", err)
+			return
+		}
+		// 如果资源实例下没有策略，则跳过
+		if len(oldPoliciesMap) == 0 {
+			continue
+		}
+		resourceTypeOldPoliciesMap[resourceTypeID] = oldPoliciesMap
+	}
+
+	// oldResourceAccessorsPoliciesMap [资源类型][资源实例ID][访问者ID]策略
+	oldResourceAccessorsPoliciesMap := make(map[string]map[string]map[string]interfaces.PolicyInfo)
+	for resourceTypeID, resourceIDPolicieMap := range resourceTypeOldPoliciesMap {
+		if _, ok := oldResourceAccessorsPoliciesMap[resourceTypeID]; !ok {
+			oldResourceAccessorsPoliciesMap[resourceTypeID] = make(map[string]map[string]interfaces.PolicyInfo)
+		}
+		for resourceID, policys := range resourceIDPolicieMap {
+			if _, ok := oldResourceAccessorsPoliciesMap[resourceTypeID][resourceID]; !ok {
+				oldResourceAccessorsPoliciesMap[resourceTypeID][resourceID] = make(map[string]interfaces.PolicyInfo)
+			}
+			for _, policy := range policys {
+				oldResourceAccessorsPoliciesMap[resourceTypeID][resourceID][policy.AccessorID] = policy
+			}
+		}
+	}
+
+	// 如果访问者之前策略存在，且策略条件为空，则合并
+	newPolicy = []interfaces.PolicyInfo{}
+	updatePolicy = []interfaces.PolicyInfo{}
+	policyIDs = make([]string, 0, len(policys))
+	for _, policy := range policys {
+		var oldPolicy interfaces.PolicyInfo
+		var exist bool
+		if resourceIDPolicieMap, ok := oldResourceAccessorsPoliciesMap[policy.ResourceType]; ok {
+			if policysMap, ok := resourceIDPolicieMap[policy.ResourceID]; ok {
+				if _, ok := policysMap[policy.AccessorID]; ok {
+					exist = true
+					oldPolicy = policysMap[policy.AccessorID]
+				}
+			}
+		}
+		if exist {
+			// 检查是否无变化
+			policyIDs = append(policyIDs, oldPolicy.ID)
+			isSame := d.cmpPolicyWithCondition(&oldPolicy, &policy)
+			if isSame {
+				continue
+			}
+			tmpPolicy := d.mergeNewPolicyWithCondition(&oldPolicy, &policy)
+			updatePolicy = append(updatePolicy, tmpPolicy)
+		} else {
+			// 新加的策略， 生成唯一标识
+			policy.ID = uuid.NewV4().String()
+			policyIDs = append(policyIDs, policy.ID)
+			// 名称找不到, 使用访问者id
+			if _, ok := idNameMap[policy.AccessorID]; !ok {
+				policy.AccessorName = policy.AccessorID
+			} else {
+				policy.AccessorName = idNameMap[policy.AccessorID]
+			}
+			newPolicy = append(newPolicy, policy)
+		}
+	}
+	return
+}
+
+/*
+cmpPolicyWithCondition  检查新策略是否有修改
+1. 过期时间是否相等
+2. 新策略的操作是否是旧策略的子集, 且操作的义务是否相等
+*/
+//nolint:dupl,gocyclo
+func (d *policy) cmpPolicyWithCondition(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
+	// 过期时间是否相等
+	if old.EndTime != newInfo.EndTime {
+		isSame = false
+		return
+	}
+
+	// 循环遍历每个“带条件”的规则项：
+	// - 新策略里出现的条件，旧策略必须存在同条件的规则项
+	// - 且新规则项的每个操作及其义务，都必须是旧规则项的子集（按 Operation.ID 匹配，义务 DeepEqual）
+	for _, newRule := range newInfo.Rules.Allow {
+		var oldRule *interfaces.PolicyRuleItem
+		for i := range old.Rules.Allow {
+			// 如果都是空条件，则认为相同
+			if isConditionEmpty(old.Rules.Allow[i].Condition) && isConditionEmpty(newRule.Condition) {
+				oldRule = &old.Rules.Allow[i]
+				break
+			}
+			// 非空条件 ， 条件相等则认为相同
+			if reflect.DeepEqual(old.Rules.Allow[i].Condition, newRule.Condition) {
+				oldRule = &old.Rules.Allow[i]
+				break
+			}
+		}
+		if oldRule == nil {
+			isSame = false
+			return
+		}
+		oldOpMap := make(map[string]interfaces.PolicyOperationItem, len(oldRule.Operations))
+		for _, op := range oldRule.Operations {
+			oldOpMap[op.ID] = op
+		}
+		for _, op := range newRule.Operations {
+			oldOp, ok := oldOpMap[op.ID]
+			// 如果操作不存在，则认为不同
+			if !ok {
+				isSame = false
+				return
+			}
+			if !reflect.DeepEqual(op.Obligations, oldOp.Obligations) {
+				isSame = false
+				return
+			}
+		}
+	}
+	for _, newRule := range newInfo.Rules.Deny {
+		var oldRule *interfaces.PolicyRuleItem
+		for i := range old.Rules.Deny {
+			// 如果都是空条件，则认为相同
+			if isConditionEmpty(old.Rules.Deny[i].Condition) && isConditionEmpty(newRule.Condition) {
+				oldRule = &old.Rules.Deny[i]
+				break
+			}
+			// 非空条件 ， 条件相等则认为相同
+			if reflect.DeepEqual(old.Rules.Deny[i].Condition, newRule.Condition) {
+				oldRule = &old.Rules.Deny[i]
+				break
+			}
+		}
+		if oldRule == nil {
+			isSame = false
+			return
+		}
+		oldOpMap := make(map[string]interfaces.PolicyOperationItem, len(oldRule.Operations))
+		for _, op := range oldRule.Operations {
+			oldOpMap[op.ID] = op
+		}
+		for _, op := range newRule.Operations {
+			// 如果操作不存在，则认为不同
+			oldOp, ok := oldOpMap[op.ID]
+			if !ok {
+				isSame = false
+				return
+			}
+			if !reflect.DeepEqual(op.Obligations, oldOp.Obligations) {
+				isSame = false
+				return
+			}
+		}
+	}
+
+	isSame = true
+	return
+}
+
+/*
+mergeNewPolicyWithCondition 合并策略 , 包含条件
+1. newInfo 的规则项，Allow条件相同时合并到old的Allow规则项中，已存在的操作ID使用newInfo的义务，不存在的操作ID使用旧的义务
+2. newInfo 的规则项，Deny条件相同时合并到old的Deny规则项中，已存在的操作ID使用newInfo的义务，不存在的操作ID使用旧的义务
+3. newInfo 的规则项，条件不同时，追加到旧的规则中
+*/
+func (d *policy) mergeNewPolicyWithCondition(old, newInfo *interfaces.PolicyInfo) (newPolicy interfaces.PolicyInfo) {
+	d.logger.Debugf("mergeNewPolicyWithCondition start, old: %+v, newInfo: %+v", old, newInfo)
+	// 合并同一条件下的操作：
+	// - 已存在的操作 ID：使用 newOps 的义务覆盖 oldOps 的义务
+	// - 不存在的操作 ID：保留 oldOps（义务不变）
+	mergeOperations := func(oldOps, newOps []interfaces.PolicyOperationItem) []interfaces.PolicyOperationItem {
+		if len(oldOps) == 0 {
+			return newOps
+		}
+		if len(newOps) == 0 {
+			return oldOps
+		}
+		newMap := make(map[string]interfaces.PolicyOperationItem, len(newOps))
+		for _, op := range newOps {
+			newMap[op.ID] = op
+		}
+		merged := make([]interfaces.PolicyOperationItem, 0, len(newMap)+len(oldOps))
+		for k := range newMap {
+			merged = append(merged, newMap[k])
+		}
+		for _, op := range oldOps {
+			if _, ok := newMap[op.ID]; ok {
+				continue
+			}
+			merged = append(merged, op)
+		}
+		return merged
+	}
+
+	// 合并规则项（Allow 或 Deny 单独合并）
+	mergeRuleItems := func(oldItems, newItems []interfaces.PolicyRuleItem) []interfaces.PolicyRuleItem {
+		out := make([]interfaces.PolicyRuleItem, 0, len(oldItems)+len(newItems))
+		usedOld := make([]bool, len(oldItems))
+
+		findOld := func(cond any) int {
+			for i := range oldItems {
+				if usedOld[i] {
+					continue
+				}
+				if isConditionEmpty(oldItems[i].Condition) && isConditionEmpty(cond) {
+					return i
+				}
+				if reflect.DeepEqual(oldItems[i].Condition, cond) {
+					return i
+				}
+			}
+			return -1
+		}
+
+		for i := range newItems {
+			oi := findOld(newItems[i].Condition)
+			if oi == -1 {
+				// 条件不同：追加 new 规则项
+				out = append(out, newItems[i])
+				continue
+			}
+			usedOld[oi] = true
+			out = append(out, interfaces.PolicyRuleItem{
+				Condition:  oldItems[oi].Condition,
+				Operations: mergeOperations(oldItems[oi].Operations, newItems[i].Operations),
+			})
+		}
+
+		// 把 old 中未被合并到的规则项保留
+		for i := range oldItems {
+			if usedOld[i] {
+				continue
+			}
+			out = append(out, oldItems[i])
+		}
+		return out
+	}
+
+	newPolicy = *old
+	newPolicy.Rules = interfaces.PolicyRules{}
+	newPolicy.Rules.Allow = mergeRuleItems(old.Rules.Allow, newInfo.Rules.Allow)
+	newPolicy.Rules.Deny = mergeRuleItems(old.Rules.Deny, newInfo.Rules.Deny)
+	newPolicy.EndTime = d.calcMinEndTime(old.EndTime, newInfo.EndTime)
+	return
 }

@@ -9,7 +9,6 @@ from src.common.lib import (escape_key,
                             raise_exception)
 from src.common.db.connector import ConnectorManager
 from ShareMgnt.ttypes import (ncTShareMgntError,
-                              ncTNetInfo,
                               ncTDocInfo)
 from eisoo.tclients import TClient
 
@@ -149,48 +148,6 @@ class NetDocsLimitManage(DBConnector):
         if not affect_row:
             raise_exception(exp_msg=_("IDS_NET_DOCS_LIMIT_ID_NOT_EXIST"),
                             exp_num=ncTShareMgntError.NCT_NET_DOCS_LIMIT_ID_NOT_EXIST)
-
-    def get_net(self):
-        """
-        获取网段设置
-        """
-        query_sql = """
-        SELECT DISTINCT f_id, f_ip, f_sub_net_mask
-        FROM t_net_docs_limit_info
-        ORDER BY f_ip, f_sub_net_mask
-        """
-        results = self.r_db.all(query_sql)
-        net_infos = []
-        for res in results:
-            net_info = ncTNetInfo()
-            net_info.id = res['f_id']
-            net_info.ip = res['f_ip']
-            net_info.subNetMask = res['f_sub_net_mask']
-            net_infos.append(net_info)
-
-        return net_infos
-
-    def search_net(self, ip):
-        """
-        根据ip搜索网段设置
-        """
-        esckey = "%%%s%%" % escape_key(ip)
-        query_sql = """
-        SELECT DISTINCT `f_id`, `f_ip`, `f_sub_net_mask`
-        FROM `t_net_docs_limit_info`
-        WHERE f_ip like %s
-        ORDER BY `f_ip`, `f_sub_net_mask`
-        """
-        results = self.r_db.all(query_sql, esckey)
-        net_infos = []
-        for res in results:
-            net_info = ncTNetInfo()
-            net_info.id = res['f_id']
-            net_info.ip = res['f_ip']
-            net_info.subNetMask = res['f_sub_net_mask']
-            net_infos.append(net_info)
-
-        return net_infos
 
     def add_docs(self, net_id, docId_list):
         """
@@ -340,24 +297,3 @@ class NetDocsLimitManage(DBConnector):
             conn.rollback()
             raise_exception(exp_msg=str(e),
                             exp_num=ncTShareMgntError.NCT_DB_OPERATE_FAILED)
-
-    def get_by_doc_id(self, docId):
-        """
-        根据文档库名搜索对应的网段设置
-        """
-        query_sql = """
-        SELECT DISTINCT `f_id`, `f_ip`, `f_sub_net_mask`
-        FROM `t_net_docs_limit_info`
-        WHERE `f_doc_id` = %s
-        ORDER BY `f_ip`, `f_sub_net_mask`
-        """
-        results = self.r_db.all(query_sql, docId)
-        net_infos = []
-        for res in results:
-            net_info = ncTNetInfo()
-            net_info.id = res['f_id']
-            net_info.ip = res['f_ip']
-            net_info.subNetMask = res['f_sub_net_mask']
-            net_infos.append(net_info)
-
-        return net_infos

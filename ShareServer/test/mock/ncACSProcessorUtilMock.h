@@ -12,7 +12,6 @@ class ncACSProcessorUtilMock: public ncIACSProcessorUtil
     XPCOM_OBJECT_MOCK (ncACSProcessorUtilMock)
 
 public:
-    MOCK_METHOD0(IsMajorNode, bool());
     MOCK_METHOD2(GetConfValue, string(const string&, const string&));
     MOCK_METHOD7(Log, void(const String&, ncTokenVisitorType typ, ncTLogType::type, ncTLogLevel::type, int,
                         const String&, const String&, const String&));

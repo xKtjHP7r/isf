@@ -116,6 +116,15 @@ func (p *policyCalcRestHandler) checkPublic(c *gin.Context) {
 		ancestors = p.ancestorsStrToInfo(ancestorsJson)
 	}
 
+	createdByJson, ok := resourceJson["created_by"]
+	var createdBy interfaces.CreatedByInfo
+	if ok {
+		createdByID := createdByJson.(map[string]any)
+		createdBy = interfaces.CreatedByInfo{
+			ID: createdByID["id"].(string),
+		}
+	}
+
 	var resourceName string
 	nameJson, ok := resourceJson["name"]
 	if ok {
@@ -132,6 +141,7 @@ func (p *policyCalcRestHandler) checkPublic(c *gin.Context) {
 		Type:      resourceType,
 		Name:      resourceName,
 		Ancestors: ancestors,
+		CreatedBy: createdBy,
 	}
 
 	operationsJson := jsonReq["operation"].([]any)
@@ -175,6 +185,15 @@ func (p *policyCalcRestHandler) check(c *gin.Context) {
 		ancestors = p.ancestorsStrToInfo(ancestorsJson)
 	}
 
+	createdByJson, ok := resourceJson["created_by"]
+	var createdBy interfaces.CreatedByInfo
+	if ok {
+		createdByID := createdByJson.(map[string]any)
+		createdBy = interfaces.CreatedByInfo{
+			ID: createdByID["id"].(string),
+		}
+	}
+
 	var resourceName string
 	nameJson, ok := resourceJson["name"]
 	if ok {
@@ -191,6 +210,7 @@ func (p *policyCalcRestHandler) check(c *gin.Context) {
 		Type:      resourceType,
 		Name:      resourceName,
 		Ancestors: ancestors,
+		CreatedBy: createdBy,
 	}
 
 	operationsJson := jsonReq["operation"].([]any)
@@ -278,10 +298,19 @@ func (p *policyCalcRestHandler) resourceFilter(c *gin.Context) {
 		if ok {
 			ancestors = p.ancestorsStrToInfo(ancestorsJson)
 		}
+		createdByJson, ok := resourceJson["created_by"]
+		var createdBy interfaces.CreatedByInfo
+		if ok {
+			createdByID := createdByJson.(map[string]any)
+			createdBy = interfaces.CreatedByInfo{
+				ID: createdByID["id"].(string),
+			}
+		}
 		resources = append(resources, interfaces.ResourceInfo{
 			ID:        resourceID,
 			Type:      resourceType,
 			Ancestors: ancestors,
+			CreatedBy: createdBy,
 		})
 	}
 
@@ -390,10 +419,20 @@ func (p *policyCalcRestHandler) resourceOperation(c *gin.Context) {
 			ancestors = p.ancestorsStrToInfo(ancestorsJson)
 		}
 
+		createdByJson, ok := resourceJson["created_by"]
+		var createdBy interfaces.CreatedByInfo
+		if ok {
+			createdByID := createdByJson.(map[string]any)
+			createdBy = interfaces.CreatedByInfo{
+				ID: createdByID["id"].(string),
+			}
+		}
+
 		resources = append(resources, interfaces.ResourceInfo{
 			ID:        resourceID,
 			Type:      resourceType,
 			Ancestors: ancestors,
+			CreatedBy: createdBy,
 		})
 	}
 
@@ -462,10 +501,20 @@ func (p *policyCalcRestHandler) resourceOperationPublic(c *gin.Context) {
 			ancestors = p.ancestorsStrToInfo(ancestorsJson)
 		}
 
+		createdByJson, ok := resourceJson["created_by"]
+		var createdBy interfaces.CreatedByInfo
+		if ok {
+			createdByID := createdByJson.(map[string]any)
+			createdBy = interfaces.CreatedByInfo{
+				ID: createdByID["id"].(string),
+			}
+		}
+
 		resources = append(resources, interfaces.ResourceInfo{
 			ID:        resourceID,
 			Type:      resourceType,
 			Ancestors: ancestors,
+			CreatedBy: createdBy,
 		})
 	}
 

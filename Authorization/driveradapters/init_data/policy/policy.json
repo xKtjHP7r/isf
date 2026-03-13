@@ -11,31 +11,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "list"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "view"
-                },
-                {
-                    "id": "manual_exec"
-                },
-                {
-                    "id": "run_statistics"
-                },
-                {
-                    "id": "run_with_app"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "list"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "view"
+                        },
+                        {
+                            "id": "manual_exec"
+                        },
+                        {
+                            "id": "run_statistics"
+                        },
+                        {
+                            "id": "run_with_app"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -53,10 +58,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -74,10 +84,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -95,10 +110,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -116,10 +136,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -137,10 +162,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -158,34 +188,39 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "view"
-                },
-                {
-                    "id": "publish"
-                },
-                {
-                    "id": "unpublish"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "public_access"
-                },
-                {
-                    "id": "execute"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "view"
+                        },
+                        {
+                            "id": "publish"
+                        },
+                        {
+                            "id": "unpublish"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "public_access"
+                        },
+                        {
+                            "id": "execute"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -203,34 +238,39 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "view"
-                },
-                {
-                    "id": "publish"
-                },
-                {
-                    "id": "unpublish"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "public_access"
-                },
-                {
-                    "id": "execute"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "view"
+                        },
+                        {
+                            "id": "publish"
+                        },
+                        {
+                            "id": "unpublish"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "public_access"
+                        },
+                        {
+                            "id": "execute"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -248,34 +288,39 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "view"
-                },
-                {
-                    "id": "publish"
-                },
-                {
-                    "id": "unpublish"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "public_access"
-                },
-                {
-                    "id": "execute"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "view"
+                        },
+                        {
+                            "id": "publish"
+                        },
+                        {
+                            "id": "unpublish"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "public_access"
+                        },
+                        {
+                            "id": "execute"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -293,11 +338,16 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create",
-                    "name": ""
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create",
+                            "name": ""
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -315,11 +365,16 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create",
-                    "name": ""
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create",
+                            "name": ""
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -337,11 +392,16 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create",
-                    "name": ""
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create",
+                            "name": ""
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -359,11 +419,16 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create",
-                    "name": ""
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create",
+                            "name": ""
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -381,11 +446,16 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "create",
-                    "name": ""
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "create",
+                            "name": ""
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -403,37 +473,42 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "publish_to_be_skill_agent"
-                },
-                {
-                    "id": "publish_to_be_api_agent"
-                },
-                {
-                    "id": "create_system_agent"
-                },
-                {
-                    "id": "unpublish_other_user_agent"
-                },
-                {
-                    "id": "use"
-                },
-                {
-                    "id": "publish"
-                },
-                {
-                    "id": "unpublish"
-                },
-                {
-                    "id": "publish_to_be_web_sdk_agent"
-                },
-                {
-                    "id": "publish_to_be_data_flow_agent"
-                },
-                {
-                    "id": "mgnt_built_in_agent"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "publish_to_be_skill_agent"
+                        },
+                        {
+                            "id": "publish_to_be_api_agent"
+                        },
+                        {
+                            "id": "create_system_agent"
+                        },
+                        {
+                            "id": "unpublish_other_user_agent"
+                        },
+                        {
+                            "id": "use"
+                        },
+                        {
+                            "id": "publish"
+                        },
+                        {
+                            "id": "unpublish"
+                        },
+                        {
+                            "id": "publish_to_be_web_sdk_agent"
+                        },
+                        {
+                            "id": "publish_to_be_data_flow_agent"
+                        },
+                        {
+                            "id": "mgnt_built_in_agent"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -451,16 +526,21 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "publish"
-                },
-                {
-                    "id": "unpublish"
-                },
-                {
-                    "id": "unpublish_other_user_agent_tpl"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "publish"
+                        },
+                        {
+                            "id": "unpublish"
+                        },
+                        {
+                            "id": "unpublish_other_user_agent_tpl"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -478,22 +558,27 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -511,16 +596,21 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -538,28 +628,33 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "scan"
-                },
-                {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "scan"
+                        },
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -577,19 +672,24 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "scan"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "scan"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -607,19 +707,24 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "scan"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "scan"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -637,19 +742,24 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "scan"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "scan"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -667,19 +777,24 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
-                },
-                {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "scan"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        },
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "scan"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -697,10 +812,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -718,10 +838,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -739,10 +864,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -760,10 +890,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -781,10 +916,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -802,10 +942,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -823,10 +968,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -844,34 +994,39 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "task_manage"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "task_manage"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -889,22 +1044,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -922,22 +1082,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -955,31 +1120,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -997,22 +1167,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1030,22 +1205,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1063,31 +1243,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1105,22 +1290,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1138,22 +1328,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1171,31 +1366,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1213,22 +1413,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1246,22 +1451,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1279,31 +1489,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1321,22 +1536,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1354,22 +1574,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1387,28 +1612,33 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1426,19 +1656,24 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1456,19 +1691,24 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1486,37 +1726,42 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
-                },
-                {
-                    "id": "rule_manage"
-                },
-                {
-                    "id": "rule_authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        },
+                        {
+                            "id": "rule_manage"
+                        },
+                        {
+                            "id": "rule_authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1534,22 +1779,27 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1567,22 +1817,27 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "data_query"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "data_query"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1600,28 +1855,33 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1639,19 +1899,24 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1669,19 +1934,24 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1699,31 +1969,36 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "index_manage"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "index_manage"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1741,19 +2016,24 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1771,19 +2051,24 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1801,28 +2086,33 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1840,19 +2130,24 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1870,19 +2165,24 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "import"
-                },
-                {
-                    "id": "export"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "import"
+                        },
+                        {
+                            "id": "export"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1900,22 +2200,27 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1933,13 +2238,18 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1957,13 +2267,18 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -1981,22 +2296,27 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
-                },
-                {
-                    "id": "modify"
-                },
-                {
-                    "id": "delete"
-                },
-                {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        },
+                        {
+                            "id": "modify"
+                        },
+                        {
+                            "id": "delete"
+                        },
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2014,13 +2334,18 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2038,13 +2363,18 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2062,13 +2392,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2086,13 +2421,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2110,13 +2450,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2134,13 +2479,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2158,13 +2508,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2182,13 +2537,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2206,13 +2566,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2230,13 +2595,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2254,13 +2624,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2278,13 +2653,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2302,13 +2682,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2326,13 +2711,18 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2350,13 +2740,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2374,13 +2769,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2398,13 +2798,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2422,13 +2827,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2446,13 +2856,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2470,13 +2885,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2494,13 +2914,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2518,13 +2943,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2542,13 +2972,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2566,13 +3001,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2590,13 +3030,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2614,13 +3059,18 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "view_detail"
-                },
-                {
-                    "id": "create"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "view_detail"
+                        },
+                        {
+                            "id": "create"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -2638,10 +3088,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "authorize"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "authorize"
+                        }
+                    ]
                 }
             ],
             "deny": []

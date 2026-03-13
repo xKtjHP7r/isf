@@ -29,7 +29,6 @@ NS_IMETHODIMP_(nsrefcnt) ncACSPermManager::Release (void)
 
 AB_DEFINE_THREADSAFE_SINGLETON_NO_POOL (ncACSPermManager)
 
-ncCleanPermThread* ncACSPermManager::_sCleanPermThread = 0;
 
 ncACSPermManager::ncACSPermManager()
 {
@@ -373,26 +372,6 @@ NS_IMETHODIMP_(void) ncACSPermManager::ListEntryDocsWithLongPath(const ncSubject
         }
     }
     NC_ACS_PROCESSOR_TRACE (_T("end"));
-}
-
-/*[notxpcom] void StartCleanPermThread ();*/
-NS_IMETHODIMP_(void) ncACSPermManager::StartCleanPermThread ()
-{
-    NC_ACS_PROCESSOR_TRACE (_T("this: %p begin"), this);
-
-    if (_sCleanPermThread != NULL) {
-        return;
-    }
-
-    static ThreadMutexLock mutex;
-    AutoLock<ThreadMutexLock> lock (&mutex);
-
-    if (_sCleanPermThread == NULL && _acsProcessorUtil->IsMajorNode ()) {
-        _sCleanPermThread = new ncCleanPermThread ();
-        _sCleanPermThread->start ();
-    }
-
-    NC_ACS_PROCESSOR_TRACE (_T("this: %p end"), this);
 }
 
 void ncACSPermManager::getAccessorIdsByUserId (const String& userId, bool isAnonymous, set<String>& accessorIds)

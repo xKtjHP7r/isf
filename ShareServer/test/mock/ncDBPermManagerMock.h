@@ -23,7 +23,6 @@ public:
     MOCK_METHOD2(GetCustomPerm, bool(const dbCustomPermInfo&, dbCustomPermInfo&));
     MOCK_METHOD2(GetCustomPermByAccessorId, void(const String&, vector <dbCustomPermInfo>&));
     MOCK_METHOD2(GetCustomPermByAccessorIds, void(const vector<String>&, vector <dbCustomPermInfo>&));
-    MOCK_METHOD2(GetExpirePermInfos, void(int64, vector <dbCustomPermInfo>&));
     MOCK_METHOD1(GetAllCustomPerm, void(vector <dbCustomPermInfo>&));
     MOCK_METHOD3(GetPermConfig, void(const String&, const String&, dbPermConfig&));
     MOCK_METHOD1(AddPermConfig, void(const dbPermConfig&));

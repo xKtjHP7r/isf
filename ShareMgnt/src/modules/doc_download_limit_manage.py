@@ -14,7 +14,7 @@ from src.modules.oem_manage import OEMManage
 from src.modules.config_manage import ConfigManage
 from src.modules.handle_task_thread import (CallableTask, HandleTaskThread)
 from EThriftException.ttypes import ncTException
-from ShareMgnt.ttypes import (ncTShareMgntError, ncTDocDownloadLimitInfo, ncTDocDownloadLimitObject)
+from ShareMgnt.ttypes import (ncTShareMgntError)
 from ShareMgnt.constants import (NCT_SYSTEM_ROLE_AUDIT)
 from EVFS.ttypes import (ncTUserDownloadLimitInfo)
 from src.common.db.connector import DBConnector

@@ -67,9 +67,6 @@ data:
     # 记录活跃用户的时间间隔，单位毫秒
     active_record_interval = {{ .Values.service.ActiveRecordInterval }}
 
-    # 清理权限信息的时间间隔
-    clean_interval = {{ .Values.service.CleanInterval }}
-
     # EACP HTTP监听端口
     public_port = {{ .Values.service.port }}
 
@@ -84,9 +81,6 @@ data:
 
     # EACP brpc监听端口
     brpcinner_port = {{add 4 .Values.service.port }}
-
-    # 单副本chart
-    is_single = false
 
     # brpc 内置服务开关
     has_builtin_services = {{ .Values.service.hasBuiltinServices }}

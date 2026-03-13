@@ -26,7 +26,6 @@ service:
   logDumpTime: 03:00:00
   DeleteDocTime: 22:00:00
   ActiveRecordInterval: "600000"
-  CleanInterval: "600000"
   readinessProbe:
     initialDelaySeconds: 10
     periodSeconds: 3

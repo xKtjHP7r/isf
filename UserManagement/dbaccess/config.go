@@ -54,6 +54,7 @@ func NewConfig() *config {
 				interfaces.CSFLevelEnum:       "csf_level_enum",
 				interfaces.CSFLevel2Enum:      "csf_level2_enum",
 				interfaces.ShowCSFLevel2:      "show_csf_level2",
+				interfaces.AutoDisable:        "auto_disable_config",
 			},
 		}
 	})
@@ -245,6 +246,27 @@ func (d *config) convertToConfig(configKeys map[interfaces.ConfigKey]bool, kvMap
 				return cfg, fmt.Errorf("invalid show csf level2: %v", err)
 			}
 			cfg.ShowCSFLevel2 = boolV
+		case interfaces.AutoDisable:
+			// 此值可能是bool 也可能是int64
+			var autoDisableConfig map[string]interface{}
+			err = jsoniter.Unmarshal([]byte(kvMap[d.confKeyMap[interfaces.AutoDisable]]), &autoDisableConfig)
+			if err != nil {
+				return cfg, fmt.Errorf("invalid auto disable config: %v", err)
+			}
+
+			tempEnabled, ok := autoDisableConfig["isEnabled"].(float64)
+			tempEnabledBool, okBool := autoDisableConfig["isEnabled"].(bool)
+			tempTime, ok1 := autoDisableConfig["days"].(float64)
+			if (!ok && !okBool) || !ok1 {
+				return cfg, fmt.Errorf("invalid auto disable config: %v", kvMap[d.confKeyMap[interfaces.AutoDisable]])
+			}
+
+			if okBool {
+				cfg.AutoDisableEnabled = tempEnabledBool
+			} else {
+				cfg.AutoDisableEnabled = tempEnabled != 0
+			}
+			cfg.AutoDisableTime = int64(tempTime)
 		default:
 			// 此项不应该被匹配，如果匹配到此项则代表遍历项存在杂项
 			return cfg, errors.New("this error is unexpected")

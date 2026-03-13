@@ -162,3 +162,7 @@ CREATE TABLE IF NOT EXISTS `t_reserved_name` (
   PRIMARY KEY (`f_id`),
   KEY `idx_name` (`f_name`)
 ) ENGINE=InnoDB COMMENT='保留名称表';
+
+INSERT INTO `t_sharemgnt_config`(`f_key`, `f_value`) SELECT 'user_expired_disable_lock', 'locked' FROM DUAL WHERE NOT EXISTS (SELECT `f_key` FROM `t_sharemgnt_config` WHERE `f_key` = 'user_expired_disable_lock');
+INSERT INTO `t_sharemgnt_config`(`f_key`, `f_value`) SELECT 'user_not_login_disable_lock', 'locked' FROM DUAL WHERE NOT EXISTS (SELECT `f_key` FROM `t_sharemgnt_config` WHERE `f_key` = 'user_not_login_disable_lock');
+

@@ -1,0 +1,9 @@
+apiVersion: v1
+appVersion: "1.0.0"
+description: A Helm authorization service chart for Kubernetes
+name: authorization
+version: 1.0.0
+keywords:
+  - authorization
+  - IdentifyAndAuthentication
+engine: gotpl

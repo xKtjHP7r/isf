@@ -18,10 +18,11 @@ import (
 )
 
 type user struct {
-	db      *sqlx.DB
-	logger  common.Logger
-	trace   observable.Tracer
-	dbTrace *sqlx.DB
+	db         *sqlx.DB
+	logger     common.Logger
+	trace      observable.Tracer
+	dbTrace    *sqlx.DB
+	lockKeyMap map[interfaces.DistributedLockType]string
 }
 
 // userDBData 用户数据库数据
@@ -62,6 +63,8 @@ type userDBData struct {
 var (
 	uOnce sync.Once
 	uDB   *user
+
+	secondsPerDay = 24 * 60 * 60
 )
 
 // NewUser 创建数据库操作对象--和用户相关
@@ -72,6 +75,10 @@ func NewUser() *user {
 			dbTrace: dbTracePool,
 			logger:  common.NewLogger(),
 			trace:   common.SvcARTrace,
+			lockKeyMap: map[interfaces.DistributedLockType]string{
+				interfaces.UserExpiredDisableLock:  "user_expired_disable_lock",
+				interfaces.UserNotLoginDisableLock: "user_not_login_disable_lock",
+			},
 		}
 	})
 
@@ -1621,4 +1628,182 @@ func (u *user) SearchUsersCount(ctx context.Context, ks *interfaces.UserSearchIn
 	}
 
 	return num, nil
+}
+
+// GetLock 获取锁
+func (u *user) GetLock(ctx context.Context, lockType interfaces.DistributedLockType, tx *sql.Tx) (err error) {
+	// trace
+	u.trace.SetClientSpanName("数据库操作-获取锁")
+	newCtx, span := u.trace.AddClientTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	dbName := common.GetDBName("sharemgnt_db")
+	sqlStr := "select f_value from %s.t_sharemgnt_config where f_key = '%s' for update"
+	sqlStr = fmt.Sprintf(sqlStr, dbName, u.lockKeyMap[lockType])
+
+	rows, sqlErr := tx.QueryContext(newCtx, sqlStr)
+	defer func() {
+		if rows != nil {
+			if rowsErr := rows.Err(); rowsErr != nil {
+				u.logger.Errorln(rowsErr)
+			}
+
+			// 1、判断是否为空再关闭，2、如果不关闭而数据行并没有被scan的话，连接一直会被占用直到超时断开
+			if closeErr := rows.Close(); closeErr != nil {
+				u.logger.Errorln(closeErr)
+			}
+		}
+	}()
+
+	if sqlErr != nil {
+		u.logger.Errorln(sqlErr, sqlStr)
+		return sqlErr
+	}
+
+	return err
+}
+
+// GetExpiredNeedDisableUserInfos 获取需过期要禁用的用户信息
+func (u *user) GetExpiredNeedDisableUserInfos(ctx context.Context, tx *sql.Tx) (userInfos []interfaces.UserDBInfo, err error) {
+	// trace
+	u.trace.SetClientSpanName("数据库操作-获取过期需要禁用的用户信息")
+	newCtx, span := u.trace.AddClientTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	dbName := common.GetDBName("sharemgnt_db")
+	sqlStr := `select f_user_id, f_display_name, f_login_name from %s.t_user 
+	    		where f_expire_time <= ? 
+				and f_expire_time != -1 
+				and f_auto_disable_status & %d = 0
+				and f_user_id != ?
+            	and f_user_id != ?
+            	and f_user_id != ?
+            	and f_user_id != ?`
+	sqlStr = fmt.Sprintf(sqlStr, dbName, interfaces.ExpiredDisabled)
+
+	// f_expire_time 单位为秒
+	now := common.Now()
+	rows, sqlErr := tx.QueryContext(newCtx, sqlStr, now.Unix(), interfaces.SystemSysAdmin, interfaces.SystemAuditAdmin,
+		interfaces.SystemSecAdmin, interfaces.SystemOriginSysAdmin)
+	defer func() {
+		if rows != nil {
+			if rowsErr := rows.Err(); rowsErr != nil {
+				u.logger.Errorln(rowsErr)
+			}
+
+			// 1、判断是否为空再关闭，2、如果不关闭而数据行并没有被scan的话，连接一直会被占用直到超时断开
+			if closeErr := rows.Close(); closeErr != nil {
+				u.logger.Errorln(closeErr)
+			}
+		}
+	}()
+
+	if sqlErr != nil {
+		u.logger.Errorln(sqlErr, sqlStr)
+		return userInfos, sqlErr
+	}
+
+	userInfos = make([]interfaces.UserDBInfo, 0)
+	for rows.Next() {
+		var temp userDBData
+		if err = rows.Scan(&temp.ID, &temp.Name, &temp.Account); err != nil {
+			u.logger.Errorln(err, sqlStr)
+			return userInfos, err
+		}
+		userInfos = append(userInfos, handlerUserDBData(&temp))
+	}
+	return userInfos, err
+}
+
+// SetAutoDisableStatus 设置用户自动禁用状态
+func (u *user) SetAutoDisableStatus(ctx context.Context, userIDs []string, disableStatus interfaces.DisableStatus, tx *sql.Tx) (err error) {
+	// trace
+	u.trace.SetClientSpanName("数据库操作-设置用户自动禁用状态")
+	newCtx, span := u.trace.AddClientTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	// 批量设置用户自动禁用状态， 每500个用户设置一次
+	for i := 0; i < len(userIDs); i += 500 {
+		end := i + 500
+		if end > len(userIDs) {
+			end = len(userIDs)
+		}
+		err = u.setAutoDisableStatusSingle(newCtx, userIDs[i:end], disableStatus, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetAutoDisableStatus 设置用户自动禁用状态
+func (u *user) setAutoDisableStatusSingle(ctx context.Context, userIDs []string, disableStatus interfaces.DisableStatus, tx *sql.Tx) (err error) {
+	if len(userIDs) == 0 {
+		return nil
+	}
+
+	userSet, userArgIDs := GetFindInSetSQL(userIDs)
+
+	dbName := common.GetDBName("sharemgnt_db")
+	sqlStr := "UPDATE %s.t_user SET f_auto_disable_status = f_auto_disable_status | %d WHERE f_user_id in ( "
+	sqlStr += userSet
+	sqlStr += " )"
+	sqlStr = fmt.Sprintf(sqlStr, dbName, disableStatus)
+	_, err = tx.ExecContext(ctx, sqlStr, userArgIDs...)
+	if err != nil {
+		u.logger.Errorln(err, sqlStr)
+		return err
+	}
+	return nil
+}
+
+// GetNotLoginNeedDisableUserInfos 获取长时间未登录要禁用的用户信息
+func (u *user) GetNotLoginNeedDisableUserInfos(ctx context.Context, allowDays int64, tx *sql.Tx) (userInfos []interfaces.UserDBInfo, err error) {
+	// trace
+	u.trace.SetClientSpanName("数据库操作-获取长时间未登录要禁用的用户信息")
+	newCtx, span := u.trace.AddClientTrace(ctx)
+	defer func() { u.trace.TelemetrySpanEnd(span, err) }()
+
+	dbName := common.GetDBName("sharemgnt_db")
+	sqlStr := `select f_user_id, f_display_name, f_login_name from %s.t_user 
+	    		where f_last_request_time <= ? 
+				and f_auto_disable_status & %d = 0
+				and f_user_id != ?
+            	and f_user_id != ?
+            	and f_user_id != ?
+            	and f_user_id != ?`
+	sqlStr = fmt.Sprintf(sqlStr, dbName, interfaces.NotLoginDisabled)
+
+	// f_expire_time 单位为秒
+	delayTime := common.Now().Add(-time.Duration(allowDays) * time.Second * time.Duration(secondsPerDay))
+	rows, sqlErr := tx.QueryContext(newCtx, sqlStr, delayTime.Format("2006-01-02 15:04:05"), interfaces.SystemSysAdmin, interfaces.SystemAuditAdmin,
+		interfaces.SystemSecAdmin, interfaces.SystemOriginSysAdmin)
+	defer func() {
+		if rows != nil {
+			if rowsErr := rows.Err(); rowsErr != nil {
+				u.logger.Errorln(rowsErr)
+			}
+
+			// 1、判断是否为空再关闭，2、如果不关闭而数据行并没有被scan的话，连接一直会被占用直到超时断开
+			if closeErr := rows.Close(); closeErr != nil {
+				u.logger.Errorln(closeErr)
+			}
+		}
+	}()
+
+	if sqlErr != nil {
+		u.logger.Errorln(sqlErr, sqlStr)
+		return userInfos, sqlErr
+	}
+
+	userInfos = make([]interfaces.UserDBInfo, 0)
+	for rows.Next() {
+		var temp userDBData
+		if err = rows.Scan(&temp.ID, &temp.Name, &temp.Account); err != nil {
+			u.logger.Errorln(err, sqlStr)
+			return userInfos, err
+		}
+		userInfos = append(userInfos, handlerUserDBData(&temp))
+	}
+	return userInfos, err
 }

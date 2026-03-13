@@ -320,9 +320,6 @@ interface ncIACSPermManager: nsISupports
 
 
     /*
-     * 启动权限清理线程
-     */
-    [notxpcom] void StartCleanPermThread ();
 
 
     /*

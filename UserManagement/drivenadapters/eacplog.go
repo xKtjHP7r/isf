@@ -444,3 +444,39 @@ func (e *eacplogSvc) formatOrgPermAppStr(values interfaces.AppOrgPermValue) (str
 	}
 	return builder.String()
 }
+
+// OpUserExpiredDisabled 用户状态变更
+func (e *eacplogSvc) OpUserExpiredDisabled(displayName, loginName string) (err error) {
+	msg := fmt.Sprintf(loadString("IDS_DISABLE_EXPIRED_USER"), displayName, loginName)
+	exMsg := loadString("IDS_DISABLE_EXPIRED_USER_EXMSG")
+	info := &msgInfo{
+		msg:      msg,
+		exMsg:    exMsg,
+		logType:  ltManage,
+		logLevel: llWarn,
+		opType:   int32(mtSet),
+	}
+
+	visitor := &interfaces.Visitor{
+		ID: common.EacpLogSystemID,
+	}
+	return e.writeLog(visitor, info)
+}
+
+// OpUserNotLoginDisabled 用户长时间未登录自动禁用
+func (e *eacplogSvc) OpUserNotLoginDisabled(displayName, loginName string) (err error) {
+	msg := fmt.Sprintf(loadString("IDS_DISABLE_NOT_LOGIN_USER"), displayName, loginName)
+	exMsg := loadString("IDS_DISABLE_NOT_LOGIN_USER_EXMSG")
+	info := &msgInfo{
+		msg:      msg,
+		exMsg:    exMsg,
+		logType:  ltManage,
+		logLevel: llWarn,
+		opType:   int32(mtSet),
+	}
+
+	visitor := &interfaces.Visitor{
+		ID: common.EacpLogSystemID,
+	}
+	return e.writeLog(visitor, info)
+}

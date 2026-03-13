@@ -46,21 +46,30 @@ type PolicyPagination struct {
 	Limit        int
 }
 
+// 单个义务项，包含义务类型ID、义务ID和义务值
 type PolicyObligationItem struct {
 	TypeID string // 义务类型ID
 	ID     string // 义务ID
 	Value  any    // 义务值
 }
 
+// 单个操作项，包含操作ID、操作名称和义务列表
 type PolicyOperationItem struct {
 	ID          string
 	Name        string
 	Obligations []PolicyObligationItem // 义务列表
 }
 
-type PolicyOperation struct {
-	Allow []PolicyOperationItem
-	Deny  []PolicyOperationItem
+// 单个规则项，包含一个条件和多个操作
+type PolicyRuleItem struct {
+	Condition  any
+	Operations []PolicyOperationItem
+}
+
+// 包含允许/拒绝的多个规则
+type PolicyRules struct {
+	Allow []PolicyRuleItem
+	Deny  []PolicyRuleItem
 }
 
 // Ancestor 资源祖先信息
@@ -82,7 +91,7 @@ type PolicyInfo struct {
 	AccessorType
 	AccessorName string
 	ParentDeps   [][]Department
-	Operation    PolicyOperation
+	Rules        PolicyRules
 	Condition    string
 	EndTime      int64
 	CreateTime   int64
@@ -97,13 +106,13 @@ type PolicyDeleteResourceInfo struct {
 // DBPolicy 策略数据库接口
 type DBPolicy interface {
 	// 获取策略
-	GetPagination(ctx context.Context, params PolicyPagination) (count int, policies []PolicyInfo, err error)
+	GetPagination(ctx context.Context, params PolicyPagination) (policies []PolicyInfo, err error)
 	// 新增策略
 	Create(ctx context.Context, policys []PolicyInfo, tx *sql.Tx) error
 	// 更新策略
 	Update(ctx context.Context, policys []PolicyInfo, tx *sql.Tx) error
 	// 删除策略
-	Delete(ctx context.Context, ids []string) error
+	Delete(ctx context.Context, ids []string, tx *sql.Tx) error
 	// 获取资源策略 policies[资源实例ID][]策略
 	GetByResourceIDs(ctx context.Context, resourceType string, resourceIDs []string) (policies map[string][]PolicyInfo, err error)
 	// 获取资源策略
@@ -127,7 +136,7 @@ type DBPolicy interface {
 	DeleteByEndTime(curTime int64) error
 
 	// 获取访问者策略
-	GetAccessorPolicy(ctx context.Context, param AccessorPolicyParam) (count int, policies []PolicyInfo, err error)
+	GetAccessorPolicy(ctx context.Context, param AccessorPolicyParam) (policies []PolicyInfo, err error)
 
 	GetResourcePolicies(ctx context.Context, params ResourcePolicyPagination) (count int, policies []PolicyInfo, err error)
 }

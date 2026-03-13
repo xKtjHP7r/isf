@@ -21,7 +21,10 @@ import (
 )
 
 var (
-	cRSA2048 = "Zu4VRKomAqM1f82V/N8XTjFQWpxvp3ObKllfFKGNql6CTYOxgRAlosxEjFBVCMl1ArrDZJjqiebwky288LfjcpqFNRoDrUGbcWseDpB5QJK25dxqZE/PqlOh5ZAOXqeuHODPDKikJZP4hR5bllZtP6f+jKwnUTIKsJT8erL5iwP31eiFEcJZTKPME4kg2/sAqKNn/yI8hH4y9lGSY46Hs9rJI2c855mCg6IL7B26QMIFoJUXgHVcu2bVpUxIgpy3DhRig4TVsQFQy7FADlpFjpw4x+4B7NKscB/gEmoAzzZG3hsDYMautAxphXHkn/3Fxkf5ft8eArIN89ZlzIobgQ=="
+	cRSA2048 = "Zu4VRKomAqM1f82V/N8XTjFQWpxvp3ObKllfFKGNql6CTYOxgRAlosxEjFBVCMl1ArrDZJjqiebwky288LfjcpqFN" +
+		"RoDrUGbcWseDpB5QJK25dxqZE/PqlOh5ZAOXqeuHODPDKikJZP4hR5bllZtP6f+jKwnUTIKsJT8erL5iwP31eiFEcJZTKPME4kg2/sAqKNn/yI" +
+		"8hH4y9lGSY46Hs9rJI2c855mCg6IL7B26QMIFoJUXgHVcu2bVpUxIgpy3DhRig4TVsQFQy7FADlpFjpw4x+4B7NKscB/gEmoAzzZG3hsDYMautAx" +
+		"phXHkn/3Fxkf5ft8eArIN89ZlzIobgQ=="
 )
 
 func newApp(db interfaces.DBApp, dbUser interfaces.DBUser, ob interfaces.LogicsOutbox, dbPool *sqlx.DB, h interfaces.DrivenHydra, dnEacpLog interfaces.DrivenEacpLog, role interfaces.LogicsRole) *app {

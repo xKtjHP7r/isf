@@ -1,0 +1,162 @@
+{{- if semverCompare ">=1.16-0" .Capabilities.KubeVersion.GitVersion -}}
+apiVersion: apps/v1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Release.Name }}
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name: {{ .Release.Name }}
+          securityContext:
+            readOnlyRootFilesystem: true
+          image: {{ .Values.image.registry }}/{{ .Values.image.service.repository }}:{{ .Values.image.service.tag }}
+          imagePullPolicy: {{ .Values.image.service.pullPolicy }}
+          env:
+            {{- if .Values.service.logger}}
+              - name: LOGOUT
+                value: {{ .Values.service.logger | quote }}
+            {{- end}}
+            {{- if .Values.env.language}}
+              - name: LANG
+                value: {{ .Values.env.language | quote }}
+              - name: LC_ALL
+                value: {{ .Values.env.language | quote }}
+            {{- end}}
+            {{- if .Values.env.timezone}}
+              - name: TZ
+                value: {{ .Values.env.timezone | quote }}
+            {{- end}}
+            {{- if .Values.depServices.rds.type}}
+              - name: DB_TYPE
+                value: {{ .Values.depServices.rds.type | quote }}
+            {{- end}}
+          ports:
+            - name: public-port
+              containerPort: {{ .Values.service.port }}
+            - name: private-port
+              containerPort: {{ add1 .Values.service.port }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  check_health() {
+                    local port=$1
+                    local status_code=$(curl -sf -w '%{http_code}' -o /dev/null http://localhost:$port/health/ready)
+                    if [ "$status_code" -eq 200 ]; then
+                      echo "Service on port $port is healthy"
+                    else
+                      echo "Service on port $port is unhealthy, status code: $status_code" >&2
+                      exit 1
+                    fi
+                  }
+                  check_health {{ .Values.service.port }}
+                  check_health {{ add1 .Values.service.port }}
+            initialDelaySeconds: {{ .Values.service.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.service.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.service.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.service.readinessProbe.failureThreshold }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  check_health() {
+                    local port=$1
+                    local status_code=$(curl -sf -w '%{http_code}' -o /dev/null http://localhost:$port/health/alive)
+                    if [ "$status_code" -eq 200 ]; then
+                      echo "Service on port $port is healthy"
+                    else
+                      echo "Service on port $port is unhealthy, status code: $status_code" >&2
+                      exit 1
+                    fi
+                  }
+                  check_health {{ .Values.service.port }}
+                  check_health {{ add1 .Values.service.port }}
+            initialDelaySeconds: {{ .Values.service.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.service.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.service.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.service.livenessProbe.failureThreshold }}
+          # https://freecontent.manning.com/handling-client-requests-properly-with-kubernetes/
+          # https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
+          # 给负载均衡器和服务发现系统充分的“下线”时间。Pod 在即将被终止时，需要让其他服务
+          # 发现机制（比如 Kubernetes Service）知道这个实例即将离线，以免继续将请求路由到它。
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+          volumeMounts:
+            - name: {{ .Release.Name }}-yaml
+              mountPath: /sysvol/conf/service_conf
+            - name: {{ .Release.Name }}-secret
+              mountPath: /sysvol/conf/secret_conf
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+      volumes:
+        - name: {{ .Release.Name }}-yaml
+          configMap:
+            name: {{ .Release.Name }}-yaml
+            items:
+            - key: authentication.yaml
+              path: authentication.yaml
+            - key: mq_config.yaml
+              path: mq_config.yaml
+        - name: {{ .Release.Name }}-secret
+          secret:
+            secretName: {{ .Release.Name }}-secret
+            items:
+            - key: secret.yaml
+              path: secret.yaml
+        - name: tmp-volume
+          emptyDir: {}
+      dnsConfig:
+         options:
+           - name: single-request-reopen
+           - name: use-vc
+

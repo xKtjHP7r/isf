@@ -42,6 +42,8 @@ const (
 	outboxAppTokenGeneratedLog
 	outboxCSFLevelEnumInitedLog
 	outboxCSFLevelEnum2InitedLog
+	outboxUserExpiredAutoDisabled
+	outboxUserNotLoginAutoDisabled
 )
 
 // outbox业务类型

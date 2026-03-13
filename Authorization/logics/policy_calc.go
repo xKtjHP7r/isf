@@ -4,9 +4,12 @@ package logics
 import (
 	"context"
 	_ "embed" // embed
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/diegoholiveira/jsonlogic/v3"
 
 	"Authorization/common"
 	"Authorization/interfaces"
@@ -100,12 +103,20 @@ func (d *policyCalc) Check(ctx context.Context, resource *interfaces.ResourceInf
 
 	// 计算每个单个资源ID的权限
 	// resourcePermMap[单个资源ID]操作权限
+	var dataMap map[string]any
+	if resource.ID != "*" {
+		dataMap = make(map[string]any)
+		d.makeDataInfo(dataMap, resource, accessor)
+	} else {
+		// check * 时，dataMap 为空，不计算条件
+		dataMap = nil
+	}
 	resourcePermMap := make(map[string]resourcePerm)
 	for resourceID, policies := range policyMap {
 		if len(policies) == 0 {
 			continue
 		}
-		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, policies)
+		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, dataMap, policies)
 	}
 
 	// 计算资源继承的权限
@@ -222,13 +233,14 @@ func (d *policyCalc) GetResourceList(ctx context.Context, resourceTypeID string,
 	}
 
 	// 计算每个单个资源ID的权限
-	// resourcePermMap[单个资源ID]操作权限
+	// resourcePermMap[单个资源ID]操作权限, 只会计算无条件的
 	resourcePermMap := make(map[string]resourcePerm)
 	for resourceID, policies := range policyMap {
 		if len(policies) == 0 {
 			continue
 		}
-		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, policies)
+		var data map[string]any
+		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, data, policies)
 	}
 
 	allResources := make([]interfaces.ResourceInfo, 0, len(resourcePermMap))
@@ -269,6 +281,8 @@ func (d *policyCalc) GetResourceList(ctx context.Context, resourceTypeID string,
 }
 
 // 过滤资源列表
+//
+//nolint:gocyclo
 func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.ResourceInfo, accessor *interfaces.AccessorInfo,
 	operation []string, include []interfaces.PolicCalcyIncludeType,
 ) (result []interfaces.ResourceInfo, resourceOperationMap map[string][]string, resourceOperationObligationMap map[string]map[string][]interfaces.PolicyObligationItem, err error) {
@@ -282,11 +296,13 @@ func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.
 	}
 
 	allResources := make([]interfaces.ResourceInfo, 0, len(resources))
-	resourceTmpMap := make(map[string][]interfaces.ResourceInfo)
+	resourceTmpMap := make(map[string][]interfaces.ResourceInfo, len(resources))
+	resourceDataMap := make(map[string]interfaces.ResourceInfo, len(resources))
 	for _, resource := range resources {
 		resourceTmp := d.createAncestorsResource(ctx, &resource)
 		resourceTmpMap[resource.ID] = resourceTmp
 		allResources = append(allResources, resourceTmp...)
+		resourceDataMap[resource.ID] = resource
 	}
 	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, allResources, accessTokens)
 	if err != nil {
@@ -294,18 +310,44 @@ func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.
 	}
 
 	policyMap := make(map[string][]interfaces.PolicyInfo)
+	// *上的配置单独保存, 有了条件以后 ，不同资源实例，计算条件结果不同
+	typePolicies := make([]interfaces.PolicyInfo, 0)
 	for i := range policies {
+		if policies[i].ResourceID == "*" {
+			typePolicies = append(typePolicies, policies[i])
+			continue
+		}
 		policyMap[policies[i].ResourceID] = append(policyMap[policies[i].ResourceID], policies[i])
 	}
 
 	// 计算每个单个资源ID的权限
 	// resourcePermMap[单个资源ID]操作权限
-	resourcePermMap := make(map[string]resourcePerm)
+	resourcePermMap := make(map[string]resourcePerm, len(resources))
 	for resourceID, policies := range policyMap {
 		if len(policies) == 0 {
 			continue
 		}
-		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, policies)
+		data := make(map[string]any)
+		// resourceDataMap 有 resourceID 信息，构建data
+		if rTmp, ok := resourceDataMap[resourceID]; ok {
+			d.makeDataInfo(data, &rTmp, accessor)
+		}
+		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, data, policies)
+	}
+
+	// 计算每个资源实例*策略上的权限，请求 id为* 时，dataMap为空
+	for i := range resources {
+		resource := resources[i]
+		if resource.ID == "*" {
+			var data map[string]any
+			resourcePermMap[resource.ID] = d.calcOneResourcePerm(resource.ID, data, typePolicies)
+		} else {
+			// 构建data，由于条件的存在，不同资源实例，计算条件结果不同，*的配置使用需要特殊处理
+			data := make(map[string]any)
+			d.makeDataInfo(data, &resource, accessor)
+			calcResourceID := resource.ID + "_*"
+			resourcePermMap[calcResourceID] = d.calcOneResourcePerm(calcResourceID, data, typePolicies)
+		}
 	}
 
 	resourceOperationMap = make(map[string][]string, len(resources))
@@ -313,7 +355,7 @@ func (d *policyCalc) ResourceFilter(ctx context.Context, resources []interfaces.
 	resourceOperationObligationMap = make(map[string]map[string][]interfaces.PolicyObligationItem)
 	for _, resource := range resources {
 		resourceTmp := resourceTmpMap[resource.ID]
-		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperation(resourceTmp, resourcePermMap)
+		allowMap, denyMap, allowMapWithObligation := d.calcResourceInheritedOperationEx(resourceTmp, resourcePermMap)
 		hasOperation := true
 		// 所有的操作 都被允许 返回true，否则返回false
 		for _, v := range operation {
@@ -374,7 +416,8 @@ func (d *policyCalc) GetResourceTypeOperation(ctx context.Context, resourceTypes
 		if len(policies) == 0 {
 			continue
 		}
-		resourcePermMap[resourceType] = d.calcOneResourcePerm(resourceType, policies)
+		var data map[string]any
+		resourcePermMap[resourceType] = d.calcOneResourcePerm(resourceType, data, policies)
 	}
 
 	resourceTypeMap, err := d.resourceType.GetByIDsInternal(ctx, resourceTypes)
@@ -413,11 +456,13 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 	}
 
 	allResources := make([]interfaces.ResourceInfo, 0, len(resources))
-	resourceTmpMap := make(map[string][]interfaces.ResourceInfo)
+	resourceTmpMap := make(map[string][]interfaces.ResourceInfo, len(resources))
+	resourceDataMap := make(map[string]interfaces.ResourceInfo, len(resources))
 	for _, resource := range resources {
 		resourceTmp := d.createAncestorsResource(ctx, &resource)
 		resourceTmpMap[resource.ID] = resourceTmp
 		allResources = append(allResources, resourceTmp...)
+		resourceDataMap[resource.ID] = resource
 	}
 	policies, err := d.db.GetPoliciesByResourcesAndAccessToken(ctx, allResources, accessTokens)
 	if err != nil {
@@ -425,17 +470,44 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 		return nil, nil, err
 	}
 
-	policyMap := make(map[string][]interfaces.PolicyInfo)
+	policyMap := make(map[string][]interfaces.PolicyInfo, len(resources))
+	// *上的配置单独保存, 有了条件以后 ，不同资源实例，计算条件结果不同
+	typePolicies := make([]interfaces.PolicyInfo, 0, len(policies))
 	for i := range policies {
+		if policies[i].ResourceID == "*" {
+			typePolicies = append(typePolicies, policies[i])
+			continue
+		}
 		policyMap[policies[i].ResourceID] = append(policyMap[policies[i].ResourceID], policies[i])
 	}
 
-	resourcePermMap := make(map[string]resourcePerm)
+	resourcePermMap := make(map[string]resourcePerm, len(resources))
 	for resourceID, policies := range policyMap {
 		if len(policies) == 0 {
 			continue
 		}
-		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, policies)
+		data := make(map[string]any)
+		// resourceDataMap 有resourceID 信息，则构建data
+		if rTmp, ok := resourceDataMap[resourceID]; ok {
+			d.makeDataInfo(data, &rTmp, accessor)
+		}
+		resourcePermMap[resourceID] = d.calcOneResourcePerm(resourceID, data, policies)
+	}
+
+	if len(typePolicies) > 0 {
+		// 计算每个资源实例*上的权限
+		for i := range resources {
+			resource := resources[i]
+			if resource.ID == "*" {
+				var data map[string]any
+				resourcePermMap[resource.ID] = d.calcOneResourcePerm(resource.ID, data, typePolicies)
+			} else {
+				data := make(map[string]any)
+				d.makeDataInfo(data, &resource, accessor)
+				calcResourceID := resource.ID + "_*"
+				resourcePermMap[calcResourceID] = d.calcOneResourcePerm(calcResourceID, data, typePolicies)
+			}
+		}
 	}
 
 	resourceTypeMap, err := d.resourceType.GetByIDsInternal(ctx, []string{resources[0].Type})
@@ -451,7 +523,7 @@ func (d *policyCalc) GetResourceOperation(ctx context.Context, resources []inter
 	resourceOperationObligationMap = make(map[string]map[string][]interfaces.PolicyObligationItem)
 	for _, resource := range resources {
 		resourceTmp := resourceTmpMap[resource.ID]
-		allowMap, _, allowMapWithObligation := d.calcResourceInheritedOperation(resourceTmp, resourcePermMap)
+		allowMap, _, allowMapWithObligation := d.calcResourceInheritedOperationEx(resourceTmp, resourcePermMap)
 		resourceOperationMap[resource.ID] = make([]string, 0, len(allowMap))
 		resourceOperationObligationMap[resource.ID] = d.calcObligationWithPriority(ctx, allowMapWithObligation)
 		for key := range allowMap {
@@ -532,7 +604,7 @@ type policyObligationCalcItem struct {
 计算一个资源ID的权限, 只包含同一层级策略配置, 拒绝优先
 resourceID 为了记录日志，方便调试
 */
-func (d *policyCalc) calcOneResourcePerm(resourceID string, policies []interfaces.PolicyInfo) (result resourcePerm) {
+func (d *policyCalc) calcOneResourcePerm(resourceID string, data map[string]any, policies []interfaces.PolicyInfo) (result resourcePerm) {
 	d.logger.Debugf("calcOneResourcePerm start, resourceID: %s", resourceID)
 	allowMap := make(map[string][]policyObligationCalcItem)
 	denyMap := make(map[string]bool)
@@ -541,34 +613,55 @@ func (d *policyCalc) calcOneResourcePerm(resourceID string, policies []interface
 	}
 
 	for i := range policies {
-		for _, v := range policies[i].Operation.Deny {
-			denyMap[v.ID] = true
+		for _, v := range policies[i].Rules.Deny {
+			// 条件非空，条件不满足过滤
+			if !isConditionEmpty(v.Condition) {
+				var result bool
+				result, _ = d.checkCondition(v.Condition, data)
+				if !result {
+					continue
+				}
+			}
+			for _, ope := range v.Operations {
+				denyMap[ope.ID] = true
+			}
 		}
 	}
 
 	// 拒绝优先，如果被拒绝，则不添加到allowMap
 	for i := range policies {
-		for _, v := range policies[i].Operation.Allow {
-			if denyMap[v.ID] {
-				continue
+		for _, v := range policies[i].Rules.Allow {
+			// 条件非空，条件不满足过滤
+			if !isConditionEmpty(v.Condition) {
+				var result bool
+				result, _ = d.checkCondition(v.Condition, data)
+				if !result {
+					continue
+				}
 			}
+			for _, ope := range v.Operations {
+				if denyMap[ope.ID] {
+					continue
+				}
 
-			// 收集一个操作上配置的所有义务
-			caclArray := make([]policyObligationCalcItem, 0, len(v.Obligations))
-			for _, obl := range v.Obligations {
-				tmp := policyObligationCalcItem{
-					PolicyObligationItem: obl,
-					priority:             d.obligationPriority[policies[i].AccessorType],
+				// 收集一个操作上配置的所有义务
+				caclArray := make([]policyObligationCalcItem, 0, len(ope.Obligations))
+				for _, obl := range ope.Obligations {
+					tmp := policyObligationCalcItem{
+						PolicyObligationItem: obl,
+						priority:             d.obligationPriority[policies[i].AccessorType],
+					}
+					// 如果是所有用户 ，则优先级最低
+					if policies[i].AccessorID == rootDepID {
+						tmp.priority = rootDepObligationPriority
+					}
+					caclArray = append(caclArray, tmp)
 				}
-				// 如果是所有用户 ，则优先级最低
-				if policies[i].AccessorID == rootDepID {
-					tmp.priority = rootDepObligationPriority
-				}
-				caclArray = append(caclArray, tmp)
+				allowMap[ope.ID] = append(allowMap[ope.ID], caclArray...)
 			}
-			allowMap[v.ID] = append(allowMap[v.ID], caclArray...)
 		}
 	}
+
 	result.allow = allowMap
 	result.deny = denyMap
 	d.logger.Debugf("calcOneResourcePerm end, resourceID: %s, allowMap: %v, denyMap: %v", resourceID, allowMap, denyMap)
@@ -687,4 +780,103 @@ func (d *policyCalc) createAncestorsResource(_ context.Context, resource *interf
 	}
 	resources = append(resources, *resource)
 	return resources
+}
+
+// checkCondition 检查条件
+// 条件满足 返回 true, 不满足 返回 false
+func (d *policyCalc) checkCondition(condition any, data map[string]any) (result bool, err error) {
+	if data == nil {
+		d.logger.Debugf("checkCondition data is nil, false, condition: %+v, data: %+v", condition, data)
+		return false, nil
+	}
+
+	resultTmp := false
+	resultTmp1, err := jsonlogic.ApplyInterface(condition, data)
+	if err != nil {
+		fmt.Printf("jsonlogic.ApplyInterface error: %v\n", err)
+		return
+	}
+
+	// ApplyInterface触发操作符：==, ===, >, <, and, or, in, ! 等 都返回 boolean 类型
+	if b, ok := resultTmp1.(bool); ok {
+		resultTmp = b
+	}
+	d.logger.Debugf("checkCondition tmpResult: %v, condition: %+v, data: %+v", resultTmp, condition, data)
+	return resultTmp, nil
+}
+
+func (d *policyCalc) makeDataInfo(dataMap map[string]any, resource *interfaces.ResourceInfo, accessor *interfaces.AccessorInfo) {
+	// 填充访问者数据，预分配 cap=1 避免 map 扩容
+	accessorJSON := make(map[string]any, 1)
+	accessorJSON["id"] = accessor.ID
+	dataMap["accessor"] = accessorJSON
+
+	if resource != nil && resource.CreatedBy.ID != "" {
+		createInfoJSON := make(map[string]any, 1)
+		createInfoJSON["id"] = resource.CreatedBy.ID
+		resourceJSON := make(map[string]any, 1)
+		resourceJSON["created_by"] = createInfoJSON
+		dataMap["resource"] = resourceJSON
+	}
+}
+
+/*
+获取本层和上层继承的权限, 就近原则，下层权限已配置，上层无效
+入参 resources 资源ID列表，元素顺序为 根节点 -> 父节点 -> 本层
+calcResourceInheritedOperationEx 由于条件的存在，不同资源实例，计算条件结果不同，*的配置使用需要特殊处理
+*/
+func (d *policyCalc) calcResourceInheritedOperationEx(resources []interfaces.ResourceInfo, resourcePermMap map[string]resourcePerm) (
+	allowMap map[string]bool, denyMap map[string]bool, allowMapWithObligation map[string][]policyObligationCalcItem,
+) {
+	// resourceID IDPath 用于打印日志
+	resourceID := ""
+	IDPath := ""
+	if len(resources) > 0 { // 防止程序崩溃
+		resourceID = resources[len(resources)-1].ID
+	}
+	for _, resource := range resources {
+		tmp := strings.Split(resource.ID, "/")
+		if len(tmp) > 0 { // 防止程序崩溃
+			IDPath += "/" + tmp[0]
+		}
+	}
+
+	// resourceIDs 用于控制决策策略的顺序， 本层 -> 父节点 -> 根节点
+	resourceIDs := make([]string, len(resources))
+	for i := len(resources) - 1; i >= 0; i-- {
+		resourceIDs = append(resourceIDs, resources[i].ID)
+	}
+	// 如果资源ID不是*，则添加 resourceID_*，resourceID_*表示所有实例
+	if resourceID != "*" {
+		calcResourceID := resourceID + "_*"
+		resourceIDs = append(resourceIDs, calcResourceID)
+	}
+
+	d.logger.Debugf("calcResourceInheritedOperationWithEx start, resourceID: %s, IDPath: %s", resourceID, IDPath)
+	allowMap = make(map[string]bool)
+	allowMapWithObligation = make(map[string][]policyObligationCalcItem)
+	denyMap = make(map[string]bool)
+	// 权限配置 就近原则，下层权限已配置，上层无效
+	for _, id := range resourceIDs {
+		for v := range resourcePermMap[id].deny {
+			if !denyMap[v] && !allowMap[v] {
+				denyMap[v] = true
+			}
+		}
+
+		for v, value := range resourcePermMap[id].allow {
+			// 如果之前没有被拒绝，添加上层的义务
+			if !denyMap[v] {
+				allowMapWithObligation[v] = append(allowMapWithObligation[v], value...)
+			}
+			if !denyMap[v] && !allowMap[v] {
+				allowMap[v] = true
+				if len(value) == 0 {
+					continue
+				}
+			}
+		}
+	}
+	d.logger.Debugf("calcResourceInheritedOperationWithEx end, resourceID: %s, IDPath: %s, allowMap: %v, denyMap: %v", resourceID, IDPath, allowMap, denyMap)
+	return
 }

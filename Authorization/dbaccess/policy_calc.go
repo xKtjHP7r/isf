@@ -3,9 +3,10 @@ package dbaccess
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"sync"
+
+	jsoniter "github.com/json-iterator/go"
 
 	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
 
@@ -79,7 +80,7 @@ func (d *policyCalc) GetPoliciesByResourceTypeAndAccessToken(ctx context.Context
 		if policy.EndTime != -1 && policy.EndTime < curTime {
 			continue
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -155,7 +156,7 @@ func (d *policyCalc) GetPoliciesByResourcesAndAccessToken(ctx context.Context, r
 		if policy.EndTime != -1 && policy.EndTime < curTime {
 			continue
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -221,7 +222,7 @@ func (d *policyCalc) GetPoliciesByResourceTypes(ctx context.Context, resourceTyp
 		if policy.EndTime != -1 && policy.EndTime < curTime {
 			continue
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -231,56 +232,65 @@ func (d *policyCalc) GetPoliciesByResourceTypes(ctx context.Context, resourceTyp
 	return
 }
 
-//nolint:dupl
-func (d *policyCalc) operationStrToInfo(operationStr string) (resp interfaces.PolicyOperation, err error) {
+func (d *policyCalc) rulesStrToInfo(rulesStr string) (resp interfaces.PolicyRules, err error) {
 	var jsonReq map[string]any
-	err = json.Unmarshal([]byte(operationStr), &jsonReq)
+	err = jsoniter.Unmarshal([]byte(rulesStr), &jsonReq)
 	if err != nil {
 		d.logger.Errorf("json.Unmarshal: %v", err)
 		return
 	}
 	allowJson := jsonReq["allow"].([]any)
 	denyJson := jsonReq["deny"].([]any)
-	allow := []interfaces.PolicyOperationItem{}
-	deny := []interfaces.PolicyOperationItem{}
-	for _, v := range allowJson {
-		item := v.(map[string]any)
-		allowItem := interfaces.PolicyOperationItem{
-			ID: item["id"].(string),
-		}
-		// 历史数据没有obligations,代码里直接兼容
-		obligationsJson, ok := item["obligations"]
-		if ok {
-			allowItem.Obligations = d.getObligations(obligationsJson)
-		}
-		allow = append(allow, allowItem)
-	}
+	allow := make([]interfaces.PolicyRuleItem, 0, len(allowJson))
+	deny := make([]interfaces.PolicyRuleItem, 0, len(denyJson))
 
-	for _, v := range denyJson {
-		item := v.(map[string]any)
-		denyItem := interfaces.PolicyOperationItem{
-			ID: item["id"].(string),
-		}
-		deny = append(deny, denyItem)
+	for _, v := range allowJson {
+		allow = append(allow, d.parseConditionItem(v))
 	}
-	return interfaces.PolicyOperation{
+	for _, v := range denyJson {
+		deny = append(deny, d.parseConditionItem(v))
+	}
+	return interfaces.PolicyRules{
 		Allow: allow,
 		Deny:  deny,
 	}, nil
 }
 
+// emptyCondition 复用以避免每次 parseConditionItem 分配空 map
+var emptyCondition = map[string]any{}
+
+// parseConditionItem 解析单个 { condition, operations }
+func (d *policyCalc) parseConditionItem(v any) interfaces.PolicyRuleItem {
+	item := v.(map[string]any)
+	// 解析 operations
+	opsList := item["operations"].([]any)
+	operations := make([]interfaces.PolicyOperationItem, 0, len(opsList))
+	for _, opV := range opsList {
+		opMap := opV.(map[string]any)
+		opItem := interfaces.PolicyOperationItem{ID: opMap["id"].(string)}
+		// 历史数据没有obligations,代码里直接兼容
+		if obl, ok := opMap["obligations"]; ok {
+			opItem.Obligations = d.getObligations(obl)
+		}
+		operations = append(operations, opItem)
+	}
+	condition := item["condition"]
+	if condition == nil {
+		condition = emptyCondition
+	}
+	return interfaces.PolicyRuleItem{Condition: condition, Operations: operations}
+}
+
 func (d *policyCalc) getObligations(obligationsJson any) (result []interfaces.PolicyObligationItem) {
 	obligations := obligationsJson.([]any)
+	result = make([]interfaces.PolicyObligationItem, 0, len(obligations))
 	for _, v := range obligations {
 		obligationMap := v.(map[string]any)
-		obligationID := obligationMap["id"].(string)
-		obligationValue := obligationMap["value"]
-		obligation := interfaces.PolicyObligationItem{
+		result = append(result, interfaces.PolicyObligationItem{
 			TypeID: obligationMap["type_id"].(string),
-			ID:     obligationID,
-			Value:  obligationValue,
-		}
-		result = append(result, obligation)
+			ID:     obligationMap["id"].(string),
+			Value:  obligationMap["value"],
+		})
 	}
 	return
 }

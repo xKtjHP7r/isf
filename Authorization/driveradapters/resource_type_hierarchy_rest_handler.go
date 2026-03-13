@@ -10,11 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/xeipuuv/gojsonschema"
 
-	gerrors "devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/go-lib/error"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/go-lib/rest"
+	gerrors "github.com/kweaver-ai/go-lib/error"
+	"github.com/kweaver-ai/go-lib/rest"
 
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/logics"
+	"Authorization/interfaces"
+	"Authorization/logics"
 )
 
 //go:embed jsonschema/resource_type_hierarchy/set.json

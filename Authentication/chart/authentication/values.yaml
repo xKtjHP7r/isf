@@ -1,0 +1,105 @@
+replicaCount: 1
+
+nodeSelector: {}
+
+namespace: authentication
+
+image:
+  registry: ""
+  service:
+    repository: as/authentication
+    tag: ""
+    pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 30110
+  language: zh_CN
+  logger: stdout
+  sslOn: false
+  certFile: /sysvol/conf/authentication.crt
+  keyFile: /sysvol/conf/authentication.key
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 3
+    timeoutSeconds: 3
+    failureThreshold: 3
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+  enableDualStack: false
+  businessTimeOffset: 0
+  flowExpiredTime: 90
+  flowCleanTime: "00:30:00"
+  logLevel: 4
+
+
+env:
+  language: en_US.UTF-8
+  timezone: Asia/Shanghai
+
+depServices:
+  rds:
+    type: mysql
+    host: 127.0.0.1
+    port: 3320
+    user: edba
+    password: 123456
+    database: authentication
+    maxConnections: 30
+    dbCharset: utf8mb4
+    timeout: 10
+    readTimeout: 10
+    writeTimeout: 10
+    system_id: ""
+  eacp:
+    privateHttpHost: eacp-private
+    privateHttpPort: 9998
+  user-management:
+    privateHost: user-management-private
+    privatePort: 30980
+  hydra:
+    publicHost: hydra-public
+    publicPort: 4444
+    administrativeHost: hydra-admin
+    administrativePort: 4445
+  mq: {}
+  sharemgnt:
+    host: sharemgnt
+    port: 9600
+
+  redis:
+    connectType: sentinel|standalone|master-slave
+    enableSSL: false
+    connectInfo:
+      username: ""
+      password: ""
+      host: ""
+      port: 26379
+      masterHost: ""
+      masterPort: 26379
+      slaveHost: ""
+      slavePort: 26379
+      sentinelHost: proton-redis-proton-redis-sentinel.resource.svc.cluster.local
+      sentinelPort: 26379
+      sentinelUsername: ""
+      sentinelPassword: ""
+      masterGroupName: mymaster
+    secretName: ""
+    caName: ""
+    certName: ""
+    keyName: ""
+
+securityContext:
+  runAsUser: 5000
+  runAsGroup: 5000
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 100Mi
+  limits:
+    cpu: 8
+    memory: 2Gi

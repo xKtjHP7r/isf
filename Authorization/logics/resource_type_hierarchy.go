@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"sync"
 
-	gerrors "devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/go-lib/error"
+	gerrors "github.com/kweaver-ai/go-lib/error"
 
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/common"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces"
+	"Authorization/common"
+	"Authorization/interfaces"
 )
 
 var (

@@ -312,10 +312,6 @@ void ncEACHttpServer::Start ()
             THROW_E(EAC_HTTP_SERVER, EACHTTP_SERVER_INIT_ACS_PERM_MANAGER_ERR,
                 LOAD_STRING (_T("IDS_EACHTTP_ACS_PERM_INIT_ERROR")), result);
         }
-        //
-        // 启动过期权限清理线程。
-        //
-        _acsPermManager->StartCleanPermThread ();
     }
 
     if (_acsDeviceManager == 0) {

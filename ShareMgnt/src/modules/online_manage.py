@@ -12,7 +12,7 @@ from src.common.business_date import BusinessDate
 from ShareMgnt.ttypes import ncTOpermOnlineUserInfo
 from datetime import datetime
 from src.modules.user_manage import UserManage
-
+from src.modules.distributed_lock import acquire_lock, release_lock
 
 class OnlineManage(DBConnector):
     """
@@ -231,10 +231,25 @@ class ThreadGetOnlineInfo(Thread):
         self.online_manage = OnlineManage()
 
     def run(self):
+        holder_id = str(uuid.uuid1())
+        ShareMgnt_Log("ThreadGetOnlineInfo start, holder_id: %s", holder_id)
+        b_get_lock = False
         while True:
             try:
+                # 保证锁有效时间为10s
+                # 每5s尝试获取一次，如果获取到锁，则更新在线用户数，如果获取不到锁，则等待5s后继续尝试
                 time.sleep(5)
-                self.online_manage.update_online_user()
+                if b_get_lock:
+                    release_lock("online_user_count_lock", holder_id)
+                    b_get_lock = False
+                
+                b_get_lock = acquire_lock("online_user_count_lock", holder_id, 10)
+                if b_get_lock:
+                    #ShareMgnt_Log("ThreadGetOnlineInfo get lock success, update online user count, holder_id: %s", holder_id)
+                    self.online_manage.update_online_user()
+                else:
+                    #ShareMgnt_Log("ThreadGetOnlineInfo get lock failed, skip update online user count, holder_id: %s", holder_id)
+                    pass
             except Exception as e:
                 ShareMgnt_Log("ThreadGetOnlineInfo error: %s", str(e))
                 import traceback

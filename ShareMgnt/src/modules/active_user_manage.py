@@ -30,6 +30,8 @@ from ShareMgnt.ttypes import (ncTActiveReportInfo,
                               ncTActiveUserInfo,
                               ncTShareMgntError)
 
+from src.modules.distributed_lock import acquire_lock
+
 _file_path = '/tmp/sysvol/cache/sharemgnt/activeuser/'
 task_dict = {}
 threadLock = threading.Lock()
@@ -724,12 +726,20 @@ class ActiveUserCountThread(threading.Thread):
         return wait_time
 
     def run(self):
+        holder_id = str(uuid.uuid1())
+        ShareMgnt_Log("ActiveUserCountThread start, holder_id: %s", holder_id)
         while True:
             wait_time = self.get_wait_time()
             time.sleep(wait_time)
             try:
                 ShareMgnt_Log("Updating active user count...")
-                self.active_user_manage.active_user_count()
+                # 此进程24小时执行一次
+                # 此方法不解锁，保证执行间隔略大于1小时，只用防止多副本重复执行
+                if acquire_lock("active_user_count_lock", holder_id, 60*60):
+                    ShareMgnt_Log("ActiveUserCountThread get lock success, update active user count, holder_id: %s", holder_id)
+                    self.active_user_manage.active_user_count()
+                else:
+                    ShareMgnt_Log("ActiveUserCountThread get lock failed, skip update active user count")
             except Exception as e:
                 ShareMgnt_Log(traceback.format_exc())
                 ShareMgnt_Log("ActiveUserCountThread error: %s", str(e))

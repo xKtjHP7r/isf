@@ -17,7 +17,6 @@ public:
     MOCK_METHOD4(CheckPermission, ncCheckPermCode(const ncSubjectAttr&, const ncObjectAttr&, const ncOpsAttr&, int));
     MOCK_METHOD2(GetPermission, ncAccessPerm(const String&, const String&));
     MOCK_METHOD3(ListEntryDocsWithLongPath, void(const ncSubjectAttr&, const ncObjectAttr&, map<String, ncAccessPerm>&));
-    MOCK_METHOD0(StartCleanPermThread, void());
     MOCK_METHOD2(DeleteCustomPermByDocUserId, void(const String&, const String&));
     MOCK_METHOD3(GetPermConfig, void(const String&, const String&, ncPermConfig&));
     MOCK_METHOD2(AddPermConfig, void(const ncPermConfig&, bool));

@@ -3,7 +3,8 @@ module Authorization
 go 1.24
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0
+	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/diegoholiveira/jsonlogic/v3 v3.9.0
 	github.com/gin-gonic/gin v1.10.1-0.20250411160059-49e9137c68e6
 	github.com/go-playground/assert v1.2.1
 	github.com/google/uuid v1.6.0
@@ -17,7 +18,7 @@ require (
 	github.com/satori/uuid v1.2.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/smartystreets/goconvey v1.8.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.opentelemetry.io/otel/trace v1.29.0
 	go.uber.org/mock v0.5.2
@@ -35,10 +36,12 @@ replace (
 )
 
 require (
-	gitee.com/chunanyong/dm v1.8.14 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+	gitee.com/chunanyong/dm v1.8.19 // indirect
 	github.com/AlekSi/gocov-xml v1.1.0 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/axw/gocov v1.2.1 // indirect
+	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df // indirect
 	github.com/bytedance/sonic v1.13.1 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -57,11 +60,11 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.1-0.20250416212006-c3fc72e18236 // indirect
-	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect

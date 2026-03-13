@@ -525,9 +525,9 @@ func TestPolicyRestHandler_Get(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}}},
+						Deny:  []interfaces.PolicyRuleItem{},
 					},
 					Condition: "test condition",
 					EndTime:   -1,
@@ -647,9 +647,9 @@ func TestPolicyRestHandler_GetAccessorPolicy(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}}},
+						Deny:  []interfaces.PolicyRuleItem{},
 					},
 					Condition: "test condition",
 					EndTime:   -1,
@@ -662,9 +662,9 @@ func TestPolicyRestHandler_GetAccessorPolicy(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "write"}},
-						Deny:  []interfaces.PolicyOperationItem{{ID: "delete"}},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "write"}}}},
+						Deny:  []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "delete"}}}},
 					},
 					Condition: "",
 					EndTime:   1640995200, // 2022-01-01 00:00:00
@@ -804,9 +804,9 @@ func TestPolicyRestHandler_GetAccessorPolicy(t *testing.T) {
 					AccessorID:   "dept1",
 					AccessorType: interfaces.AccessorDepartment,
 					AccessorName: "部门1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}}},
+						Deny:  []interfaces.PolicyRuleItem{},
 					},
 					Condition: "",
 					EndTime:   -1,
@@ -851,9 +851,9 @@ func TestPolicyRestHandler_GetAccessorPolicy(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: "read"}},
-						Deny:  []interfaces.PolicyOperationItem{},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: []interfaces.PolicyOperationItem{{ID: "read"}}}},
+						Deny:  []interfaces.PolicyRuleItem{},
 					},
 					Condition: `{"time": {"start": "09:00", "end": "18:00"}}`,
 					EndTime:   -1,
@@ -926,14 +926,12 @@ func TestPolicyRestHandler_GetResourcePolicy(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
-							{
-								ID:   "read",
-								Name: "读取",
-							},
-						},
-						Deny: []interfaces.PolicyOperationItem{},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  map[string]any{},
+							Operations: []interfaces.PolicyOperationItem{{ID: "read", Name: "读取"}},
+						}},
+						Deny: []interfaces.PolicyRuleItem{},
 					},
 					Condition: "test condition",
 					EndTime:   -1,
@@ -1014,20 +1012,20 @@ func TestPolicyRestHandler_GetResourcePolicy(t *testing.T) {
 					AccessorID:   "user1",
 					AccessorType: interfaces.AccessorUser,
 					AccessorName: "用户1",
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
-							{
-								ID:   "read",
-								Name: "读取",
-								Obligations: []interfaces.PolicyObligationItem{
-									{
-										TypeID: "watermark",
-										ID:     "obligation1",
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition: map[string]any{},
+							Operations: []interfaces.PolicyOperationItem{
+								{
+									ID:   "read",
+									Name: "读取",
+									Obligations: []interfaces.PolicyObligationItem{
+										{TypeID: "watermark", ID: "obligation1"},
 									},
 								},
 							},
-						},
-						Deny: []interfaces.PolicyOperationItem{},
+						}},
+						Deny: []interfaces.PolicyRuleItem{},
 					},
 					EndTime: -1,
 				},

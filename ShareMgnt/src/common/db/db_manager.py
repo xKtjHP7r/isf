@@ -121,6 +121,8 @@ class SharemgntDBManager(object):
             global_info.DB_WRITE_IP = db_ip
             global_info.DB_READ_IP = db_ip
             global_info.DB_PORT = db_port
+
+            global_info.DB_TYPE = os.getenv('DB_TYPE', 'mysql').lower()
             return True
         except ncTException:
             return False

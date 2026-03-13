@@ -6,13 +6,13 @@ import (
 	"errors"
 	"testing"
 
-	"devops.aishu.cn/AISHUDevOps/ONE-Architecture/_git/proton-rds-sdk-go/sqlx"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-playground/assert"
+	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
 	. "github.com/smartystreets/goconvey/convey"
 
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/common"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces"
+	"Authorization/common"
+	"Authorization/interfaces"
 )
 
 func TestNewResourceTypeHierarchy(t *testing.T) {

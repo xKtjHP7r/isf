@@ -18,6 +18,33 @@
                     },
                     "type": {
                         "type": "string"
+                    },
+                    "ancestors": {
+                        "type": "array",
+                        "description": "祖先信息",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "type": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "type"
+                            ]
+                        }
+                    },
+                    "created_by": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }

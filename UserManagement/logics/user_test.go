@@ -8,21 +8,21 @@ import (
 
 	stdErr "errors"
 
-	"github.com/kweaver-ai/go-lib/rest"
-	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
+	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/go-lib/rest"
+	"devops.aishu.cn/AISHUDevOps/ONE-Architecture/_git/proton-rds-sdk-go/sqlx"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/assert"
 	. "github.com/smartystreets/goconvey/convey"
 	"go.uber.org/mock/gomock"
 
-	"UserManagement/common"
-	"UserManagement/errors"
-	"UserManagement/interfaces"
-	"UserManagement/interfaces/mock"
+	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/UserManagement/common"
+	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/UserManagement/errors"
+	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/UserManagement/interfaces"
+	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/UserManagement/interfaces/mock"
 )
 
 const (
-	cRSAPWD = "LIZTl0UFATFQHPRRZHJKLtfJR6M4BxUH1N6M7p3vvVldXPiQPp2bWwVbeo0Qn3FVkVtspZiWJQyx52GpvKzAm4PdeP079zC5Z2ekfT92qCUtbe1s0fyI0BhU23NdZFuXFu3y264XNmvk2RNOvCD7U20RbuqBGf2DkM9Z47HuhgQ="
+	cRSAPWD = "h/bpbcxyhcqGoXju+RdhdmK0ZMxCJU1xfZQzHSR41Lvn8OwFrikfMB2sqz/FBbI+kwXpLmDZKCmx8loIwsHJxm3v1B61BTDhss9m4i+YBcw1V7BJHCR4DFEzzVg4luujh13YhlYeCBfoQL0di1GbiWJcCXMAL3cpwmLoogoOYxE="
 	strTest = "test"
 )
 
@@ -3369,6 +3369,324 @@ func TestGetUserList(t *testing.T) {
 			assert.Equal(t, out[1].TelNumber, strID1)
 			assert.Equal(t, out[1].CreatedAt, time.Date(2025, 2, 1, 0, 0, 0, 0, time.Local).Unix())
 			assert.Equal(t, out[1].Frozen, false)
+		})
+	})
+}
+
+//nolint:dupl
+func TestUserNotLoginAutoDisabled(t *testing.T) {
+	Convey("用户长时间未登录自动禁用 处理", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		userDB := mock.NewMockDBUser(ctrl)
+		reservedName := mock.NewMockLogicsReservedName(ctrl)
+		eacpLog := mock.NewMockDrivenEacpLog(ctrl)
+		msgBroker := mock.NewMockDrivenMessageBroker(ctrl)
+
+		trace := mock.NewMockTraceClient(ctrl)
+		ctx := context.Background()
+
+		trace.EXPECT().SetInternalSpanName(gomock.Any()).AnyTimes()
+		trace.EXPECT().AddInternalTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+		trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+		u := &user{
+			userDB:        userDB,
+			reservedName:  reservedName,
+			logger:        common.NewLogger(),
+			trace:         trace,
+			eacpLog:       eacpLog,
+			messageBroker: msgBroker,
+		}
+
+		msg := make(map[string]interface{})
+		msg["id"] = strID
+		msg["display_name"] = strID2
+		msg["login_name"] = strID1
+
+		Convey("messageBroker UserStatusChanged-报错", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			err := u.userNotLoginAutoDisabled(msg)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("eacp  OpUserNotLoginDisabled- 报错", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(nil)
+			eacpLog.EXPECT().OpUserNotLoginDisabled(gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			err := u.userNotLoginAutoDisabled(msg)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("success", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(nil)
+			eacpLog.EXPECT().OpUserNotLoginDisabled(gomock.Any(), gomock.Any()).Return(nil)
+			err := u.userNotLoginAutoDisabled(msg)
+			assert.Equal(t, err, nil)
+		})
+	})
+}
+
+//nolint:dupl
+func TestUserExpiredAutoDisabled(t *testing.T) {
+	Convey("用户过期自动禁用 处理", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		userDB := mock.NewMockDBUser(ctrl)
+		reservedName := mock.NewMockLogicsReservedName(ctrl)
+		eacpLog := mock.NewMockDrivenEacpLog(ctrl)
+		msgBroker := mock.NewMockDrivenMessageBroker(ctrl)
+
+		trace := mock.NewMockTraceClient(ctrl)
+		ctx := context.Background()
+
+		trace.EXPECT().SetInternalSpanName(gomock.Any()).AnyTimes()
+		trace.EXPECT().AddInternalTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+		trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+		u := &user{
+			userDB:        userDB,
+			reservedName:  reservedName,
+			logger:        common.NewLogger(),
+			trace:         trace,
+			eacpLog:       eacpLog,
+			messageBroker: msgBroker,
+		}
+
+		msg := make(map[string]interface{})
+		msg["id"] = strID
+		msg["display_name"] = strID2
+		msg["login_name"] = strID1
+
+		Convey("messageBroker UserStatusChanged-报错", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			err := u.userExpiredAutoDisabled(msg)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("eacp  OpUserExpiredDisabled- 报错", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(nil)
+			eacpLog.EXPECT().OpUserExpiredDisabled(gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			err := u.userExpiredAutoDisabled(msg)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("success", func() {
+			msgBroker.EXPECT().UserStatusChanged(gomock.Any(), gomock.Any()).Return(nil)
+			eacpLog.EXPECT().OpUserExpiredDisabled(gomock.Any(), gomock.Any()).Return(nil)
+			err := u.userExpiredAutoDisabled(msg)
+			assert.Equal(t, err, nil)
+		})
+	})
+}
+
+func TestUserExpiredAutoDisable(t *testing.T) {
+	Convey("用户过期自动禁用", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		userDB := mock.NewMockDBUser(ctrl)
+		reservedName := mock.NewMockLogicsReservedName(ctrl)
+		eacpLog := mock.NewMockDrivenEacpLog(ctrl)
+		msgBroker := mock.NewMockDrivenMessageBroker(ctrl)
+		ob := mock.NewMockLogicsOutbox(ctrl)
+
+		trace := mock.NewMockTraceClient(ctrl)
+		ctx := context.Background()
+
+		trace.EXPECT().SetInternalSpanName(gomock.Any()).AnyTimes()
+		trace.EXPECT().AddInternalTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+		trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		u := &user{
+			userDB:        userDB,
+			reservedName:  reservedName,
+			logger:        common.NewLogger(),
+			trace:         trace,
+			eacpLog:       eacpLog,
+			messageBroker: msgBroker,
+			pool:          db,
+			ob:            ob,
+		}
+
+		userInfos := []interfaces.UserDBInfo{
+			{
+				ID:      strID,
+				Name:    strID2,
+				Account: strID1,
+			},
+		}
+
+		Convey("begin-报错", func() {
+			mock.ExpectBegin().WillReturnError(stdErr.New(strTest))
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("GetLock-报错", func() {
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("GetExpiredNeedDisableUserInfos-报错", func() {
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetExpiredNeedDisableUserInfos(gomock.Any(), gomock.Any()).Return(nil, stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("SetAutoDisableStatus-报错", func() {
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetExpiredNeedDisableUserInfos(gomock.Any(), gomock.Any()).Return(nil, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("AddOutboxInfo-报错", func() {
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetExpiredNeedDisableUserInfos(gomock.Any(), gomock.Any()).Return(userInfos, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			ob.EXPECT().AddOutboxInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("success", func() {
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetExpiredNeedDisableUserInfos(gomock.Any(), gomock.Any()).Return(userInfos, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			ob.EXPECT().AddOutboxInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			mock.ExpectCommit()
+			ob.EXPECT().NotifyPushOutboxThread().AnyTimes()
+			err := u.userExpiredAutoDisable(ctx)
+			assert.Equal(t, err, nil)
+		})
+	})
+}
+
+func TestUserNotLoginAutoDisable(t *testing.T) {
+	Convey("用户长时间未登录自动禁用", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		userDB := mock.NewMockDBUser(ctrl)
+		reservedName := mock.NewMockLogicsReservedName(ctrl)
+		eacpLog := mock.NewMockDrivenEacpLog(ctrl)
+		msgBroker := mock.NewMockDrivenMessageBroker(ctrl)
+		ob := mock.NewMockLogicsOutbox(ctrl)
+		conf := mock.NewMockLogicsConfig(ctrl)
+
+		trace := mock.NewMockTraceClient(ctrl)
+		ctx := context.Background()
+
+		trace.EXPECT().SetInternalSpanName(gomock.Any()).AnyTimes()
+		trace.EXPECT().AddInternalTrace(gomock.Any()).AnyTimes().Return(ctx, nil)
+		trace.EXPECT().TelemetrySpanEnd(gomock.Any(), gomock.Any()).AnyTimes()
+
+		db, mock, err := sqlx.New()
+		assert.Equal(t, err, nil)
+
+		u := &user{
+			userDB:        userDB,
+			reservedName:  reservedName,
+			logger:        common.NewLogger(),
+			trace:         trace,
+			eacpLog:       eacpLog,
+			messageBroker: msgBroker,
+			pool:          db,
+			ob:            ob,
+			config:        conf,
+		}
+
+		userInfos := []interfaces.UserDBInfo{
+			{
+				ID:      strID,
+				Name:    strID2,
+				Account: strID1,
+			},
+		}
+
+		Convey("GetConfig-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, stdErr.New(strTest))
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("begin-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin().WillReturnError(stdErr.New(strTest))
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("GetLock-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("GetNotLoginNeedDisableUserInfos-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetNotLoginNeedDisableUserInfos(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("SetAutoDisableStatus-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetNotLoginNeedDisableUserInfos(gomock.Any(), gomock.Any(), gomock.Any()).Return(userInfos, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("AddOutboxInfo-报错", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetNotLoginNeedDisableUserInfos(gomock.Any(), gomock.Any(), gomock.Any()).Return(userInfos, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			ob.EXPECT().AddOutboxInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(stdErr.New(strTest))
+			mock.ExpectRollback()
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, stdErr.New(strTest))
+		})
+
+		Convey("success", func() {
+			conf.EXPECT().GetConfig(gomock.Any()).Return(interfaces.Config{AutoDisableEnabled: true}, nil)
+			mock.ExpectBegin()
+			userDB.EXPECT().GetLock(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			userDB.EXPECT().GetNotLoginNeedDisableUserInfos(gomock.Any(), gomock.Any(), gomock.Any()).Return(userInfos, nil)
+			userDB.EXPECT().SetAutoDisableStatus(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			ob.EXPECT().AddOutboxInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			mock.ExpectCommit()
+			ob.EXPECT().NotifyPushOutboxThread()
+			err := u.userNotLoginAutoDisable(ctx)
+			assert.Equal(t, err, nil)
 		})
 	})
 }

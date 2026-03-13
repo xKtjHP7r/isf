@@ -135,10 +135,6 @@ interface ncIDBPermManager: nsISupports
      */
     [notxpcom] void GetCustomPermByDocIds ([const] in StringVecRef docIds, in dbCustomPermInfoVectorRef infos);
 
-    /*
-     * 获取过期权限信息。
-     */
-    [notxpcom] void GetExpirePermInfos (in int64 expireTime, in dbCustomPermInfoVectorRef infos);
 
     /*
      * 添加一条自定义权限信息

@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/common"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces"
-	"devops.aishu.cn/AISHUDevOps/AnyShareFamily/_git/Authorization/interfaces/mock"
+	"Authorization/common"
+	"Authorization/interfaces"
+	"Authorization/interfaces/mock"
 )
 
 func newResourceTypeHierarchy(db interfaces.DBResourceTypeHierarchy, dbResourceType interfaces.DBResourceType) *resourceTypeHierarchy {

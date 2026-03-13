@@ -295,24 +295,42 @@ func (i *initData) InitPolicy() {
 		policy.AccessorType = i.accessorStrToType[accessorJson["type"].(string)]
 		policy.AccessorName = accessorJson["name"].(string)
 
-		operationJson := policyDr["operation"].(map[string]any)
-		allowJson := operationJson["allow"].([]any)
-		denyJson := operationJson["deny"].([]any)
-		allow := []interfaces.PolicyOperationItem{}
-		deny := []interfaces.PolicyOperationItem{}
+		rulesJson := policyDr["rules"].(map[string]any)
+		allowJson := rulesJson["allow"].([]any)
+		denyJson := rulesJson["deny"].([]any)
+		allow := []interfaces.PolicyRuleItem{}
+		deny := []interfaces.PolicyRuleItem{}
 		for _, v := range allowJson {
 			item := v.(map[string]any)
-			allow = append(allow, interfaces.PolicyOperationItem{
-				ID: item["id"].(string),
+			operationsJson := item["operations"].([]any)
+			operations := make([]interfaces.PolicyOperationItem, 0, len(operationsJson))
+			for _, operationJson := range operationsJson {
+				operation := operationJson.(map[string]any)
+				operations = append(operations, interfaces.PolicyOperationItem{
+					ID: operation["id"].(string),
+				})
+			}
+			allow = append(allow, interfaces.PolicyRuleItem{
+				Condition:  item["condition"].(map[string]any),
+				Operations: operations,
 			})
 		}
 		for _, v := range denyJson {
 			item := v.(map[string]any)
-			deny = append(deny, interfaces.PolicyOperationItem{
-				ID: item["id"].(string),
+			operationsJson := item["operations"].([]any)
+			operations := make([]interfaces.PolicyOperationItem, 0, len(operationsJson))
+			for _, operationJson := range operationsJson {
+				operation := operationJson.(map[string]any)
+				operations = append(operations, interfaces.PolicyOperationItem{
+					ID: operation["id"].(string),
+				})
+			}
+			deny = append(deny, interfaces.PolicyRuleItem{
+				Condition:  item["condition"].(map[string]any),
+				Operations: operations,
 			})
 		}
-		policy.Operation = interfaces.PolicyOperation{
+		policy.Rules = interfaces.PolicyRules{
 			Allow: allow,
 			Deny:  deny,
 		}

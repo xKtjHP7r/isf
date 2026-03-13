@@ -38,12 +38,6 @@ AB_DEFINE_THREADSAFE_SINGLETON_NO_POOL (ncACSProcessorUtil)
 
 
 
-bool ncACSProcessorUtil::IsMajorNode ()
-{
-    string is_single = GetConfValue (_T("/sysvol/conf/service_conf/app_default.conf"), _T("ShareServer.is_single"));
-    return (is_single == "true" ? true : false);
-}
-
 string ncACSProcessorUtil::GetConfValue (const string& path, const string& key)
 {
     string value;
@@ -201,12 +195,6 @@ bool ncACSProcessorUtil::isLAN (const string& realip)
         return true;
     }
     return false;
-}
-
-bool ncACSProcessorUtil::CheckAndGetMajorNodeIp (String& majorNodeIp)
-{
-    majorNodeIp = toCFLString ("eacp-single-thrift.anyshare.svc.cluster.local");
-    return IsMajorNode();
 }
 
 String ncACSProcessorUtil::UrlEncode3986 (const String & input)

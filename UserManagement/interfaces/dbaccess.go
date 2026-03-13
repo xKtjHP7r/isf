@@ -429,6 +429,28 @@ type DBGroupMember interface {
 	GetMemberOnClient(id string, offset, limit int) (info []MemberSimpleInfo, err error)
 }
 
+// DisableStatus 用户禁用状态类型
+type DisableStatus int
+
+const (
+	// NotLoginDisabled 长时间未登录自动禁用
+	NotLoginDisabled DisableStatus = 0x00000001
+	// ExpiredDisabled 用户过期自动禁用
+	ExpiredDisabled DisableStatus = 0x00000002
+)
+
+type DistributedLockType int
+
+const (
+	_ DistributedLockType = iota
+
+	// UserExpiredDisableLock 用户过期自动禁用锁
+	UserExpiredDisableLock
+
+	// UserNotLoginDisableLock 用户长时间未登录自动禁用锁
+	UserNotLoginDisableLock
+)
+
 // DBUser user 数据访问层处理接口
 type DBUser interface {
 	// GetUserName 批量获取用户显示名
@@ -523,6 +545,18 @@ type DBUser interface {
 
 	// GetAllUserCount 获取所有用户数量
 	GetAllUserCount(ctx context.Context) (num int, err error)
+
+	// GetExpiredNeedDisableUserInfos 获取过期需要禁用的用户信息
+	GetExpiredNeedDisableUserInfos(ctx context.Context, tx *sql.Tx) (userInfos []UserDBInfo, err error)
+
+	// GetLock 获取锁
+	GetLock(ctx context.Context, lockType DistributedLockType, tx *sql.Tx) (err error)
+
+	// SetAutoDisableStatus 设置用户自动禁用状态
+	SetAutoDisableStatus(ctx context.Context, userIDs []string, disableStatus DisableStatus, tx *sql.Tx) error
+
+	// GetNotLoginNeedDisableUserInfos 获取长时间未登录要禁用的用户信息
+	GetNotLoginNeedDisableUserInfos(ctx context.Context, allowDays int64, tx *sql.Tx) (userInfos []UserDBInfo, err error)
 }
 
 // DBRole 角色信息
@@ -682,6 +716,9 @@ const (
 
 	// ShowCSFLevel2 是否显示密级2
 	ShowCSFLevel2
+
+	// AutoDisable 自动禁用功能是否开启
+	AutoDisable
 )
 
 // Config 配置信息
@@ -705,6 +742,8 @@ type Config struct {
 	CSFLevelEnum       map[string]int
 	CSFLevel2Enum      map[string]int
 	ShowCSFLevel2      bool
+	AutoDisableEnabled bool
+	AutoDisableTime    int64
 }
 
 // DBConfig 配置信息接口

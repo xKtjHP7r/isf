@@ -32,7 +32,6 @@ public:
     virtual bool GetShareDocStatus(int docType, int linkType) = 0;
 
     //ECMSManager.thrift
-    virtual bool IsMajorNode () = 0;
     virtual bool GetSyslogStatus () = 0;
 
     virtual void SendPermChangeNSQ (const String& docID) = 0;
@@ -55,9 +54,7 @@ public:
     virtual void SendMail(vector<string>& mailto, const string& subject, const string& content);
 
     //ECMSManager.thrift
-    virtual bool IsMajorNode ();
     virtual bool GetSyslogStatus ();
-    virtual bool CheckAndGetMajorNodeIp (String& majorNodeIp);
 
     virtual String UrlEncode3986 (const String &in);
 

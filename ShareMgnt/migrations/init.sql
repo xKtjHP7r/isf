@@ -664,3 +664,10 @@ CREATE TABLE IF NOT EXISTS `t_user_custom_attr` (
 ) ENGINE=InnoDB COMMENT '用户自定义属性表';
 
 INSERT INTO `t_sharemgnt_config`(`f_key`, `f_value`) SELECT 'reserved_name_lock', 'locked' FROM DUAL WHERE NOT EXISTS (SELECT `f_key` FROM `t_sharemgnt_config` WHERE `f_key` = 'reserved_name_lock');
+
+CREATE TABLE IF NOT EXISTS `t_distributed_lock` (
+    `f_lock_key` varchar(26) NOT NULL COMMENT '锁key',
+    `f_hoder_id` char(36) NOT NULL COMMENT '锁holder id',
+    `f_expire_time` datetime COMMENT '锁过期时间',
+    PRIMARY KEY (`f_lock_key`)
+) ENGINE=InnoDB COMMENT '分布式锁表';

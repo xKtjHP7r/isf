@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	jsoniter "github.com/json-iterator/go"
+
 	"github.com/kweaver-ai/proton-rds-sdk-go/sqlx"
 
 	"Authorization/common"
@@ -35,39 +37,15 @@ func NewPolicy() *policy {
 	return policyService
 }
 
-//nolint:lll,dupl
-func (d *policy) GetPagination(ctx context.Context, params interfaces.PolicyPagination) (count int, policies []interfaces.PolicyInfo, err error) {
-	var countRows *sql.Rows
-	countRows, err = d.db.Query("select count(1) from "+common.GetDBName(databaseName)+".t_policy where f_resource_id = ? and f_resource_type = ?", params.ResourceID, params.ResourceType)
-	if err != nil {
-		d.logger.Errorln(err)
-		return 0, nil, err
-	}
-
-	for countRows.Next() {
-		err = countRows.Scan(&count)
-		if err != nil {
-			d.logger.Errorln(err)
-			return 0, nil, err
-		}
-	}
-
-	if countRows != nil {
-		if countRowsErr := countRows.Err(); countRowsErr != nil {
-			d.logger.Errorln(countRowsErr)
-		}
-		if closeErr := countRows.Close(); closeErr != nil {
-			d.logger.Errorln(closeErr)
-		}
-	}
-
+//nolint:lll
+func (d *policy) GetPagination(ctx context.Context, params interfaces.PolicyPagination) (policies []interfaces.PolicyInfo, err error) {
 	var rows *sql.Rows
 	strSQL := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_accessor_id, f_accessor_type, f_accessor_name, f_operation, f_condition, f_end_time, f_create_time, f_modify_time from " + common.GetDBName(databaseName) +
-		".t_policy where f_resource_id = ? and f_resource_type = ? order by f_modify_time desc, f_primary_id desc limit ? offset ?"
-	rows, err = d.db.Query(strSQL, params.ResourceID, params.ResourceType, params.Limit, params.Offset)
+		".t_policy where f_resource_id = ? and f_resource_type = ? order by f_modify_time desc, f_primary_id desc"
+	rows, err = d.db.Query(strSQL, params.ResourceID, params.ResourceType)
 	if err != nil {
 		d.logger.Errorln(err)
-		return 0, nil, err
+		return nil, err
 	}
 
 	defer func() {
@@ -90,16 +68,16 @@ func (d *policy) GetPagination(ctx context.Context, params interfaces.PolicyPagi
 			&operationStr, &policy.Condition, &policy.EndTime, &policy.CreateTime, &policy.ModifyTime)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
-			return 0, nil, err
+			return nil, err
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
-			return 0, nil, err
+			return nil, err
 		}
 		policies = append(policies, policy)
 	}
-	return count, policies, nil
+	return policies, nil
 }
 
 // Create 新增策略
@@ -124,7 +102,7 @@ func (d *policy) Create(ctx context.Context, policys []interfaces.PolicyInfo, tx
 	createPolicys := []tmpPolicyInfo{}
 	for i := range policys {
 		var operationStr string
-		operationStr, err = d.operationInfoToString(policys[i].Operation)
+		operationStr, err = d.rulesInfoToString(policys[i].Rules)
 		if err != nil {
 			d.logger.Errorln(err)
 			return err
@@ -179,7 +157,7 @@ func (d *policy) Update(ctx context.Context, policys []interfaces.PolicyInfo, tx
 	curTime := common.GetCurrentMicrosecondTimestamp()
 	var operationStr string
 	for i := range policys {
-		operationStr, err = d.operationInfoToString(policys[i].Operation)
+		operationStr, err = d.rulesInfoToString(policys[i].Rules)
 		if err != nil {
 			d.logger.Errorln(err)
 			return err
@@ -195,13 +173,13 @@ func (d *policy) Update(ctx context.Context, policys []interfaces.PolicyInfo, tx
 }
 
 // Delete 删除策略
-func (d *policy) Delete(ctx context.Context, ids []string) (err error) {
+func (d *policy) Delete(ctx context.Context, ids []string, tx *sql.Tx) (err error) {
 	if len(ids) == 0 {
 		return
 	}
 	IDsSet, IDsGroup := getFindInSetSQL(ids)
 	strSQL := "delete from " + common.GetDBName(databaseName) + ".t_policy where f_id in (" + IDsSet + ")"
-	_, err = d.db.Exec(strSQL, IDsGroup...)
+	_, err = tx.Exec(strSQL, IDsGroup...)
 	if err != nil {
 		d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 		return err
@@ -243,7 +221,7 @@ func (d *policy) GetByResourceIDs(ctx context.Context, resourceType string, reso
 			d.logger.Errorf("GetByResourceIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("GetByResourceIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -295,7 +273,7 @@ func (d *policy) GetByPolicyIDs(ctx context.Context, policyIDs []string) (polici
 			d.logger.Errorf("GetByPolicyIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("GetByPolicyIDs sql: %s, err: %v", strSQL, err)
 			return nil, err
@@ -402,46 +380,9 @@ func (d *policy) DeleteByEndTime(curTime int64) (err error) {
 
 // 获取访问者策略
 //
-//nolint:gocritic,gocyclo
-func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.AccessorPolicyParam) (count int, policies []interfaces.PolicyInfo, err error) {
+//nolint:gocritic
+func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.AccessorPolicyParam) (policies []interfaces.PolicyInfo, err error) {
 	dbName := common.GetDBName(databaseName)
-	var countRows *sql.Rows
-
-	var countArgs []any
-	countStr := "select count(1) from " + dbName + ".t_policy where f_accessor_id = ? and f_accessor_type = ?"
-	countArgs = append(countArgs, param.AccessorID, param.AccessorType)
-	if len(param.ResourceType) > 0 {
-		countStr += " and f_resource_type = ?"
-		countArgs = append(countArgs, param.ResourceType)
-	}
-	if len(param.ResourceID) > 0 {
-		countStr += " and f_resource_id = ?"
-		countArgs = append(countArgs, param.ResourceID)
-	}
-
-	countRows, err = d.db.Query(countStr, countArgs...)
-	if err != nil {
-		d.logger.Errorln(err)
-		return 0, nil, err
-	}
-
-	for countRows.Next() {
-		err = countRows.Scan(&count)
-		if err != nil {
-			d.logger.Errorln(err)
-			return 0, nil, err
-		}
-	}
-
-	if countRows != nil {
-		if countRowsErr := countRows.Err(); countRowsErr != nil {
-			d.logger.Errorln(countRowsErr)
-		}
-		if closeErr := countRows.Close(); closeErr != nil {
-			d.logger.Errorln(closeErr)
-		}
-	}
-
 	args := []any{param.AccessorID, param.AccessorType}
 	sqlStr := "select f_id, f_resource_id, f_resource_type, f_resource_name, f_operation, f_condition, f_ancestors, f_end_time, f_create_time from " + dbName +
 		".t_policy where f_accessor_id = ? and f_accessor_type = ?"
@@ -454,18 +395,11 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.Accesso
 		sqlStr += " and f_resource_id = ?"
 		args = append(args, param.ResourceID)
 	}
-
-	if param.Limit == -1 {
-		sqlStr += " order by f_modify_time desc, f_primary_id desc"
-	} else {
-		sqlStr += " order by f_modify_time desc, f_primary_id desc limit ? offset ?"
-		args = append(args, param.Limit, param.Offset)
-	}
-
+	sqlStr += " order by f_modify_time desc, f_primary_id desc"
 	rows, err := d.db.Query(sqlStr, args...)
 	if err != nil {
 		d.logger.Errorln(err, sqlStr, args)
-		return 0, nil, err
+		return nil, err
 	}
 
 	defer func() {
@@ -490,7 +424,7 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.Accesso
 			d.logger.Errorf("sql: %s, err: %v", sqlStr, err)
 			return
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", sqlStr, err)
 			return
@@ -502,32 +436,31 @@ func (d *policy) GetAccessorPolicy(ctx context.Context, param interfaces.Accesso
 		}
 		policies = append(policies, policy)
 	}
-	return count, policies, nil
+	return policies, nil
 }
 
-func (d *policy) operationInfoToString(operationInfo interfaces.PolicyOperation) (resp string, err error) {
+func (d *policy) rulesInfoToString(rulesInfo interfaces.PolicyRules) (resp string, err error) {
 	result := make(map[string]any)
-	allowResult := make([]any, 0, len(operationInfo.Allow))
-	for i := range operationInfo.Allow {
-		allowItem := make(map[string]any)
-		allowItem["id"] = operationInfo.Allow[i].ID
-		obligations := make([]map[string]any, 0, len(operationInfo.Allow[i].Obligations))
-		for j := range operationInfo.Allow[i].Obligations {
-			obligationItem := make(map[string]any)
-			obligationItem["type_id"] = operationInfo.Allow[i].Obligations[j].TypeID
-			obligationItem["id"] = operationInfo.Allow[i].Obligations[j].ID
-			obligationItem["value"] = operationInfo.Allow[i].Obligations[j].Value
-			obligations = append(obligations, obligationItem)
+	allowResult := make([]any, 0, len(rulesInfo.Allow))
+	for i := range rulesInfo.Allow {
+		// 如果 allow 的 operations 为空，则跳过
+		if len(rulesInfo.Allow[i].Operations) == 0 {
+			continue
 		}
-		allowItem["obligations"] = obligations
-		allowResult = append(allowResult, allowItem)
+		item := rulesInfo.Allow[i]
+		itemTmp := d.makeConditionItem(item)
+		allowResult = append(allowResult, itemTmp)
 	}
 
-	denyResult := make([]any, 0, len(operationInfo.Deny))
-	for i := range operationInfo.Deny {
-		denyItem := make(map[string]any)
-		denyItem["id"] = operationInfo.Deny[i].ID
-		denyResult = append(denyResult, denyItem)
+	denyResult := make([]any, 0, len(rulesInfo.Deny))
+	for i := range rulesInfo.Deny {
+		// 如果 deny 的 operations 为空，则跳过
+		if len(rulesInfo.Deny[i].Operations) == 0 {
+			continue
+		}
+		item := rulesInfo.Deny[i]
+		itemTmp := d.makeConditionItem(item)
+		denyResult = append(denyResult, itemTmp)
 	}
 
 	result["allow"] = allowResult
@@ -555,7 +488,6 @@ func (d *policy) ancestorsInfoToString(ancestors []interfaces.Ancestor) (string,
 		}
 	}
 
-	d.logger.Infof("ancestorsJson: %v", ancestorsJson)
 	ancestorsJsonBytes, err := json.Marshal(ancestorsJson)
 	if err != nil {
 		return "", err
@@ -587,61 +519,101 @@ func (d *policy) ancestorsStrToInfo(ancestorsStr string) (resp []interfaces.Ance
 	return ancestors, nil
 }
 
-//nolint:dupl
-func (d *policy) operationStrToInfo(operationStr string) (resp interfaces.PolicyOperation, err error) {
+func (d *policy) rulesStrToInfo(rulesStr string) (resp interfaces.PolicyRules, err error) {
 	var jsonReq map[string]any
-	err = json.Unmarshal([]byte(operationStr), &jsonReq)
+	err = jsoniter.Unmarshal([]byte(rulesStr), &jsonReq)
 	if err != nil {
 		d.logger.Errorf("json.Unmarshal: %v", err)
 		return
 	}
 	allowJson := jsonReq["allow"].([]any)
 	denyJson := jsonReq["deny"].([]any)
-	allow := []interfaces.PolicyOperationItem{}
-	deny := []interfaces.PolicyOperationItem{}
-	for _, v := range allowJson {
-		item := v.(map[string]any)
-		allowItem := interfaces.PolicyOperationItem{
-			ID: item["id"].(string),
-		}
-		// 历史数据没有obligations,代码里直接兼容
-		obligationsJson, ok := item["obligations"]
-		if ok {
-			allowItem.Obligations = d.getObligations(obligationsJson)
-		}
-		allow = append(allow, allowItem)
-	}
+	allow := make([]interfaces.PolicyRuleItem, 0, len(allowJson))
+	deny := make([]interfaces.PolicyRuleItem, 0, len(denyJson))
 
-	for _, v := range denyJson {
-		item := v.(map[string]any)
-		denyItem := interfaces.PolicyOperationItem{
-			ID: item["id"].(string),
-		}
-		deny = append(deny, denyItem)
+	for _, v := range allowJson {
+		allow = append(allow, d.parseConditionItem(v))
 	}
-	return interfaces.PolicyOperation{
+	for _, v := range denyJson {
+		deny = append(deny, d.parseConditionItem(v))
+	}
+	return interfaces.PolicyRules{
 		Allow: allow,
 		Deny:  deny,
 	}, nil
 }
 
+// parseConditionItem 解析单个 { condition, operations }
+func (d *policy) parseConditionItem(v any) interfaces.PolicyRuleItem {
+	item := v.(map[string]any)
+	// 解析 operations
+	opsList := item["operations"].([]any)
+	operations := make([]interfaces.PolicyOperationItem, 0, len(opsList))
+	for _, opV := range opsList {
+		opMap := opV.(map[string]any)
+		opItem := interfaces.PolicyOperationItem{ID: opMap["id"].(string)}
+		// 历史数据没有obligations,代码里直接兼容
+		if obl, ok := opMap["obligations"]; ok {
+			opItem.Obligations = d.getObligations(obl)
+		}
+		operations = append(operations, opItem)
+	}
+	condition := item["condition"]
+	if condition == nil {
+		condition = emptyCondition
+	}
+	return interfaces.PolicyRuleItem{Condition: condition, Operations: operations}
+}
+
+// makeConditionItem 将条件项转换为map[string]any
+func (d *policy) makeConditionItem(item interfaces.PolicyRuleItem) (result any) {
+	condition := item.Condition
+	if condition == nil {
+		condition = map[string]any{}
+	}
+	operations := make([]any, 0, len(item.Operations))
+	for j := range item.Operations {
+		op := item.Operations[j]
+		obligations := d.makeObligations(op.Obligations)
+		operations = append(operations, map[string]any{
+			"id":          op.ID,
+			"obligations": obligations,
+		})
+	}
+	result = map[string]any{
+		"condition":  condition,
+		"operations": operations,
+	}
+	return result
+}
+
 func (d *policy) getObligations(obligationsJson any) (result []interfaces.PolicyObligationItem) {
 	obligations := obligationsJson.([]any)
+	result = make([]interfaces.PolicyObligationItem, 0, len(obligations))
 	for _, v := range obligations {
 		obligationMap := v.(map[string]any)
-		obligationID := obligationMap["id"].(string)
-		obligationValue := obligationMap["value"]
-		obligation := interfaces.PolicyObligationItem{
+		result = append(result, interfaces.PolicyObligationItem{
 			TypeID: obligationMap["type_id"].(string),
-			ID:     obligationID,
-			Value:  obligationValue,
-		}
-		result = append(result, obligation)
+			ID:     obligationMap["id"].(string),
+			Value:  obligationMap["value"],
+		})
 	}
 	return
 }
 
-//nolint:lll,dupl
+func (d *policy) makeObligations(result []interfaces.PolicyObligationItem) (obligationsJson any) {
+	obligations := make([]any, 0, len(result))
+	for _, v := range result {
+		obligations = append(obligations, map[string]any{
+			"type_id": v.TypeID,
+			"id":      v.ID,
+			"value":   v.Value,
+		})
+	}
+	return obligations
+}
+
+//nolint:lll
 func (d *policy) GetResourcePolicies(ctx context.Context, params interfaces.ResourcePolicyPagination) (count int, policies []interfaces.PolicyInfo, err error) {
 	var countRows *sql.Rows
 	countRows, err = d.db.Query("select count(1) from "+common.GetDBName(databaseName)+".t_policy where f_resource_id = ? and f_resource_type = ?", params.ResourceID, params.ResourceType)
@@ -698,7 +670,7 @@ func (d *policy) GetResourcePolicies(ctx context.Context, params interfaces.Reso
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return 0, nil, err
 		}
-		policy.Operation, err = d.operationStrToInfo(operationStr)
+		policy.Rules, err = d.rulesStrToInfo(operationStr)
 		if err != nil {
 			d.logger.Errorf("sql: %s, err: %v", strSQL, err)
 			return 0, nil, err

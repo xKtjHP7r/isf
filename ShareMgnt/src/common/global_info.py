@@ -17,6 +17,7 @@ DB_NAME = f"{SYSTEM_ID}sharemgnt_db"
 DB_USER = ''
 DB_PWD = ''
 DB_BACK_COUNT = 2
+DB_TYPE = 'mysql'
 
 DB_WRITE = 'localhost'
 DB_READ = 'localhost'

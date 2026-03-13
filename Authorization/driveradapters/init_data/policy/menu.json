@@ -11,10 +11,15 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -32,10 +37,15 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -53,10 +63,15 @@
             "type": "role",
             "name": "超级管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -74,10 +89,15 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -95,10 +115,15 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -116,10 +141,15 @@
             "type": "role",
             "name": "系统管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -137,10 +167,15 @@
             "type": "role",
             "name": "安全管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -158,10 +193,15 @@
             "type": "role",
             "name": "安全管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -179,10 +219,15 @@
             "type": "role",
             "name": "安全管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -200,10 +245,15 @@
             "type": "role",
             "name": "审计管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -221,10 +271,15 @@
             "type": "role",
             "name": "组织管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -242,10 +297,15 @@
             "type": "role",
             "name": "组织审计员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -263,10 +323,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -284,10 +349,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -305,10 +375,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -326,10 +401,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -347,10 +427,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -368,10 +453,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -389,10 +479,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -410,10 +505,15 @@
             "type": "role",
             "name": "数据管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -431,10 +531,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -452,10 +557,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -473,10 +583,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -494,10 +609,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -515,10 +635,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -536,10 +661,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -557,10 +687,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -578,10 +713,15 @@
             "type": "role",
             "name": "AI管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -599,10 +739,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -620,10 +765,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -641,10 +791,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -662,10 +817,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -683,10 +843,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -704,10 +869,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -725,10 +895,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -746,10 +921,15 @@
             "type": "role",
             "name": "应用管理员"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -767,10 +947,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -788,10 +973,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -809,10 +999,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -830,10 +1025,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -851,10 +1051,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -872,10 +1077,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -893,10 +1103,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -914,10 +1129,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -935,10 +1155,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -956,10 +1181,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -977,10 +1207,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []
@@ -998,10 +1233,15 @@
             "type": "department",
             "name": "部门"
         },
-        "operation": {
+        "rules": {
             "allow": [
                 {
-                    "id": "display"
+                    "condition": {},
+                    "operations": [
+                        {
+                            "id": "display"
+                        }
+                    ]
                 }
             ],
             "deny": []

@@ -74,6 +74,28 @@ func (m *messageBroker) initHandlers() {
 	m.handlers[interfaces.AppNameChanged] = m.appNameChangedMsg
 }
 
+func (m *messageBroker) UserStatusChanged(id string, status bool) (err error) {
+	topic := "user_management.user.status.changed"
+	body := make(map[string]interface{})
+	body["user_id"] = id
+	body["status"] = status
+
+	// 发送消息
+	message, err := jsoniter.Marshal(body)
+	if err != nil {
+		m.log.Errorln(err)
+		return err
+	}
+
+	err = m.client.Pub(topic, message)
+	if err != nil {
+		m.log.Errorln(err)
+		return err
+	}
+
+	return nil
+}
+
 // OrgManagerChanged 发送组织管理员变更消息
 func (m *messageBroker) OrgManagerChanged(ids []string) (err error) {
 	topic := "user_management.org_manager.changed"

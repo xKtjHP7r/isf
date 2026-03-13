@@ -11,7 +11,12 @@ spec:
   selector:
     matchLabels:
       app: {{ .Release.Name }}
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 25%
+    type: RollingUpdate
   template:
     metadata:
       annotations:
@@ -27,21 +32,16 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      initContainers:
-        - name: copy-cfl-config
-          args:
-            - |
-              cp /sysvol/apphome/lib64/cfl.config /cfl-config/cfl.config
-              chown 0:5000 /cfl-config/cfl.config
-              chmod 660 /cfl-config/cfl.config
-          command:
-            - /bin/sh
-            - -c
-          image: {{ .Values.image.registry }}/{{ .Values.image.service.repository }}:{{ .Values.image.service.tag }}
-          imagePullPolicy: {{ .Values.image.service.pullPolicy }}
-          volumeMounts:
-            - mountPath: /cfl-config
-              name: cfl-config
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Release.Name }}
+            topologyKey: "kubernetes.io/hostname"
       containers:
         - name: {{ .Release.Name }}
           image: {{ .Values.image.registry }}/{{ .Values.image.service.repository }}:{{ .Values.image.service.tag }}
@@ -49,37 +49,42 @@ spec:
           env:
             {{- if .Values.service.logger}}
               - name: LOGOUT
-                value: {{ .Values.service.logger | quote}}
+                value: {{ .Values.service.logger | quote }}
             {{- end}}
             {{- if .Values.env.language}}
               - name: LANG
-                value: {{ .Values.env.language | quote}}
+                value: {{ .Values.env.language | quote }}
               - name: LC_ALL
-                value: {{ .Values.env.language | quote}}
+                value: {{ .Values.env.language | quote }}
             {{- end}}
             {{- if .Values.env.timezone}}
               - name: TZ
-                value: {{ .Values.env.timezone | quote}}
+                value: {{ .Values.env.timezone | quote }}
             {{- end}}
-              - name: EACP_ENV_HOST
+            {{- if .Values.depServices.rds.type}}
+              - name: DB_TYPE
+                value: {{ .Values.depServices.rds.type | quote }}
+            {{- end}}
+            {{- if .Values.depServices.rds.driver}}
+              - name: DB_DRIVER
+                value: {{ .Values.depServices.rds.driver | quote }}
+            {{- end}}
+              - name: HOST_IP
                 valueFrom:
                   fieldRef:
                     fieldPath: status.hostIP
-              - name: DB_TYPE
-                value:  {{ .Values.depServices.rds.type | quote }}
-              - name:  DM_SVC_PATH
-                value: /sysvol/conf/service_conf/
+              - name: POD_IP
+                valueFrom:
+                  fieldRef:
+                    fieldPath: status.podIP
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-yaml
           ports:
-            - name: eacppublic
+            - name: public-port
               containerPort: {{ .Values.service.port }}
-            - name: eacpprivate
-              containerPort: {{add 1 .Values.service.port }}
-            - name: eacpthrift
-              containerPort: {{add 2 .Values.service.port }}
-            - name: eacpbrpc1
-              containerPort: {{add 3 .Values.service.port }}
-            - name: eacpbrpc2
-              containerPort: {{add 4 .Values.service.port }}
+            - name: private-port
+              containerPort: {{ add1 .Values.service.port }}
           readinessProbe:
             exec:
               command:
@@ -96,6 +101,7 @@ spec:
                       exit 1
                     fi
                   }
+
                   check_health {{ .Values.service.port }}
                   check_health {{ add1 .Values.service.port }}
             initialDelaySeconds: {{ .Values.service.readinessProbe.initialDelaySeconds }}
@@ -112,7 +118,7 @@ spec:
                 - |
                   check_health() {
                     local port=$1
-                    local status_code=$(curl -sf -w '%{http_code}' -o /dev/null http://localhost:$port/health/alive)
+                    local status_code=$(curl -sf -w '%{http_code}' -o /dev/null http://localhost:$port/health/live)
                     if [ "$status_code" -eq 200 ]; then
                       echo "Service on port $port is healthy"
                     else
@@ -120,6 +126,7 @@ spec:
                       exit 1
                     fi
                   }
+
                   check_health {{ .Values.service.port }}
                   check_health {{ add1 .Values.service.port }}
             initialDelaySeconds: {{ .Values.service.livenessProbe.initialDelaySeconds }}
@@ -135,21 +142,12 @@ spec:
               exec:
                 command: ["/bin/sh", "-c", "sleep 5"]
           volumeMounts:
-            - name: {{ .Release.Name }}-conf
+            - name: {{ .Release.Name }}-yaml
               mountPath: /sysvol/conf/service_conf
             - name: {{ .Release.Name }}-secret
               mountPath: /sysvol/conf/secret_conf
-            - name: wapi
-              mountPath: /sysvol/.wapi
-            - name: ipc
-              mountPath: /var/ipc
             - name: tmp-volume
               mountPath: /tmp
-            - name: brpc-volume
-              mountPath: /sysvol/brpc/eacp
-            - name: cfl-config
-              mountPath: /sysvol/apphome/lib64/cfl.config
-              subPath: cfl.config
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
@@ -158,35 +156,21 @@ spec:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
       volumes:
-        - name: {{ .Release.Name }}-conf
+        - name: {{ .Release.Name }}-yaml
           configMap:
-            name: {{ .Release.Name }}-conf
+            name: {{ .Release.Name }}-yaml
             items:
-            - key: language.conf
-              path: language.conf
-            - key: service_access.conf
-              path: service_access.conf
-            - key: app_default.conf
-              path: app_default.conf
-            - key: dm_svc.conf
-              path: dm_svc.conf
+            - key: authorization.yaml
+              path: authorization.yaml
             - key: mq_config.yaml
               path: mq_config.yaml
         - name: {{ .Release.Name }}-secret
           secret:
             secretName: {{ .Release.Name }}-secret
             items:
-            - key: cluster.conf
-              path: cluster.conf
-        - name: wapi
-          emptyDir: {}
-        - name: ipc
-          emptyDir: {}
+            - key: secret.yaml
+              path: secret.yaml
         - name: tmp-volume
-          emptyDir: {}
-        - name: brpc-volume
-          emptyDir: {}
-        - name: cfl-config
           emptyDir: {}
       dnsConfig:
          options:

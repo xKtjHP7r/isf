@@ -35,6 +35,7 @@ func newConfigDB(ptrDB *sqlx.DB) *config {
 			interfaces.ShowCSFLevel2:      "show_csf_level2",
 			interfaces.CSFLevelEnum:       "csf_level_enum",
 			interfaces.CSFLevel2Enum:      "csf_level2_enum",
+			interfaces.AutoDisable:        "auto_disable_config",
 		},
 	}
 }
@@ -46,6 +47,7 @@ func TestNewConfig(t *testing.T) {
 	})
 }
 
+//nolint:dupl
 func TestGetConfigs(t *testing.T) {
 	Convey("getConfigs, db is available", t, func() {
 		db, mock, err := sqlx.New()
@@ -77,6 +79,7 @@ func TestGetConfigs(t *testing.T) {
 		ck[interfaces.ShowCSFLevel2] = true
 		ck[interfaces.CSFLevelEnum] = true
 		ck[interfaces.CSFLevel2Enum] = true
+		ck[interfaces.AutoDisable] = true
 		Convey("success", func() {
 			fields := []string{
 				"f_key",
@@ -95,7 +98,8 @@ func TestGetConfigs(t *testing.T) {
 				AddRow(config.confKeyMap[interfaces.EnableDesPassWord], "1").
 				AddRow(config.confKeyMap[interfaces.ShowCSFLevel2], "0").
 				AddRow(config.confKeyMap[interfaces.CSFLevelEnum], "{\"公开\":5,\"秘密\":6,\"机密\":7,\"绝密\":8}").
-				AddRow(config.confKeyMap[interfaces.CSFLevel2Enum], "{\"公开1\":51,\"秘密1\":52,\"机密1\":53,\"绝密1\":54}")
+				AddRow(config.confKeyMap[interfaces.CSFLevel2Enum], "{\"公开1\":51,\"秘密1\":52,\"机密1\":53,\"绝密1\":54}").
+				AddRow(config.confKeyMap[interfaces.AutoDisable], "{\"isEnabled\":0, \"days\":90}")
 			mock.ExpectQuery("").WillReturnRows(rows)
 			data, httpErr := config.GetConfig(ck)
 			assert.Equal(t, httpErr, nil)
@@ -118,7 +122,68 @@ func TestGetConfigs(t *testing.T) {
 			assert.Equal(t, data.CSFLevel2Enum["秘密1"], 52)
 			assert.Equal(t, data.CSFLevel2Enum["机密1"], 53)
 			assert.Equal(t, data.CSFLevel2Enum["绝密1"], 54)
+			assert.Equal(t, data.AutoDisableEnabled, false)
+			assert.Equal(t, data.AutoDisableTime, int64(90))
+			Convey("success1", func() {
+				fields := []string{
+					"f_key",
+					"f_value",
+				}
 
+				ck1 := make(map[interfaces.ConfigKey]bool)
+				ck1[interfaces.ShowCSFLevel2] = true
+				rows := sqlmock.NewRows(fields)
+				mock.ExpectQuery("").WillReturnRows(rows)
+				data, httpErr := config.GetConfig(ck1)
+				assert.Equal(t, httpErr, nil)
+				assert.Equal(t, data.ShowCSFLevel2, false)
+			})
+		})
+
+		Convey("success1", func() {
+			fields := []string{
+				"f_key",
+				"f_value",
+			}
+
+			rows := sqlmock.NewRows(fields).AddRow(config.confKeyMap[interfaces.IDCardLogin], "1").
+				AddRow(config.confKeyMap[interfaces.TelPwdRetrieval], "{\"send_vcode_by_sms\":true,\"send_vcode_by_email\":true}").
+				AddRow(config.confKeyMap[interfaces.EmailPwdRetrieval], "{\"send_vcode_by_sms\":true,\"send_vcode_by_email\":true}").
+				AddRow(config.confKeyMap[interfaces.PWDExpireTime], "200").
+				AddRow(config.confKeyMap[interfaces.StrongPWDStatus], "1").
+				AddRow(config.confKeyMap[interfaces.StrongPWDLength], "8").
+				AddRow(config.confKeyMap[interfaces.EnablePWDLock], "1").
+				AddRow(config.confKeyMap[interfaces.PWDErrCnt], "5").
+				AddRow(config.confKeyMap[interfaces.PWDLockTime], "1").
+				AddRow(config.confKeyMap[interfaces.EnableDesPassWord], "1").
+				AddRow(config.confKeyMap[interfaces.ShowCSFLevel2], "0").
+				AddRow(config.confKeyMap[interfaces.CSFLevelEnum], "{\"公开\":5,\"秘密\":6,\"机密\":7,\"绝密\":8}").
+				AddRow(config.confKeyMap[interfaces.CSFLevel2Enum], "{\"公开1\":51,\"秘密1\":52,\"机密1\":53,\"绝密1\":54}").
+				AddRow(config.confKeyMap[interfaces.AutoDisable], "{\"isEnabled\":true, \"days\":90}")
+			mock.ExpectQuery("").WillReturnRows(rows)
+			data, httpErr := config.GetConfig(ck)
+			assert.Equal(t, httpErr, nil)
+			assert.Equal(t, data.IDCardLogin, true)
+			assert.Equal(t, data.TelPwdRetrieval, true)
+			assert.Equal(t, data.EmailPwdRetrieval, true)
+			assert.Equal(t, data.PwdExpireTime, int64(200))
+			assert.Equal(t, data.StrongPwdStatus, true)
+			assert.Equal(t, data.StrongPwdLength, 8)
+			assert.Equal(t, data.EnablePwdLock, true)
+			assert.Equal(t, data.PwdErrCnt, 5)
+			assert.Equal(t, data.PwdLockTime, int64(1))
+			assert.Equal(t, data.EnableDesPwd, true)
+			assert.Equal(t, data.ShowCSFLevel2, false)
+			assert.Equal(t, data.CSFLevelEnum["公开"], 5)
+			assert.Equal(t, data.CSFLevelEnum["秘密"], 6)
+			assert.Equal(t, data.CSFLevelEnum["机密"], 7)
+			assert.Equal(t, data.CSFLevelEnum["绝密"], 8)
+			assert.Equal(t, data.CSFLevel2Enum["公开1"], 51)
+			assert.Equal(t, data.CSFLevel2Enum["秘密1"], 52)
+			assert.Equal(t, data.CSFLevel2Enum["机密1"], 53)
+			assert.Equal(t, data.CSFLevel2Enum["绝密1"], 54)
+			assert.Equal(t, data.AutoDisableEnabled, true)
+			assert.Equal(t, data.AutoDisableTime, int64(90))
 			Convey("success1", func() {
 				fields := []string{
 					"f_key",

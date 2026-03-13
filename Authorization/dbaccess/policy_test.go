@@ -20,6 +20,18 @@ const (
 	invalidJSON = `{"invalid": "json"`
 )
 
+// makeRulesForTest 构造测试用 PolicyOperation（新格式：Allow/Deny 为 []PolicyConditionItem）
+func makeRulesForTest(allowOps, denyOps []interfaces.PolicyOperationItem) interfaces.PolicyRules {
+	rules := interfaces.PolicyRules{}
+	if len(allowOps) > 0 {
+		rules.Allow = []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: allowOps}}
+	}
+	if len(denyOps) > 0 {
+		rules.Deny = []interfaces.PolicyRuleItem{{Condition: map[string]any{}, Operations: denyOps}}
+	}
+	return rules
+}
+
 //nolint:lll
 func TestDBGetPagination(t *testing.T) {
 	Convey("TestDBGetPagination", t, func() {
@@ -49,58 +61,39 @@ func TestDBGetPagination(t *testing.T) {
 			Limit:        10,
 		}
 
-		Convey("count query error", func() {
-			mock.ExpectQuery("^select count").WillReturnError(mockErr)
-			count, policies, err := b.GetPagination(ctx, params)
-			assert.Equal(t, err, mockErr)
-			assert.Equal(t, count, 0)
-			assert.Equal(t, len(policies), 0)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
 		Convey("data query error", func() {
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnError(mockErr)
-			count, policies, err := b.GetPagination(ctx, params)
+			policies, err := b.GetPagination(ctx, params)
 			assert.Equal(t, err, mockErr)
-			assert.Equal(t, count, 0)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("json unmarshal error", func() {
 			operationJSON := invalidJSON
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
 					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetPagination(ctx, params)
+			policies, err := b.GetPagination(ctx, params)
 			assert.NotEqual(t, err, nil)
-			assert.Equal(t, count, 0)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("Success", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1", Name: "operation1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{
-					{ID: "op2", Name: "operation2"},
-				},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest(
+				[]interfaces.PolicyOperationItem{{ID: "op1", Name: "operation1"}},
+				[]interfaces.PolicyOperationItem{{ID: "op2", Name: "operation2"}},
+			)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{"f_id", "f_resource_id", "f_resource_type", "f_resource_name", "f_accessor_id", "f_accessor_type", "f_accessor_name", "f_operation", "f_condition", "f_end_time", "f_create_time", "f_modify_time"}).
 					AddRow("policy-1", "resource-1", "type-1", "name-1", "accessor-1", interfaces.AccessorUser, "accessor-name-1", operationJSON, "condition-1", 1234567890, 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetPagination(ctx, params)
+			policies, err := b.GetPagination(ctx, params)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 1)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ID, "policy-1")
 			assert.Equal(t, policies[0].ResourceID, "resource-1")
@@ -144,13 +137,9 @@ func TestDBCreate(t *testing.T) {
 				AccessorID:   "accessor-1",
 				AccessorType: interfaces.AccessorUser,
 				AccessorName: "accessor-name-1",
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
-						{ID: "op1", Name: "operation1"},
-					},
-				},
-				Condition: "condition-1",
-				EndTime:   1234567890,
+				Rules:        makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1", Name: "operation1"}}, nil),
+				Condition:    "condition-1",
+				EndTime:      1234567890,
 			},
 		}
 
@@ -209,13 +198,9 @@ func TestDBUpdate(t *testing.T) {
 				AccessorID:   "accessor-1",
 				AccessorType: interfaces.AccessorUser,
 				AccessorName: "accessor-name-1",
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
-						{ID: "op1", Name: "operation1"},
-					},
-				},
-				Condition: "condition-1",
-				EndTime:   1234567890,
+				Rules:        makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1", Name: "operation1"}}, nil),
+				Condition:    "condition-1",
+				EndTime:      1234567890,
 			},
 		}
 
@@ -249,7 +234,7 @@ func TestDBDelete(t *testing.T) {
 		db, mock, err := sqlx.New()
 		assert.Equal(t, err, nil)
 		defer func(db *sqlx.DB) {
-			err := db.Close()
+			err = db.Close()
 			if err != nil {
 				return
 			}
@@ -257,6 +242,10 @@ func TestDBDelete(t *testing.T) {
 
 		mockErr := errors.New("test error")
 		ctx := context.Background()
+		mock.ExpectBegin()
+		var tx *sql.Tx
+		tx, err = db.Begin()
+		assert.Equal(t, err, nil)
 
 		b := &policy{
 			db:     db,
@@ -266,20 +255,20 @@ func TestDBDelete(t *testing.T) {
 		ids := []string{"policy-1", "policy-2"}
 
 		Convey("empty ids", func() {
-			err := b.Delete(ctx, []string{})
+			err := b.Delete(ctx, []string{}, tx)
 			assert.Equal(t, err, nil)
 		})
 
 		Convey("delete error", func() {
 			mock.ExpectExec("^delete").WillReturnError(mockErr)
-			err := b.Delete(ctx, ids)
+			err := b.Delete(ctx, ids, tx)
 			assert.Equal(t, err, mockErr)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("Success", func() {
 			mock.ExpectExec("^delete").WillReturnResult(sqlmock.NewResult(0, 2))
-			err := b.Delete(ctx, ids)
+			err := b.Delete(ctx, ids, tx)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
@@ -335,12 +324,8 @@ func TestDBGetByResourceIDs(t *testing.T) {
 		})
 
 		Convey("Success", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1", Name: "operation1"},
-				},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1", Name: "operation1"}}, nil)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -415,12 +400,8 @@ func TestDBGetByPolicyIDs(t *testing.T) {
 		})
 
 		Convey("Success", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1", Name: "operation1"},
-				},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1", Name: "operation1"}}, nil)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -648,7 +629,6 @@ func TestDBDeleteByEndTime(t *testing.T) {
 	})
 }
 
-//nolint:funlen
 func TestDBGetAccessorPolicy(t *testing.T) {
 	Convey("TestDBGetAccessorPolicy", t, func() {
 		ctrl := gomock.NewController(t)
@@ -677,35 +657,18 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			Offset:       0,
 		}
 
-		Convey("count query error", func() {
-			mock.ExpectQuery("^select count").WillReturnError(mockErr)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
-			assert.Equal(t, err, mockErr)
-			assert.Equal(t, count, 0)
-			assert.Equal(t, len(policies), 0)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
-		Convey("data query error", func() {
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+		Convey("query error", func() {
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnError(mockErr)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, mockErr)
-			assert.Equal(t, count, 0)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("Success - basic query", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, nil)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
@@ -714,9 +677,8 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 					AddRow("policy-1", "resource-1", "type-1", "name-1",
 						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 1)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ID, "policy-1")
 			assert.Equal(t, policies[0].ResourceID, "resource-1")
@@ -725,24 +687,17 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 			assert.Equal(t, policies[0].Condition, "condition-1")
 			assert.Equal(t, policies[0].EndTime, int64(1234567890))
 			assert.Equal(t, policies[0].CreateTime, int64(1234567890))
-			assert.Equal(t, len(policies[0].Operation.Allow), 1)
-			assert.Equal(t, policies[0].Operation.Allow[0].ID, "op1")
+			assert.Equal(t, len(policies[0].Rules.Allow), 1)
+			assert.Equal(t, len(policies[0].Rules.Allow[0].Operations), 1)
+			assert.Equal(t, policies[0].Rules.Allow[0].Operations[0].ID, "op1")
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("Success - with resource type filter", func() {
 			param.ResourceType = "test-type"
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{
-					{ID: "op2"},
-				},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, []interfaces.PolicyOperationItem{{ID: "op2"}})
+			operationJSON, _ := b.rulesInfoToString(rules)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
@@ -751,28 +706,21 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 					AddRow("policy-1", "resource-1", "test-type", "name-1",
 						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 1)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ResourceType, "test-type")
-			assert.Equal(t, len(policies[0].Operation.Allow), 1)
-			assert.Equal(t, len(policies[0].Operation.Deny), 1)
+			assert.Equal(t, len(policies[0].Rules.Allow), 1)
+			assert.Equal(t, len(policies[0].Rules.Deny), 1)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
 		Convey("Success - with resource ID filter", func() {
 			param.ResourceType = ""
 			param.ResourceID = "test-resource-id"
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, nil)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
@@ -781,9 +729,8 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 					AddRow("policy-1", "test-resource-id", "type-1", "name-1",
 						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 1)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ResourceID, "test-resource-id")
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
@@ -792,15 +739,9 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 		Convey("Success - with both resource type and ID filter", func() {
 			param.ResourceType = "test-type"
 			param.ResourceID = "test-resource-id"
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, nil)
+			operationJSON, _ := b.rulesInfoToString(rules)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
@@ -809,59 +750,25 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 					AddRow("policy-1", "test-resource-id", "test-type", "name-1",
 						operationJSON, "condition-1", "[]", 1234567890, 1234567890),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 1)
 			assert.Equal(t, len(policies), 1)
 			assert.Equal(t, policies[0].ResourceID, "test-resource-id")
 			assert.Equal(t, policies[0].ResourceType, "test-type")
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 
-		Convey("Success - with Limit = -1 (no pagination)", func() {
-			param.ResourceType = ""
-			param.ResourceID = ""
-			param.Limit = -1
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
-
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
-			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
-				sqlmock.NewRows([]string{
-					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
-					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
-				}).
-					AddRow("policy-1", "resource-1", "type-1", "name-1",
-						operationJSON, "condition-1", "[]", 1234567890, 1234567890).
-					AddRow("policy-2", "resource-2", "type-2", "name-2",
-						operationJSON, "condition-2", "[]", 1234567891, 1234567891),
-			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
-			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 2)
-			assert.Equal(t, len(policies), 2)
-			assert.Equal(t, mock.ExpectationsWereMet(), nil)
-		})
-
 		Convey("Success - empty result", func() {
 			param.ResourceType = ""
 			param.ResourceID = ""
-			param.Limit = 10
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
 					"f_operation", "f_condition", "f_ancestors", "f_end_time", "f_create_time",
 				}),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 0)
 			assert.Equal(t, len(policies), 0)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
@@ -869,23 +776,11 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 		Convey("Success - multiple policies", func() {
 			param.ResourceType = ""
 			param.ResourceID = ""
-			param.Limit = 10
-			operation1 := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{},
-			}
-			operation2 := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{},
-				Deny: []interfaces.PolicyOperationItem{
-					{ID: "op2"},
-				},
-			}
-			operationJSON1, _ := b.operationInfoToString(operation1)
-			operationJSON2, _ := b.operationInfoToString(operation2)
+			rules1 := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, nil)
+			rules2 := makeRulesForTest(nil, []interfaces.PolicyOperationItem{{ID: "op2"}})
+			operationJSON1, _ := b.rulesInfoToString(rules1)
+			operationJSON2, _ := b.rulesInfoToString(rules2)
 
-			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
 				sqlmock.NewRows([]string{
 					"f_id", "f_resource_id", "f_resource_type", "f_resource_name",
@@ -896,14 +791,13 @@ func TestDBGetAccessorPolicy(t *testing.T) {
 					AddRow("policy-2", "resource-2", "type-2", "name-2",
 						operationJSON2, "condition-2", "[]", 1234567891, 1234567891),
 			)
-			count, policies, err := b.GetAccessorPolicy(ctx, param)
+			policies, err := b.GetAccessorPolicy(ctx, param)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, count, 2)
 			assert.Equal(t, len(policies), 2)
 			assert.Equal(t, policies[0].ID, "policy-1")
 			assert.Equal(t, policies[1].ID, "policy-2")
-			assert.Equal(t, len(policies[0].Operation.Allow), 1)
-			assert.Equal(t, len(policies[1].Operation.Deny), 1)
+			assert.Equal(t, len(policies[0].Rules.Allow), 1)
+			assert.Equal(t, len(policies[1].Rules.Deny), 1)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 	})
@@ -976,15 +870,8 @@ func TestDBGetResourcePolicies(t *testing.T) {
 		})
 
 		Convey("Success", func() {
-			operation := interfaces.PolicyOperation{
-				Allow: []interfaces.PolicyOperationItem{
-					{ID: "op1"},
-				},
-				Deny: []interfaces.PolicyOperationItem{
-					{ID: "op2"},
-				},
-			}
-			operationJSON, _ := b.operationInfoToString(operation)
+			rules := makeRulesForTest([]interfaces.PolicyOperationItem{{ID: "op1"}}, []interfaces.PolicyOperationItem{{ID: "op2"}})
+			operationJSON, _ := b.rulesInfoToString(rules)
 
 			mock.ExpectQuery("^select count").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 			mock.ExpectQuery("^select.*f_id.*f_resource_id").WillReturnRows(
@@ -1004,85 +891,87 @@ func TestDBGetResourcePolicies(t *testing.T) {
 			assert.Equal(t, policies[0].ResourceID, "resource-1")
 			assert.Equal(t, policies[0].ResourceType, "type-1")
 			assert.Equal(t, policies[0].ResourceName, "name-1")
-			assert.Equal(t, len(policies[0].Operation.Allow), 1)
-			assert.Equal(t, len(policies[0].Operation.Deny), 1)
+			assert.Equal(t, len(policies[0].Rules.Allow), 1)
+			assert.Equal(t, len(policies[0].Rules.Deny), 1)
 			assert.Equal(t, mock.ExpectationsWereMet(), nil)
 		})
 	})
 }
 
 //nolint:lll,dupl
-func TestPolicyOperationStrToInfo(t *testing.T) {
-	Convey("TestPolicyOperationStrToInfo", t, func() {
+func TestPolicyRulesStrToInfo(t *testing.T) {
+	Convey("TestPolicyRulesStrToInfo", t, func() {
 		d := &policy{
 			logger: common.NewLogger(),
 		}
 
 		Convey("json unmarshal error", func() {
 			operationStr := invalidJSON
-			_, err := d.operationStrToInfo(operationStr)
+			_, err := d.rulesStrToInfo(operationStr)
 			assert.NotEqual(t, err, nil)
 		})
 
 		Convey("allow and deny are empty", func() {
 			operationStr := `{"allow":[],"deny":[]}`
-			operation, err := d.operationStrToInfo(operationStr)
+			rules, err := d.rulesStrToInfo(operationStr)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, len(operation.Allow), 0)
-			assert.Equal(t, len(operation.Deny), 0)
+			assert.Equal(t, len(rules.Allow), 0)
+			assert.Equal(t, len(rules.Deny), 0)
 		})
 
 		Convey("without obligations", func() {
-			operationStr := `{"allow":[{"id":"op1"}],"deny":[{"id":"op2"}]}`
-			operation, err := d.operationStrToInfo(operationStr)
+			operationStr := `{"allow":[{"condition":{},"operations":[{"id":"op1","obligations":[]}]}],"deny":[{"condition":{},"operations":[{"id":"op2","obligations":[]}]}]}`
+			rules, err := d.rulesStrToInfo(operationStr)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, len(operation.Allow), 1)
-			assert.Equal(t, operation.Allow[0].ID, "op1")
-			assert.Equal(t, len(operation.Allow[0].Obligations), 0)
-			assert.Equal(t, len(operation.Deny), 1)
-			assert.Equal(t, operation.Deny[0].ID, "op2")
+			assert.Equal(t, len(rules.Allow), 1)
+			assert.Equal(t, len(rules.Allow[0].Operations), 1)
+			assert.Equal(t, rules.Allow[0].Operations[0].ID, "op1")
+			assert.Equal(t, len(rules.Allow[0].Operations[0].Obligations), 0)
+			assert.Equal(t, len(rules.Deny), 1)
+			assert.Equal(t, len(rules.Deny[0].Operations), 1)
+			assert.Equal(t, rules.Deny[0].Operations[0].ID, "op2")
 		})
 
 		Convey("with obligations", func() {
-			operationStr := `{"allow":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"}]}],"deny":[{"id":"op2"}]}`
-			operation, err := d.operationStrToInfo(operationStr)
+			operationStr := `{"allow":[{"condition":{},"operations":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"}]}]}],"deny":[{"condition":{},"operations":[{"id":"op2","obligations":[]}]}]}`
+			rules, err := d.rulesStrToInfo(operationStr)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, len(operation.Allow), 1)
-			assert.Equal(t, operation.Allow[0].ID, "op1")
-			assert.Equal(t, len(operation.Allow[0].Obligations), 1)
-			assert.Equal(t, operation.Allow[0].Obligations[0].TypeID, "type1")
-			assert.Equal(t, operation.Allow[0].Obligations[0].ID, "obl1")
-			assert.Equal(t, operation.Allow[0].Obligations[0].Value, "value1")
-			assert.Equal(t, len(operation.Deny), 1)
-			assert.Equal(t, operation.Deny[0].ID, "op2")
+			assert.Equal(t, len(rules.Allow), 1)
+			assert.Equal(t, rules.Allow[0].Operations[0].ID, "op1")
+			assert.Equal(t, len(rules.Allow[0].Operations[0].Obligations), 1)
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].TypeID, "type1")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].ID, "obl1")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].Value, "value1")
+			assert.Equal(t, len(rules.Deny), 1)
+			assert.Equal(t, rules.Deny[0].Operations[0].ID, "op2")
 		})
 
 		Convey("with multiple obligations", func() {
-			operationStr := `{"allow":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"},{"type_id":"type2","id":"obl2","value":123}]}],"deny":[]}`
-			operation, err := d.operationStrToInfo(operationStr)
+			operationStr := `{"allow":[{"condition":{},"operations":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"},{"type_id":"type2","id":"obl2","value":123}]}]}],"deny":[]}`
+			rules, err := d.rulesStrToInfo(operationStr)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, len(operation.Allow), 1)
-			assert.Equal(t, len(operation.Allow[0].Obligations), 2)
-			assert.Equal(t, operation.Allow[0].Obligations[0].TypeID, "type1")
-			assert.Equal(t, operation.Allow[0].Obligations[0].ID, "obl1")
-			assert.Equal(t, operation.Allow[0].Obligations[0].Value, "value1")
-			assert.Equal(t, operation.Allow[0].Obligations[1].TypeID, "type2")
-			assert.Equal(t, operation.Allow[0].Obligations[1].ID, "obl2")
-			assert.Equal(t, operation.Allow[0].Obligations[1].Value, float64(123))
+			assert.Equal(t, len(rules.Allow), 1)
+			assert.Equal(t, len(rules.Allow[0].Operations[0].Obligations), 2)
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].TypeID, "type1")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].ID, "obl1")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].Value, "value1")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[1].TypeID, "type2")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[1].ID, "obl2")
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[1].Value, float64(123))
 		})
 
 		Convey("multiple allow items with obligations", func() {
-			operationStr := `{"allow":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"}]},{"id":"op3","obligations":[{"type_id":"type3","id":"obl3","value":"value3"}]}],"deny":[{"id":"op2"}]}`
-			operation, err := d.operationStrToInfo(operationStr)
+			operationStr := `{"allow":[{"condition":{},"operations":[{"id":"op1","obligations":[{"type_id":"type1","id":"obl1","value":"value1"}]}]},{"condition":{},"operations":[{"id":"op3","obligations":[{"type_id":"type3","id":"obl3","value":"value3"}]}]}],"deny":[{"condition":{},"operations":[{"id":"op2","obligations":[]}]}]}`
+			rules, err := d.rulesStrToInfo(operationStr)
 			assert.Equal(t, err, nil)
-			assert.Equal(t, len(operation.Allow), 2)
-			assert.Equal(t, operation.Allow[0].ID, "op1")
-			assert.Equal(t, len(operation.Allow[0].Obligations), 1)
-			assert.Equal(t, operation.Allow[0].Obligations[0].TypeID, "type1")
-			assert.Equal(t, operation.Allow[1].ID, "op3")
-			assert.Equal(t, len(operation.Allow[1].Obligations), 1)
-			assert.Equal(t, operation.Allow[1].Obligations[0].TypeID, "type3")
-			assert.Equal(t, len(operation.Deny), 1)
+			assert.Equal(t, len(rules.Allow), 2)
+			assert.Equal(t, rules.Allow[0].Operations[0].ID, "op1")
+			assert.Equal(t, len(rules.Allow[0].Operations[0].Obligations), 1)
+			assert.Equal(t, rules.Allow[0].Operations[0].Obligations[0].TypeID, "type1")
+			assert.Equal(t, rules.Allow[1].Operations[0].ID, "op3")
+			assert.Equal(t, len(rules.Allow[1].Operations[0].Obligations), 1)
+			assert.Equal(t, rules.Allow[1].Operations[0].Obligations[0].TypeID, "type3")
+			assert.Equal(t, len(rules.Deny), 1)
 		})
 	})
 }

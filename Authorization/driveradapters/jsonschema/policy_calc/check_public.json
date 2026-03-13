@@ -25,6 +25,33 @@
                 "type": {
                     "type": "string",
                     "description": "资源类型"
+                },
+                "ancestors": {
+                    "type": "array",
+                    "description": "祖先信息",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "type"
+                        ]
+                    }
+                },
+                "created_by": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },

@@ -153,7 +153,7 @@ func TestPolicyCalcCheck1(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -167,7 +167,7 @@ func TestPolicyCalcCheck1(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -181,7 +181,7 @@ func TestPolicyCalcCheck1(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -195,7 +195,7 @@ func TestPolicyCalcCheck1(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: allResourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -209,7 +209,7 @@ func TestPolicyCalcCheck1(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: allResourceID,
-					Operation:  interfaces.PolicyOperation{Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -260,11 +260,11 @@ func TestPolicyCalcCheck2(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -278,11 +278,11 @@ func TestPolicyCalcCheck2(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceID: allResourceID,
-					Operation:  interfaces.PolicyOperation{Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -296,11 +296,11 @@ func TestPolicyCalcCheck2(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: allResourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -314,21 +314,21 @@ func TestPolicyCalcCheck2(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: allResourceID,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation3}},
-						Deny:  []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation3}}}},
+						Deny:  []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}},
 					},
 				},
 				{
 					ResourceID: resourceID,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}, {ID: tmpOperation2}},
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}, {ID: tmpOperation2}}}},
 					},
 				},
 				{
 					ResourceID: resourceID,
-					Operation: interfaces.PolicyOperation{
-						Deny: []interfaces.PolicyOperationItem{{ID: tmpOperation2}},
+					Rules: interfaces.PolicyRules{
+						Deny: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}},
 					},
 				},
 			}
@@ -350,6 +350,186 @@ func TestPolicyCalcCheck2(t *testing.T) {
 			checkResult, err = pc.Check(ctx, &resource, &accessor, operation, includeParams)
 			assert.Equal(t, err, nil)
 			assert.Equal(t, checkResult.Result, false)
+		})
+	})
+}
+
+// jsonlogic 条件用例：data 中为 accessor.id、resource.created_by.id 等，条件为 jsonlogic 规则
+func TestPolicyCalcCheckWithJsonLogicCondition(t *testing.T) {
+	Convey("单个检查接口, 带 jsonlogic 条件", t, func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		pdb := mock.NewMockDBPolicyCalc(ctrl)
+		userMgnt := mock.NewMockDrivenUserMgnt(ctrl)
+		role := mock.NewMockLogicsRole(ctrl)
+		resourceType := mock.NewMockLogicsResourceType(ctrl)
+		pc := newPolicyCalc(pdb, userMgnt, role, resourceType)
+
+		ctx := context.Background()
+		resource := interfaces.ResourceInfo{
+			ID:   resourceID,
+			Type: resourceTypeDoc,
+		}
+		accessor := interfaces.AccessorInfo{
+			ID:   accessorID,
+			Type: interfaces.RealName,
+		}
+		var outInfo []interfaces.RoleInfo
+		includeParams := []interfaces.PolicCalcyIncludeType{}
+		userMgnt.EXPECT().GetAccessorIDsByUserID(gomock.Any(), gomock.Any()).AnyTimes().Return([]string{accessorID}, nil)
+		role.EXPECT().GetRoleByMembers(gomock.Any(), gomock.Any()).AnyTimes().Return(outInfo, nil)
+		userMgnt.EXPECT().GetUserRolesByUserID(gomock.Any(), gomock.Any()).AnyTimes().Return([]interfaces.SystemRoleType{interfaces.SuperAdmin}, nil)
+		resourceType.EXPECT().GetByIDsInternal(gomock.Any(), []string{resourceTypeDoc}).AnyTimes().Return(map[string]interfaces.ResourceType{
+			resourceTypeDoc: {ID: resourceTypeDoc, DataStruct: "string"},
+		}, nil)
+
+		// jsonlogic: accessor.id == accessorID 时允许 display
+		condAccessorEq := map[string]any{
+			"==": []any{
+				map[string]any{"var": "accessor.id"},
+				accessorID,
+			},
+		}
+
+		Convey("Allow 规则带条件 accessor.id == accessorID，访问者匹配则 check 为 true", func() {
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  condAccessorEq,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resource, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.True(t, checkResult.Result)
+		})
+
+		Convey("Allow 规则带条件 accessor.id == otherUser，当前访问者为 accessorID 故条件不满足，check 为 false", func() {
+			condOtherUser := map[string]any{
+				"==": []any{map[string]any{"var": "accessor.id"}, "otherUser"},
+			}
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  condOtherUser,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resource, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.False(t, checkResult.Result)
+		})
+
+		Convey("Deny 规则带条件 accessor.id == accessorID，访问者匹配则 check 为 false", func() {
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Deny: []interfaces.PolicyRuleItem{{
+							Condition:  condAccessorEq,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resource, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.False(t, checkResult.Result)
+		})
+
+		Convey("Allow 条件为 and(accessor.id==x, 常量true)，访问者匹配则 check 为 true", func() {
+			condAnd := map[string]any{
+				"and": []any{
+					map[string]any{"==": []any{map[string]any{"var": "accessor.id"}, accessorID}},
+					true,
+				},
+			}
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  condAnd,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resource, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.True(t, checkResult.Result)
+		})
+
+		Convey("Allow 条件为 resource.created_by.id == creatorID，资源创建者匹配则 check 为 true", func() {
+			creatorID := "creator-1"
+			resourceWithCreator := interfaces.ResourceInfo{
+				ID:        resourceID,
+				Type:      resourceTypeDoc,
+				CreatedBy: interfaces.CreatedByInfo{ID: creatorID},
+			}
+			condCreatedBy := map[string]any{
+				"==": []any{
+					map[string]any{"var": "resource.created_by.id"},
+					creatorID,
+				},
+			}
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  condCreatedBy,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resourceWithCreator, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.True(t, checkResult.Result)
+		})
+
+		Convey("Allow 条件为 resource.created_by.id == creatorID，资源创建者不匹配则 check 为 false", func() {
+			resourceWithCreator := interfaces.ResourceInfo{
+				ID:        resourceID,
+				Type:      resourceTypeDoc,
+				CreatedBy: interfaces.CreatedByInfo{ID: "other-creator"},
+			}
+			condCreatedBy := map[string]any{
+				"==": []any{
+					map[string]any{"var": "resource.created_by.id"},
+					"creator-1",
+				},
+			}
+			policys := []interfaces.PolicyInfo{
+				{
+					ResourceID: resourceID,
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{{
+							Condition:  condCreatedBy,
+							Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}},
+						}},
+					},
+				},
+			}
+			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
+			checkResult, err := pc.Check(ctx, &resourceWithCreator, &accessor, []string{tmpOperation1}, includeParams)
+			assert.NoError(t, err)
+			assert.False(t, checkResult.Result)
 		})
 	})
 }
@@ -396,19 +576,19 @@ func TestPolicyResourceList(t *testing.T) {
 			policys = []interfaces.PolicyInfo{
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceID: resourceID,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}}},
 				},
 				{
 					ResourceID: resourceID2,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}, {ID: tmpOperation2}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}, {ID: tmpOperation2}}}}},
 				},
 				{
 					ResourceID: resourceID3,
-					Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourceTypeAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policys, nil)
@@ -482,23 +662,23 @@ func TestPolicyResourceFliter(t *testing.T) {
 		policys1 := []interfaces.PolicyInfo{
 			{
 				ResourceID: resourceID,
-				Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+				Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 			},
 			{
 				ResourceID: resourceID,
-				Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}},
+				Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}}},
 			},
 			{
 				ResourceID: resourceID3,
-				Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}},
+				Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}}},
 			},
 			{
 				ResourceID: resourceID2,
-				Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+				Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 			},
 			{
 				ResourceID: resourceID3,
-				Operation:  interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+				Rules:      interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 			},
 		}
 
@@ -649,19 +829,19 @@ func TestPolicyResourceTypeOperation1(t *testing.T) {
 			policy := []interfaces.PolicyInfo{
 				{
 					ResourceType: resourceTypeDoc,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceType: resourceTypeDoc,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}}},
 				},
 				{
 					ResourceType: resourceTypeMcp,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceType: resourceTypeMcp,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation4}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation4}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourceTypes(gomock.Any(), gomock.Any(), gomock.Any()).Return(policy, nil)
@@ -800,17 +980,17 @@ func TestPolicyResourceOperation1(t *testing.T) {
 				{
 					ResourceID:   allResourceID,
 					ResourceType: resourceTypeDoc,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation1}}}}},
 				},
 				{
 					ResourceID:   allResourceID,
 					ResourceType: resourceTypeDoc,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation2}}}}},
 				},
 				{
 					ResourceID:   allResourceID,
 					ResourceType: resourceTypeDoc,
-					Operation:    interfaces.PolicyOperation{Allow: []interfaces.PolicyOperationItem{{ID: tmpOperation3}}},
+					Rules:        interfaces.PolicyRules{Allow: []interfaces.PolicyRuleItem{{Operations: []interfaces.PolicyOperationItem{{ID: tmpOperation3}}}}},
 				},
 			}
 			pdb.EXPECT().GetPoliciesByResourcesAndAccessToken(gomock.Any(), gomock.Any(), gomock.Any()).Return(policy, nil)
@@ -986,14 +1166,18 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 				// 所有用户的义务
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
 						{
-							ID: tmpOperation1,
-							Obligations: []interfaces.PolicyObligationItem{
+							Operations: []interfaces.PolicyOperationItem{
 								{
-									TypeID: obligationTypeID1,
-									ID:     obligationID11,
+									ID: tmpOperation1,
+									Obligations: []interfaces.PolicyObligationItem{
+										{
+											TypeID: obligationTypeID1,
+											ID:     obligationID11,
+										},
+									},
 								},
 							},
 						},
@@ -1004,14 +1188,18 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 				// 所有用户的义务
 				AccessorID:   accessorID,
 				AccessorType: interfaces.AccessorDepartment,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
 						{
-							ID: tmpOperation1,
-							Obligations: []interfaces.PolicyObligationItem{
+							Operations: []interfaces.PolicyOperationItem{
 								{
-									TypeID: obligationTypeID1,
-									ID:     obligationID11,
+									ID: tmpOperation1,
+									Obligations: []interfaces.PolicyObligationItem{
+										{
+											TypeID: obligationTypeID1,
+											ID:     obligationID11,
+										},
+									},
 								},
 							},
 						},
@@ -1022,14 +1210,18 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 				// 所有用户的义务
 				AccessorID:   rootDepID,
 				AccessorType: interfaces.AccessorUser,
-				Operation: interfaces.PolicyOperation{
-					Allow: []interfaces.PolicyOperationItem{
+				Rules: interfaces.PolicyRules{
+					Allow: []interfaces.PolicyRuleItem{
 						{
-							ID: tmpOperation1,
-							Obligations: []interfaces.PolicyObligationItem{
+							Operations: []interfaces.PolicyOperationItem{
 								{
-									TypeID: obligationTypeID1,
-									ID:     obligationID1,
+									ID: tmpOperation1,
+									Obligations: []interfaces.PolicyObligationItem{
+										{
+											TypeID: obligationTypeID1,
+											ID:     obligationID1,
+										},
+									},
 								},
 							},
 						},
@@ -1039,7 +1231,7 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 		}
 
 		Convey("一个操作3条配置都有义务，用户、部门、所有用户都有义务，检查义务信息的数组", func() {
-			permResult := pc.calcOneResourcePerm(resourceID, policys)
+			permResult := pc.calcOneResourcePerm(resourceID, nil, policys)
 			assert.Equal(t, len(permResult.allow), 1)
 			obligations := permResult.allow[tmpOperation1]
 			assert.Equal(t, len(obligations), 3)
@@ -1056,6 +1248,7 @@ func TestCalcOneResourcePermWithObligation(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 	Convey("策略配置转换义务信息测试-简单场景", t, func() {
 		ctrl := gomock.NewController(t)
@@ -1073,14 +1266,18 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 用户的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID: tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{
+								Operations: []interfaces.PolicyOperationItem{
 									{
-										TypeID: obligationTypeID1,
-										ID:     obligationID11,
+										ID: tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{
+											{
+												TypeID: obligationTypeID1,
+												ID:     obligationID11,
+											},
+										},
 									},
 								},
 							},
@@ -1091,11 +1288,15 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 部门的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
@@ -1104,17 +1305,21 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 所有用户
 					AccessorID:   rootDepID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
 				},
 			}
-			permResult := pc.calcOneResourcePerm(resourceID, policys)
+			permResult := pc.calcOneResourcePerm(resourceID, nil, policys)
 			assert.Equal(t, len(permResult.allow), 1)
 			obligations := permResult.allow[tmpOperation1]
 			assert.Equal(t, len(obligations), 1)
@@ -1129,11 +1334,15 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 用户的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
@@ -1142,14 +1351,18 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 部门的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID: tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{
+								Operations: []interfaces.PolicyOperationItem{
 									{
-										TypeID: obligationTypeID1,
-										ID:     obligationID11,
+										ID: tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{
+											{
+												TypeID: obligationTypeID1,
+												ID:     obligationID11,
+											},
+										},
 									},
 								},
 							},
@@ -1160,17 +1373,21 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 所有用户
 					AccessorID:   rootDepID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
 				},
 			}
-			permResult := pc.calcOneResourcePerm(resourceID, policys)
+			permResult := pc.calcOneResourcePerm(resourceID, nil, policys)
 			assert.Equal(t, len(permResult.allow), 1)
 			obligations := permResult.allow[tmpOperation1]
 			assert.Equal(t, len(obligations), 1)
@@ -1184,11 +1401,15 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 用户的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
@@ -1197,11 +1418,15 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 部门的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
@@ -1210,14 +1435,18 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					// 所有用户
 					AccessorID:   rootDepID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID: tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{
+								Operations: []interfaces.PolicyOperationItem{
 									{
-										TypeID: obligationTypeID1,
-										ID:     obligationID11,
+										ID: tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{
+											{
+												TypeID: obligationTypeID1,
+												ID:     obligationID11,
+											},
+										},
 									},
 								},
 							},
@@ -1225,7 +1454,7 @@ func TestCalcOneResourcePermWithObligation1(t *testing.T) {
 					},
 				},
 			}
-			permResult := pc.calcOneResourcePerm(resourceID, policys)
+			permResult := pc.calcOneResourcePerm(resourceID, nil, policys)
 			assert.Equal(t, len(permResult.allow), 1)
 			obligations := permResult.allow[tmpOperation1]
 			assert.Equal(t, len(obligations), 1)
@@ -1253,11 +1482,15 @@ func TestCalcOneResourcePermWithObligation2(t *testing.T) {
 					// 用户的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
@@ -1266,17 +1499,21 @@ func TestCalcOneResourcePermWithObligation2(t *testing.T) {
 					// 部门的配置
 					AccessorID:   accessorID,
 					AccessorType: interfaces.AccessorDepartment,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID: tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{
+								Operations: []interfaces.PolicyOperationItem{
 									{
-										TypeID: obligationTypeID1,
-										ID:     obligationID11,
-									},
-									{
-										TypeID: obligationTypeID2,
+										ID: tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{
+											{
+												TypeID: obligationTypeID1,
+												ID:     obligationID11,
+											},
+											{
+												TypeID: obligationTypeID2,
+											},
+										},
 									},
 								},
 							},
@@ -1287,17 +1524,21 @@ func TestCalcOneResourcePermWithObligation2(t *testing.T) {
 					// 所有用户
 					AccessorID:   rootDepID,
 					AccessorType: interfaces.AccessorUser,
-					Operation: interfaces.PolicyOperation{
-						Allow: []interfaces.PolicyOperationItem{
+					Rules: interfaces.PolicyRules{
+						Allow: []interfaces.PolicyRuleItem{
 							{
-								ID:          tmpOperation1,
-								Obligations: []interfaces.PolicyObligationItem{},
+								Operations: []interfaces.PolicyOperationItem{
+									{
+										ID:          tmpOperation1,
+										Obligations: []interfaces.PolicyObligationItem{},
+									},
+								},
 							},
 						},
 					},
 				},
 			}
-			permResult := pc.calcOneResourcePerm(resourceID, policys)
+			permResult := pc.calcOneResourcePerm(resourceID, nil, policys)
 			assert.Equal(t, len(permResult.allow), 1)
 			obligations := permResult.allow[tmpOperation1]
 			assert.Equal(t, len(obligations), 2)

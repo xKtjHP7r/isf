@@ -7,7 +7,6 @@
 #include "./public/ncIACSPermManager.h"
 #include "drivenadapter/public/userManagementInterface.h"
 
-#include "ncCleanPermThread.h"
 #include "ncACSProcessorUtil.h"
 #include "./public/ncIACSConfManager.h"
 
@@ -48,9 +47,6 @@ protected:
     ncIACSProcessorUtil*                _acsProcessorUtil;
     nsCOMPtr<ncIACSConfManager>         _acsConfManager;
     nsCOMPtr<userManagementInterface>   _userManager;
-
-    // 权限清理线程
-    static ncCleanPermThread*           _sCleanPermThread;
 };
 
 #endif // __NC_ACS_PERM_MANAGER_H

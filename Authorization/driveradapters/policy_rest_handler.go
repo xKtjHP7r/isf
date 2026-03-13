@@ -157,9 +157,16 @@ func (p *policyRestHandler) create(c *gin.Context) {
 			deny = append(deny, denyItem)
 		}
 
-		operation := interfaces.PolicyOperation{
-			Allow: allow,
-			Deny:  deny,
+		allowCondition := interfaces.PolicyRuleItem{
+			Operations: allow,
+		}
+		denyCondition := interfaces.PolicyRuleItem{
+			Operations: deny,
+		}
+
+		rules := interfaces.PolicyRules{
+			Allow: []interfaces.PolicyRuleItem{allowCondition},
+			Deny:  []interfaces.PolicyRuleItem{denyCondition},
 		}
 
 		var condition string
@@ -197,7 +204,7 @@ func (p *policyRestHandler) create(c *gin.Context) {
 			ResourceID:   resourceID,
 			ResourceType: resourceType,
 			ResourceName: resourceName,
-			Operation:    operation,
+			Rules:        rules,
 			Condition:    condition,
 			EndTime:      endTime,
 			Ancestors:    ancestors,
@@ -272,9 +279,18 @@ func (p *policyRestHandler) createPrivate(c *gin.Context) {
 			})
 		}
 
-		operation := interfaces.PolicyOperation{
-			Allow: allow,
-			Deny:  deny,
+		rules := interfaces.PolicyRules{}
+		if len(allow) > 0 {
+			allowCondition := interfaces.PolicyRuleItem{
+				Operations: allow,
+			}
+			rules.Allow = []interfaces.PolicyRuleItem{allowCondition}
+		}
+		if len(deny) > 0 {
+			denyCondition := interfaces.PolicyRuleItem{
+				Operations: deny,
+			}
+			rules.Deny = []interfaces.PolicyRuleItem{denyCondition}
 		}
 
 		var condition string
@@ -312,7 +328,7 @@ func (p *policyRestHandler) createPrivate(c *gin.Context) {
 			ResourceID:   resourceID,
 			ResourceType: resourceType,
 			ResourceName: resourceName,
-			Operation:    operation,
+			Rules:        rules,
 			Condition:    condition,
 			EndTime:      endTime,
 			Ancestors:    ancestors,
@@ -406,9 +422,15 @@ func (p *policyRestHandler) set(c *gin.Context) {
 			}
 			deny = append(deny, denyItem)
 		}
-		operation := interfaces.PolicyOperation{
-			Allow: allow,
-			Deny:  deny,
+		allowCondition := interfaces.PolicyRuleItem{
+			Operations: allow,
+		}
+		denyCondition := interfaces.PolicyRuleItem{
+			Operations: deny,
+		}
+		operation := interfaces.PolicyRules{
+			Allow: []interfaces.PolicyRuleItem{allowCondition},
+			Deny:  []interfaces.PolicyRuleItem{denyCondition},
 		}
 
 		var condition string
@@ -442,7 +464,7 @@ func (p *policyRestHandler) set(c *gin.Context) {
 
 		policy := interfaces.PolicyInfo{
 			ID:        policyIDs[i],
-			Operation: operation,
+			Rules:     operation,
 			Condition: condition,
 			EndTime:   endTime,
 		}
@@ -518,6 +540,23 @@ func (p *policyRestHandler) get(c *gin.Context) {
 	}
 
 	for i := range policies {
+		allowOperations := []interfaces.PolicyOperationItem{}
+		denyOperations := []interfaces.PolicyOperationItem{}
+		for _, conditionItem := range policies[i].Rules.Allow {
+			if isConditionEmpty(conditionItem.Condition) {
+				allowOperations = conditionItem.Operations
+			}
+		}
+		for _, conditionItem := range policies[i].Rules.Deny {
+			if isConditionEmpty(conditionItem.Condition) {
+				denyOperations = conditionItem.Operations
+			}
+		}
+
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
+
 		expiresAt := policies[i].EndTime
 		if expiresAt == -1 {
 			expiresAt = 0
@@ -538,8 +577,8 @@ func (p *policyRestHandler) get(c *gin.Context) {
 				"parent_deps": policies[i].ParentDeps,
 			},
 			"operation": map[string]any{
-				"allow": p.operationArrayToJson(policies[i].Operation.Allow),
-				"deny":  p.operationArrayToJson(policies[i].Operation.Deny),
+				"allow": p.operationArrayToJson(allowOperations),
+				"deny":  p.operationArrayToJson(denyOperations),
 			},
 			"condition":  policies[i].Condition,
 			"expires_at": rest.TimeStampToString(expiresAt),
@@ -549,7 +588,7 @@ func (p *policyRestHandler) get(c *gin.Context) {
 	rest.ReplyOK(c, http.StatusOK, resp)
 }
 
-//nolint:dupl
+//nolint:dupl,gocyclo
 func (p *policyRestHandler) getAccessorPolicy(c *gin.Context) {
 	visitor, err := verify(c, p.hydra)
 	if err != nil {
@@ -611,12 +650,32 @@ func (p *policyRestHandler) getAccessorPolicy(c *gin.Context) {
 
 	entriesTmp := make([]any, 0, len(policies))
 	for i := range policies {
+		allowOperations := []interfaces.PolicyOperationItem{}
+		denyOperations := []interfaces.PolicyOperationItem{}
+		for _, conditionItem := range policies[i].Rules.Allow {
+			if isConditionEmpty(conditionItem.Condition) {
+				allowOperations = conditionItem.Operations
+				break
+			}
+		}
+		for _, conditionItem := range policies[i].Rules.Deny {
+			if isConditionEmpty(conditionItem.Condition) {
+				denyOperations = conditionItem.Operations
+				break
+			}
+		}
+
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
+
 		expiresAt := policies[i].EndTime
 		if expiresAt == -1 {
 			expiresAt = 0
 		} else {
 			expiresAt *= 1000
 		}
+
 		entriesTmp = append(entriesTmp, map[string]any{
 			"id": policies[i].ID,
 			"resource": map[string]any{
@@ -625,8 +684,8 @@ func (p *policyRestHandler) getAccessorPolicy(c *gin.Context) {
 				"name": policies[i].ResourceName,
 			},
 			"operation": map[string]any{
-				"allow": p.operationArrayToJsonWithObligations(policies[i].Operation.Allow),
-				"deny":  p.operationArrayToJson(policies[i].Operation.Deny),
+				"allow": p.operationArrayToJsonWithObligations(allowOperations),
+				"deny":  p.operationArrayToJson(denyOperations),
 			},
 			"condition":  policies[i].Condition,
 			"expires_at": rest.TimeStampToString(expiresAt),
@@ -753,7 +812,7 @@ func (p *policyRestHandler) ancestorsStrToInfo(ancestorsJson any) (result []inte
 	return
 }
 
-//nolint:dupl
+//nolint:dupl,gocyclo
 func (p *policyRestHandler) getResourcePolicy(c *gin.Context) {
 	visitor, err := verify(c, p.hydra)
 	if err != nil {
@@ -804,6 +863,23 @@ func (p *policyRestHandler) getResourcePolicy(c *gin.Context) {
 
 	entriesTmp := make([]any, 0, len(policies))
 	for i := range policies {
+		allowOperations := []interfaces.PolicyOperationItem{}
+		denyOperations := []interfaces.PolicyOperationItem{}
+		for _, conditionItem := range policies[i].Rules.Allow {
+			if isConditionEmpty(conditionItem.Condition) {
+				allowOperations = conditionItem.Operations
+			}
+		}
+		for _, conditionItem := range policies[i].Rules.Deny {
+			if isConditionEmpty(conditionItem.Condition) {
+				denyOperations = conditionItem.Operations
+			}
+		}
+
+		if len(allowOperations) == 0 && len(denyOperations) == 0 {
+			continue
+		}
+
 		expiresAt := policies[i].EndTime
 		if expiresAt == -1 {
 			expiresAt = 0
@@ -819,8 +895,8 @@ func (p *policyRestHandler) getResourcePolicy(c *gin.Context) {
 				"parent_deps": policies[i].ParentDeps,
 			},
 			"operation": map[string]any{
-				"allow": p.operationArrayToJsonWithObligations(policies[i].Operation.Allow),
-				"deny":  p.operationArrayToJson(policies[i].Operation.Deny),
+				"allow": p.operationArrayToJsonWithObligations(allowOperations),
+				"deny":  p.operationArrayToJson(denyOperations),
 			},
 			"condition":  policies[i].Condition,
 			"expires_at": rest.TimeStampToString(expiresAt),
@@ -865,4 +941,16 @@ func (p *policyRestHandler) getResourcePolicy(c *gin.Context) {
 	}
 
 	rest.ReplyOK(c, http.StatusOK, resp)
+}
+
+// isConditionEmpty 判断 Condition 是否为空（nil 或空 map）
+func isConditionEmpty(c any) bool {
+	if c == nil {
+		return true
+	}
+	// 检查是否是空 map
+	if m, ok := c.(map[string]any); ok && len(m) == 0 {
+		return true
+	}
+	return false
 }

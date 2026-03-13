@@ -36,13 +36,11 @@ from src.modules.nc_thread import NotifiCenterThread
 from src.third_party_auth.third_party_manage import ThirdPartyManage
 from src.third_party_auth.third_sync_manage import SyncRetryThread
 from src.modules.handle_task_thread import HandleTaskThread
-from src.modules.user_auto_disable_thread import UserAutoDisableThread
 from src.modules.vcode_auto_delete_thread import VcodeAutoDeleteThread
 from src.modules.limit_rate_manage import LimitRateManage
 from src.modules.active_user_manage import (ActiveUserCountThread,
                                             ActiveReportTaskAutoDeleteThread)
 from src.modules.consistency_recovery_thread import ConsistencyRecoveryThread
-from src.modules.user_expire_disable_thread import UserExpireDisableThread
 from src.modules.space_report_manage import SpaceReportTaskAutoDeleteThread
 from src.modules.config_manage import ConfigManage
 from src.modules.scan_virus_manage import ScanVirusManage
@@ -84,11 +82,10 @@ def main():
         traceback.print_exc()
 
     # 在线统计线程
-    if service_node:
-        ShareMgnt_Log("Starting online user collecting thread...")
-        thread_get_online_info = ThreadGetOnlineInfo()
-        thread_get_online_info.setDaemon(True)
-        thread_get_online_info.start()
+    ShareMgnt_Log("Starting online user collecting thread...")
+    thread_get_online_info = ThreadGetOnlineInfo()
+    thread_get_online_info.setDaemon(True)
+    thread_get_online_info.start()
 
     # 开启初始化可用域池线程
     if service_node:
@@ -141,17 +138,11 @@ def main():
         handle_task_thread.daemon = True
         handle_task_thread.start()
 
-    # 启动用户自动禁用线程
-    if service_node:
-        user_auto_disable_thread = UserAutoDisableThread()
-        user_auto_disable_thread.daemon = True
-        user_auto_disable_thread.start()
-
     # 开启验证码自动删除线程
-    if service_node:
-        vcode_auto_delete_thread = VcodeAutoDeleteThread()
-        vcode_auto_delete_thread.daemon = True
-        vcode_auto_delete_thread.start()
+    # 无需服务节点，验证码自动删除线程可以在每个节点上运行
+    vcode_auto_delete_thread = VcodeAutoDeleteThread()
+    vcode_auto_delete_thread.daemon = True
+    vcode_auto_delete_thread.start()
 
     # 开启活跃报表过期下载任务清理线程
     active_report_task_auto_delete_thread = ActiveReportTaskAutoDeleteThread()
@@ -159,10 +150,9 @@ def main():
     active_report_task_auto_delete_thread.start()
 
     # 开启活跃用户统计线程
-    if service_node:
-        active_user_count_thread = ActiveUserCountThread()
-        active_user_count_thread.daemon = True
-        active_user_count_thread.start()
+    active_user_count_thread = ActiveUserCountThread()
+    active_user_count_thread.daemon = True
+    active_user_count_thread.start()
 
     # 开启用户限速值线程
     LIMIT_USER_GROUP = 1
@@ -171,16 +161,10 @@ def main():
         LimitRateManage().start_update_user_limit_rate_thread()
 
     # 启动数据一致性恢复线程
-    if service_node:
-        consistency_recovery_thread = ConsistencyRecoveryThread()
-        consistency_recovery_thread.daemon = True
-        consistency_recovery_thread.start()
-
-    # 启动用户过期禁用线程
-    if service_node:
-        user_expire_disable_thread = UserExpireDisableThread()
-        user_expire_disable_thread.daemon = True
-        user_expire_disable_thread.start()
+    # 无需服务节点，数据一致性恢复线程可以在每个节点上运行
+    consistency_recovery_thread = ConsistencyRecoveryThread()
+    consistency_recovery_thread.daemon = True
+    consistency_recovery_thread.start()
 
     # 启动用户空间使用情况报表任务清理线程
     space_report_task_auto_delete_thread = SpaceReportTaskAutoDeleteThread()

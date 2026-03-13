@@ -779,7 +779,10 @@ export const SignInForm: FunctionComponent<Omit<ISigninProps, "error">> = ({
                     </span>
                   </div>
                   <Button
-                    className="third-auth-only-button"
+                    className={classNames(
+                      "third-auth-only-button",
+                      "as-components-oem-background-color"
+                    )}
                     type="primary"
                     onClick={() => {
                       openThirdAuth(authconfig);

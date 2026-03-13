@@ -375,36 +375,6 @@ NS_IMETHODIMP_(void) ncDBPermManager::DeleteCustomPermByDocUserId(const String& 
     NC_ACS_DB_TRACE (_T("docId: %s ,userId: %s end"), docId.getCStr (), userId.getCStr ());
 }
 
-/*[notxpcom] void GetExpirePermInfos (in int64 expireTime, in dbCustomPermInfoVectorRef infos);*/
-NS_IMETHODIMP_(void) ncDBPermManager::GetExpirePermInfos (int64 expireTime, vector<dbCustomPermInfo>& infos)
-{
-    NC_ACS_DB_TRACE (_T("expireTime: %s begin"),  Date(expireTime).toString ( FD_GENERAL_SHORT).getCStr ());
-
-    nsCOMPtr<ncIDBOperator> dbOper = getter_AddRefs (GetDBOperator ());
-
-    String dbName = Util::getDBName("anyshare");
-    String strSql;
-    strSql.format (_T("select f_primary_id, f_type, f_perm_value, f_accessor_id, f_accessor_type, f_doc_id from %s.t_acs_custom_perm \
-                      where f_type in (1,2) and f_end_time < %lld and f_end_time != -1"),
-                    dbName.getCStr(), expireTime);
-
-    ncDBRecords results;
-    dbOper->Select (strSql, results);
-
-    for (size_t i = 0; i < results.size (); ++i) {
-        infos.push_back (dbCustomPermInfo ());
-
-        infos.back ().id = Int64::getValue (results[i][0]);
-        infos.back ().isAllowed = Int::getValue (results[i][1]) == 2;
-        infos.back ().permValue = Int::getValue (results[i][2]);
-        infos.back ().accessorId = results[i][3];
-        infos.back ().accessorType = Int::getValue (results[i][4]);
-        infos.back ().docId = results[i][5];
-    }
-
-    NC_ACS_DB_TRACE (_T("expireTime: %s end"),  Date(expireTime).toString ( FD_GENERAL_SHORT).getCStr ());
-}
-
 /* [notxpcom] void GetAllCustomPerm (in dbCustomPermInfoVectorRef infos); */
 NS_IMETHODIMP_(void) ncDBPermManager::GetAllCustomPerm(vector<dbCustomPermInfo> & infos)
 {
