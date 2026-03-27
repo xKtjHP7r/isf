@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `t_policies` (
   `f_name` varchar(255) NOT NULL,
   `f_default` text NOT NULL,
   `f_value` text NOT NULL,
-  `f_locked` tinyint(1) DEFAULT NULL,
+  `f_locked` BOOLEAN DEFAULT NULL,
   PRIMARY KEY (`f_name`)
 ) ENGINE=InnoDB;
 
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS `t_network_accessor_relation` (
 
 CREATE TABLE IF NOT EXISTS `t_event_store` (
   `f_id` bigint(20) NOT NULL,
-  `f_dispatched` tinyint(1) NOT NULL DEFAULT 0,
+  `f_dispatched` BOOLEAN NOT NULL DEFAULT 0,
   `f_dispatched_at` datetime DEFAULT NULL,
   `f_payload` longblob NOT NULL,
   `f_options` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,

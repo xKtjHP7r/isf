@@ -380,8 +380,8 @@ func (d *policy) cmpPolicy(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
 			isSame = false
 			return
 		}
-		// 旧权限存在， 但是义务有变化， 则有变化
-		if !reflect.DeepEqual(allow.Obligations, oldAllow.Obligations) {
+		// 旧权限存在， 但是义务有变化， 则有变化（nil 与空切片视为相等，避免误判）
+		if !obligationsEqual(allow.Obligations, oldAllow.Obligations) {
 			isSame = false
 			return
 		}
@@ -394,8 +394,8 @@ func (d *policy) cmpPolicy(old, newInfo *interfaces.PolicyInfo) (isSame bool) {
 			isSame = false
 			return
 		}
-		// 旧权限存在， 但是义务有变化， 则有变化
-		if !reflect.DeepEqual(deny.Obligations, oldDeny.Obligations) {
+		// 旧权限存在， 但是义务有变化， 则有变化（nil 与空切片视为相等，避免误判）
+		if !obligationsEqual(deny.Obligations, oldDeny.Obligations) {
 			isSame = false
 			return
 		}
@@ -1932,7 +1932,7 @@ func (d *policy) cmpPolicyWithCondition(old, newInfo *interfaces.PolicyInfo) (is
 				isSame = false
 				return
 			}
-			if !reflect.DeepEqual(op.Obligations, oldOp.Obligations) {
+			if !obligationsEqual(op.Obligations, oldOp.Obligations) {
 				isSame = false
 				return
 			}
@@ -1967,7 +1967,7 @@ func (d *policy) cmpPolicyWithCondition(old, newInfo *interfaces.PolicyInfo) (is
 				isSame = false
 				return
 			}
-			if !reflect.DeepEqual(op.Obligations, oldOp.Obligations) {
+			if !obligationsEqual(op.Obligations, oldOp.Obligations) {
 				isSame = false
 				return
 			}
@@ -2063,4 +2063,12 @@ func (d *policy) mergeNewPolicyWithCondition(old, newInfo *interfaces.PolicyInfo
 	newPolicy.Rules.Deny = mergeRuleItems(old.Rules.Deny, newInfo.Rules.Deny)
 	newPolicy.EndTime = d.calcMinEndTime(old.EndTime, newInfo.EndTime)
 	return
+}
+
+// obligationsEqual 比较两段义务列表是否相等，nil 与空切片视为相等（reflect.DeepEqual(nil, []T{}) 为 false）
+func obligationsEqual(a, b []interfaces.PolicyObligationItem) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(a, b)
 }

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS `t_user` (
     `f_third_party_depart_id` varchar(255),                         -- 第三方系统中的部门id
     `f_priority` smallint(6) NOT NULL DEFAULT '999',                -- 用户优先级
     `f_csf_level` tinyint(4) NOT NULL DEFAULT '5',                  -- 用户密级
-    `f_pwd_control` tinyint(1) NOT NULL DEFAULT '0',                -- 本地用户的密码管控, 0为不使用密码管控, 1为使用
+    `f_pwd_control` BOOLEAN NOT NULL DEFAULT '0',                -- 本地用户的密码管控, 0为不使用密码管控, 1为使用
     `f_oss_id` char(40),                                            -- 用户归属对象存储
     `f_create_time` datetime DEFAULT now(),                         -- 用户创建时间
     `f_last_request_time` datetime DEFAULT now(),                   -- 用户最后一次请求的时间
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `t_third_party_auth` (
     `f_id` int(11) NOT NULL AUTO_INCREMENT,                         -- 自增主键
     `f_app_id` varchar(128) NOT NULL,                                -- 第三方App Id
     `f_app_name` varchar(128) NOT NULL DEFAULT '',                  -- 第三方App名
-    `f_enable` tinyint(1) NOT NULL DEFAULT 0,                       -- 是否启用, 1为启用, 0为禁用
+    `f_enable` BOOLEAN NOT NULL DEFAULT 0,                       -- 是否启用, 1为启用, 0为禁用
     `f_config` text,                                                -- 第三方配置, 外部可见
     `f_internal_config` text,                                       -- 第三方配置, 内部使用, 外部不可见
     `f_plugin_name` varchar(255) NOT NULL,                           -- 第三方插件名称
@@ -280,40 +280,6 @@ CREATE TABLE IF NOT EXISTS `t_cert` (
   PRIMARY KEY (`f_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS `t_client_update_package` (
-  `f_id` int  NOT NULL AUTO_INCREMENT,                              -- 自增主键
-  `f_name` varchar(150) NOT NULL,                                   -- 客户端包名
-  `f_os` int  NOT NULL ,                                            -- 系统类型
-  `f_size` bigint(20) NOT NULL,                                     -- 安装包大小
-  `f_version` varchar(50) NOT NULL,                                 -- 安装包版本
-  `f_time` varchar(50) NOT NULL,                                    -- 安装包上传时间
-  `f_mode` tinyint(1) NOT NULL,                                     -- 升级类型
-  `f_pkg_location` tinyint(4) NOT NULL DEFAULT '1',                 -- 升级包位置，1表示本地上传到对象存储，2表示独立配置升级包下载地址
-  `f_url` text NOT NULL,                                            -- 下载地址
-  PRIMARY KEY (`f_id`),
-  UNIQUE KEY `f_os_index` (`f_os`) USING BTREE
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS `t_site_info` (
-  `f_site_id` varchar(36) NOT NULL,                                 -- 站点id
-  `f_site_ip` varchar(64) DEFAULT NULL,                             -- 站点IP
-  `f_site_name` varchar(128) NOT NULL,                              -- 站点名称
-  `f_site_type` tinyint(3) NOT NULL,                                -- 站点类型, 0为普通站点, 1为总站点, 2为分站点
-  `f_site_link_status` tinyint(1) DEFAULT NULL,                     -- 站点连接状态
-  `f_site_status` tinyint(1) NOT NULL DEFAULT '1',                  -- 站点启用状态, 1为启用, 2为禁用
-  `f_site_used_space` bigint(20) NOT NULL DEFAULT '0',              -- 站点已用存储空间
-  `f_site_total_space` bigint(20) NOT NULL DEFAULT '0',             -- 站点总存储空间
-  `f_site_key` varchar(10) NOT NULL,                                -- 站点标识key
-  `f_site_master_ip` varchar(64) DEFAULT NULL,                      -- 主站点IP
-  `f_site_is_sync` tinyint(1) NOT NULL DEFAULT '0',                 -- 站点信息是否同步
-  `f_site_heart_rate` bigint(20) DEFAULT NULL,                      -- 心跳信息
-  `f_uniq_index` int  NOT NULL AUTO_INCREMENT,                      -- 自增主键
-  `f_site_master_db_ip` varchar(64) DEFAULT NULL,                   -- 主站点数据库ip
-  `f_site_need_update_virusdb` tinyint(1) NOT NULL DEFAULT '0',     -- 站点病毒库的更新状态
-  PRIMARY KEY (`f_site_id`),
-  UNIQUE KEY `f_uniq_index_index` (`f_uniq_index`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
 CREATE TABLE IF NOT EXISTS `t_third_party_db` (
     `f_third_db_id` char(50) NOT NULL,                              -- 第三方数据库标识id
     `f_name` char(50) DEFAULT "",                                   -- 第三方名称
@@ -388,13 +354,13 @@ CREATE TABLE IF NOT EXISTS `t_third_user_relation_table` (
 CREATE TABLE IF NOT EXISTS `t_third_auth_info` (
     `f_app_id` varchar(50) NOT NULL,                                -- 第三方App Id
     `f_app_key` char(36) NOT NULL,                                  -- 第三方App Key
-    `f_enabled` tinyint(1) NOT NULL DEFAULT 1,                      -- 是否启用, 1为启用, 0为禁用
+    `f_enabled` BOOLEAN NOT NULL DEFAULT 1,                      -- 是否启用, 1为启用, 0为禁用
     PRIMARY KEY (`f_app_id`)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `t_third_party_tool_config` (
     `f_tool_id` char(128) NOT NULL,                                 -- 工具唯一标识id
-    `f_enabled` tinyint(1) NOT NULL DEFAULT 0,                      -- 是否启用, 0为禁用, 1为启用
+    `f_enabled` BOOLEAN NOT NULL DEFAULT 0,                      -- 是否启用, 0为禁用, 1为启用
     `f_url` text,                                                   -- url访问地址
     `f_tool_name` char(128) NOT NULL,                               -- 第三方工具名称, 仅在工具标识为"CAD"时保存, 合法名称为"hc"或"mx"
     `f_app_id` char(50),                                            -- 鉴权唯一标识
@@ -415,16 +381,6 @@ CREATE TABLE IF NOT EXISTS `t_net_accessors_info` (
 CREATE TABLE IF NOT EXISTS `t_nas_node` (
   `f_uuid` varchar(40) NOT NULL,                                    -- 节点标识, UUID
   PRIMARY KEY (`f_uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
-CREATE TABLE IF NOT EXISTS `t_limit_rate` (
-  `f_id` varchar(40) NOT NULL,                                      -- 限速规则id
-  `f_obj_id` varchar(40) NOT NULL,                                  -- 对象id
-  `f_obj_type` tinyint(4) NOT NULL,                                 -- 对象类型, 1为用户, 2为部门
-  `f_limit_type` tinyint(4) NOT NULL,                               -- 限速类型, 0为用户, 1为部门
-  `f_upload_rate` int NOT NULL,                                     -- 上传限速值
-  `f_download_rate` int NOT NULL,                                   -- 下载限速值
-  PRIMARY KEY (`f_id`, `f_obj_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS `t_nginx_user_rate` (
@@ -466,7 +422,7 @@ CREATE TABLE IF NOT EXISTS `t_link_template` (
   `f_template_id` char(40) NOT NULL,                                -- 模板id
   `f_template_type` tinyint(4) NOT NULL,                            -- 模板类型
   `f_sharer_id` char(40) NOT NULL,                                  -- 共享者id
-  `f_sharer_type` tinyint(1) NOT NULL,                              -- 共享者类型
+  `f_sharer_type` tinyint(4) NOT NULL,                              -- 共享者类型
   `f_create_time` bigint(20) NOT NULL,                              -- 记录创建时间, 微秒的时间戳
   `f_config` text NOT NULL,                                         -- 配置信息
   PRIMARY KEY (`f_index`),

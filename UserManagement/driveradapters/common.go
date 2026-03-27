@@ -11,6 +11,12 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+const (
+	_ int = iota
+	i18nIDObjectsMonthlyActiveUserFileName
+	i18nIDObjectsYearlyActiveUserFileName
+)
+
 // ValidateAndBindGin 校验json数据
 func validateAndBindGin(c *gin.Context, schema *gojsonschema.Schema, bind interface{}) error {
 	body, err := io.ReadAll(c.Request.Body)

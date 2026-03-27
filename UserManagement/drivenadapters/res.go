@@ -55,6 +55,8 @@ func initResMap() {
 		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "禁用原因：用户账号过期"
 		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "禁用 用户“%s(%s)”成功"
 		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "禁用原因：用户长时间未登录"
+		resMap["IDS_MONTH_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "导出 月度活跃报表 成功"
+		resMap["IDS_YEAR_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "导出 年度活跃报表 成功"
 
 	case "zh_TW":
 		resMap["IDS_GROUP_CREATED_SUCCESS"] = "新建 用戶組 成功"
@@ -89,6 +91,8 @@ func initResMap() {
 		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "停用原因：使用者帳戶已過期"
 		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "停用 使用者“%s(%s)”成功"
 		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "停用原因：使用者長時間未登入"
+		resMap["IDS_MONTH_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "匯出 月度活躍報表 成功"
+		resMap["IDS_YEAR_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "匯出 年度活躍報表 成功"
 
 	case "en_US":
 		resMap["IDS_GROUP_CREATED_SUCCESS"] = "create group successfully"
@@ -123,6 +127,8 @@ func initResMap() {
 		resMap["IDS_DISABLE_EXPIRED_USER_EXMSG"] = "Disable reason:The user account has expired."
 		resMap["IDS_DISABLE_NOT_LOGIN_USER"] = "Disable User\"%s(%s)\"Successfully."
 		resMap["IDS_DISABLE_NOT_LOGIN_USER_EXMSG"] = "Disable reason:The user has not logged in for a long time."
+		resMap["IDS_MONTH_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "Export Monthly active report Succeeded"
+		resMap["IDS_YEAR_ACTIVE_USER_INFO_EXPORTED_SUCCESS"] = "Export Annual active report successfully"
 
 	default:
 		common.NewLogger().Fatalln("service language not set")

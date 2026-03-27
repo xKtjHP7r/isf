@@ -472,6 +472,53 @@ class DocAutoCleanManage(DBConnector):
 
         return result['cnt']
 
+    def search_auto_clean_config_by_page(self, start, limit, searchKey):
+        """
+        根据关键字(匹配用户名、显示名、部门名、组织名)搜索自动清理策略
+        """
+        # 检查参数
+        limit_statement = check_start_limit(start, limit)
+
+        # 增加搜索排序子句
+        order_by_str = generate_search_order_sql(['t_doc_auto_clean_strategy.f_create_time'])
+
+        # searchKey 为空表示获取所有
+        results = []
+        if searchKey:
+            esckey = "%%%s%%" % escape_key(searchKey)
+            search_sql = """
+            SELECT `t_doc_auto_clean_strategy`.`f_strategy_id` AS `f_strategy_id`,
+            MIN(`t_doc_auto_clean_strategy`.`f_create_time`) AS `min_create_time`
+            FROM `t_doc_auto_clean_strategy`
+            LEFT JOIN `t_user`
+            ON `t_doc_auto_clean_strategy`.`f_obj_id` = `t_user`.`f_user_id`
+            LEFT JOIN `t_department`
+            ON `t_doc_auto_clean_strategy`.`f_obj_id` = `t_department`.`f_department_id`
+            WHERE `t_user`.`f_display_name` LIKE %s OR `t_department`.`f_name` LIKE %s
+            GROUP BY `f_strategy_id`
+            ORDER BY `min_create_time` DESC
+            {0}
+            """.format(limit_statement)
+            results = self.r_db.all(search_sql, esckey, esckey)
+        else:
+            search_sql = """
+            SELECT `f_strategy_id`,
+            MIN(`f_create_time`) AS `min_create_time`
+            FROM `t_doc_auto_clean_strategy`
+            WHERE 1=%s
+            GROUP BY `f_strategy_id`
+            ORDER BY `min_create_time` DESC
+            {0}
+            """.format(limit_statement)
+            results = self.r_db.all(search_sql, 1)
+
+        config_list = []
+        for result in results:
+            config = self.get_auto_clean_config_by_strategyId(result['f_strategy_id'])
+            if config:
+                config_list.append(config)
+
+        return config_list
 
     def get_auto_clean_config_by_strategyId(self, strategyId):
         """

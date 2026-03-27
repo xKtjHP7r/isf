@@ -153,6 +153,10 @@ func (t *testEACPLog) OpUserNotLoginDisabled(displayName, loginName string) erro
 	return nil
 }
 
+func (t *testEACPLog) OpActiveUserInfoExported(visitor *interfaces.Visitor, bYear bool) error {
+	return nil
+}
+
 func newTestUserManagement(t *testing.T) {
 	mockTestOnce.Do(func() {
 		// 设置

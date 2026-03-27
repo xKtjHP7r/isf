@@ -70,6 +70,9 @@ type DrivenEacpLog interface {
 
 	// OpUserNotLoginDisabled 用户长时间未登录自动禁用
 	OpUserNotLoginDisabled(displayName, loginName string) error
+
+	// OpActiveUserInfoExported 活跃用户信息导出
+	OpActiveUserInfoExported(visitor *Visitor, bYear bool) error
 }
 
 // DrivenHydra 授权服务接口

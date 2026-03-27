@@ -32,7 +32,8 @@ app
     // Set up the proxy
     if (dev) {
       server.use(
-        createProxyMiddleware("/api", {
+        "/api",
+        createProxyMiddleware({
           target: `${debugHost}/api/`,
           pathRewrite: { "^/api": "/" },
           changeOrigin: true,
@@ -40,7 +41,8 @@ app
         })
       );
       server.use(
-        createProxyMiddleware("/static", {
+        "/static",
+        createProxyMiddleware({
           target: `${debugHost}/static/`,
           pathRewrite: { "^/static": "/" },
           changeOrigin: true,

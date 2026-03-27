@@ -861,3 +861,9 @@ type LogicsReservedName interface {
 	// GetReservedName 获取保留名称
 	GetReservedName(name string) (info ReservedNameInfo, err error)
 }
+
+// LogicsActiveUser 活跃用户相关接口
+type LogicsActiveUser interface {
+	// GetActiveUserInfo 获取活跃用户信息
+	GetActiveUserInfo(ctx context.Context, visitor *Visitor, bYear bool, year, month int) (out []byte, err error)
+}

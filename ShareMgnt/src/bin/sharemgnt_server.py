@@ -37,11 +37,9 @@ from src.third_party_auth.third_party_manage import ThirdPartyManage
 from src.third_party_auth.third_sync_manage import SyncRetryThread
 from src.modules.handle_task_thread import HandleTaskThread
 from src.modules.vcode_auto_delete_thread import VcodeAutoDeleteThread
-from src.modules.limit_rate_manage import LimitRateManage
 from src.modules.active_user_manage import (ActiveUserCountThread,
                                             ActiveReportTaskAutoDeleteThread)
 from src.modules.consistency_recovery_thread import ConsistencyRecoveryThread
-from src.modules.space_report_manage import SpaceReportTaskAutoDeleteThread
 from src.modules.config_manage import ConfigManage
 from src.modules.scan_virus_manage import ScanVirusManage
 from src.modules.domain_manage import InitAvailableDomainPoolThread
@@ -154,22 +152,11 @@ def main():
     active_user_count_thread.daemon = True
     active_user_count_thread.start()
 
-    # 开启用户限速值线程
-    LIMIT_USER_GROUP = 1
-    limit_rate_config = LimitRateManage().get_limit_rate_config()
-    if limit_rate_config.isEnabled and limit_rate_config.limitType == LIMIT_USER_GROUP:
-        LimitRateManage().start_update_user_limit_rate_thread()
-
     # 启动数据一致性恢复线程
     # 无需服务节点，数据一致性恢复线程可以在每个节点上运行
     consistency_recovery_thread = ConsistencyRecoveryThread()
     consistency_recovery_thread.daemon = True
     consistency_recovery_thread.start()
-
-    # 启动用户空间使用情况报表任务清理线程
-    space_report_task_auto_delete_thread = SpaceReportTaskAutoDeleteThread()
-    space_report_task_auto_delete_thread.daemon = True
-    space_report_task_auto_delete_thread.start()
 
     # 启动清理过期文件线程
     delete_file_thread = DeleteFileThread()

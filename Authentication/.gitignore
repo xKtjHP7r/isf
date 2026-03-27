@@ -13,3 +13,4 @@ build/
 *.tar
 interfaces/mock
 common/mock
+Authentication

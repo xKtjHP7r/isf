@@ -142,3 +142,10 @@ var dbReservedName interfaces.DBReservedName
 func SetDBReservedName(i interfaces.DBReservedName) {
 	dbReservedName = i
 }
+
+var dbActiveUser interfaces.DBActiveUser
+
+// SetDBActiveUser 设置实例
+func SetDBActiveUser(i interfaces.DBActiveUser) {
+	dbActiveUser = i
+}

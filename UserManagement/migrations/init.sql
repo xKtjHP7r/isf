@@ -61,6 +61,7 @@ INSERT INTO t_outbox_lock(f_business_type) SELECT 6 FROM DUAL WHERE NOT EXISTS(S
 INSERT INTO t_outbox_lock(f_business_type) SELECT 7 FROM DUAL WHERE NOT EXISTS(SELECT f_business_type FROM t_outbox_lock WHERE f_business_type = 7);
 INSERT INTO t_outbox_lock(f_business_type) SELECT 8 FROM DUAL WHERE NOT EXISTS(SELECT f_business_type FROM t_outbox_lock WHERE f_business_type = 8);
 INSERT INTO t_outbox_lock(f_business_type) SELECT 9 FROM DUAL WHERE NOT EXISTS(SELECT f_business_type FROM t_outbox_lock WHERE f_business_type = 9);
+INSERT INTO t_outbox_lock(f_business_type) SELECT 10 FROM DUAL WHERE NOT EXISTS(SELECT f_business_type FROM t_outbox_lock WHERE f_business_type = 10);
 
 CREATE TABLE IF NOT EXISTS `t_app` (
     `f_primary_id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -162,6 +163,12 @@ CREATE TABLE IF NOT EXISTS `t_reserved_name` (
   PRIMARY KEY (`f_id`),
   KEY `idx_name` (`f_name`)
 ) ENGINE=InnoDB COMMENT='保留名称表';
+
+CREATE TABLE IF NOT EXISTS `t_sharemgnt_config` (
+  `f_key` char(32) NOT NULL,                                        -- 配置关键字
+  `f_value` varchar(1024) NOT NULL,                                 -- 配置的值
+  PRIMARY KEY (`f_key`)
+) ENGINE=InnoDB;
 
 INSERT INTO `t_sharemgnt_config`(`f_key`, `f_value`) SELECT 'user_expired_disable_lock', 'locked' FROM DUAL WHERE NOT EXISTS (SELECT `f_key` FROM `t_sharemgnt_config` WHERE `f_key` = 'user_expired_disable_lock');
 INSERT INTO `t_sharemgnt_config`(`f_key`, `f_value`) SELECT 'user_not_login_disable_lock', 'locked' FROM DUAL WHERE NOT EXISTS (SELECT `f_key` FROM `t_sharemgnt_config` WHERE `f_key` = 'user_not_login_disable_lock');

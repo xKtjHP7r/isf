@@ -934,3 +934,29 @@ type DBReservedName interface {
 	// GetLock 获取锁
 	GetLock(tx *sql.Tx) error
 }
+
+type ActiveUserInfo struct {
+	ActiveCount   int     // 活跃数
+	ActiveDegree  float64 // 活跃度
+	ActivateCount int     // 激活数
+	Year          int
+	Month         int
+	Day           int
+}
+
+type DBActiveUser interface {
+	// GetMonthActiveUserInfo 获取当前月度活跃用户信息
+	GetMonthActiveUserInfo(ctx context.Context, year, month int) (out []ActiveUserInfo, err error)
+
+	// GetYearActiveUserInfo 获取当前年度活跃用户信息
+	GetYearActiveUserInfo(ctx context.Context, year int) (out []ActiveUserInfo, err error)
+
+	// GetMonthTotalCount 获取当前月度活跃用户总数和激活数
+	GetMonthTotalCount(ctx context.Context, year, month int) (count, activeteCount int, err error)
+
+	// GetYearTotalCount 获取当前年度活跃用户总数和激活数
+	GetYearTotalCount(ctx context.Context, year int) (count, activeteCount int, err error)
+
+	// GetActivateUserCount 获取用户激活数
+	GetActivateUserCount(ctx context.Context) (count int, err error)
+}

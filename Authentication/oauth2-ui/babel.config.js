@@ -1,13 +1,16 @@
 module.exports = {
-    env: {
-        development: {
-            presets: [["next/babel", { "preset-env": { useBuiltIns: "entry", corejs: 3 } }]],
+  presets: [
+    [
+      "next/babel",
+      {
+        "preset-env": {
+          useBuiltIns: "usage",
+          corejs: 3,
+          targets: {
+            ie: "11",
+          },
         },
-        production: {
-            presets: [["next/babel", { "preset-env": { useBuiltIns: "entry", corejs: 3 } }]],
-        },
-        test: {
-            presets: [["next/babel", { "preset-env": { modules: "commonjs" } }]],
-        },
-    },
+      },
+    ],
+  ],
 };

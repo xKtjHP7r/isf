@@ -78,6 +78,9 @@ const (
 	// mtDelete 删除
 	mtDelete manageOpType = 4
 
+	// mtExport 导出
+	mtExport manageOpType = 9
+
 	// mtUpdate 更新
 	mtUpdate manageOpType = 21
 )
@@ -477,6 +480,23 @@ func (e *eacplogSvc) OpUserNotLoginDisabled(displayName, loginName string) (err 
 
 	visitor := &interfaces.Visitor{
 		ID: common.EacpLogSystemID,
+	}
+	return e.writeLog(visitor, info)
+}
+
+// OpActiveUserInfoExported 活跃用户信息导出
+func (e *eacplogSvc) OpActiveUserInfoExported(visitor *interfaces.Visitor, bYear bool) error {
+	var msg string
+	if bYear {
+		msg = loadString("IDS_YEAR_ACTIVE_USER_INFO_EXPORTED_SUCCESS")
+	} else {
+		msg = loadString("IDS_MONTH_ACTIVE_USER_INFO_EXPORTED_SUCCESS")
+	}
+	info := &msgInfo{
+		msg:      msg,
+		logType:  ltManage,
+		logLevel: llInfo,
+		opType:   int32(mtExport),
 	}
 	return e.writeLog(visitor, info)
 }

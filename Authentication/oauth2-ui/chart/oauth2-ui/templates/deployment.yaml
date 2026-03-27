@@ -125,6 +125,12 @@ spec:
               mountPath: /opt/oauth2/conf
             - name:  npm-cache
               mountPath: /.npm
+            - name:  yarn-cache
+              mountPath: /.cache/yarn
+            - name:  yarn-dir
+              mountPath: /.yarn
+            - name:  tmp-dir
+              mountPath: /tmp
           livenessProbe:
             tcpSocket:
               port: svc-port
@@ -141,6 +147,12 @@ spec:
           configMap:
             name: oauth2-ui-conf
         - name: npm-cache
+          emptyDir: {}
+        - name: yarn-cache
+          emptyDir: {}
+        - name: yarn-dir
+          emptyDir: {}
+        - name: tmp-dir
           emptyDir: {}
       dnsConfig:
         options:

@@ -32,6 +32,7 @@ type userManagement struct {
 	opRestHandler       driveradapters.OrgPermHandler
 	roleHandler         driveradapters.RoleRestHandler
 	reservedNameHandler driveradapters.ReservedNameHandler
+	activeUserHandler   driveradapters.ActiveUserRestHandler
 }
 
 // Start 开启服务
@@ -76,6 +77,9 @@ func (t *userManagement) Start() {
 
 		// 注册配置管理API
 		t.confRestHandler.RegisterPublic(engine)
+
+		// 注册活跃用户API
+		t.activeUserHandler.RegisterPublic(engine)
 
 		if err := engine.Run(fmt.Sprintf("%s:%d", common.SvcConfig.SvcHost, common.SvcConfig.SvcPublicPort)); err != nil {
 			svcLog.Errorln(err)
@@ -171,6 +175,7 @@ func main() {
 	logics.SetDBInternalGroupMember(dbaccess.NewInternalGroupMember())
 	logics.SetDBOrgPerm(dbaccess.NewOrgPerm())
 	logics.SetDBReservedName(dbaccess.NewReservedName())
+	logics.SetDBActiveUser(dbaccess.NewActiveUser())
 
 	// drivenadapters 依赖注入
 	logics.SetDnEacpLog(drivenadapters.NewEacpLog())
@@ -194,6 +199,7 @@ func main() {
 		opRestHandler:       driveradapters.NewOrgPermApHandler(),
 		roleHandler:         driveradapters.NewRoleRestHandler(),
 		reservedNameHandler: driveradapters.NewReservedNameHander(),
+		activeUserHandler:   driveradapters.NewActiveUserRestHandler(),
 	}
 	server.Start()
 

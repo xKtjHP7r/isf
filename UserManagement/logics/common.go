@@ -44,6 +44,7 @@ const (
 	outboxCSFLevelEnum2InitedLog
 	outboxUserExpiredAutoDisabled
 	outboxUserNotLoginAutoDisabled
+	outboxActiveUserInfoExportedLog
 )
 
 // outbox业务类型
@@ -77,6 +78,9 @@ const (
 	// OutboxBusinessUser 用户
 	OutboxBusinessUser
 
+	// OutboxBusinessActiveUser 活跃用户信息导出
+	OutboxBusinessActiveUser
+
 	// 若新增新的业务类型，需在initdb中对anyshare.t_outbox_lock表进行数据初始化
 )
 
@@ -97,6 +101,28 @@ const (
 	i18nIDObjectsInDepartNotFound
 	i18nIDObjectsInGroupNotFound
 	i18nIDObjectsInAppNotFound
+
+	// 活跃日志导出相关
+	i18nIDObjectsMonthlyOverallIndex
+	i18nIDObjectsYearlyOverallIndex
+	i18nIDObjectsIndex
+	i18nIDObjectsValue
+	i18nIDObjectsTotalUserCount
+	i18nIDObjectsActivateCount
+	i18nIDObjectsAverageActiveUser
+	i18nIDObjectsAverageActiveDegree
+	i18nIDObjectsLowestActiveUser
+	i18nIDObjectsLowestActiveDegree
+	i18nIDObjectsHighestActiveUser
+	i18nIDObjectsHighestActiveDegree
+	i18nIDObjectsMonthlyDetailedIndex
+	i18nIDObjectsYearlyDetailedIndex
+	i18nIDObjectsDate
+	i18nIDObjectsDailyActiveUser
+	i18nIDObjectsDailyActiveDegree
+	i18nIDObjectsMonth
+	i18nIDObjectsMonthlyActiveUser
+	i18nIDObjectsMonthlyActiveDegree
 )
 
 // RemoveDuplicatStrs 删除掉相邻重复的

@@ -3615,5 +3615,285 @@
             }
         ],
         "hidden": true
+    },
+    {
+        "id": "catalog",
+        "name": "数据源",
+        "description": "数据源的配置信息",
+        "instance_url": "GET /api/vega-backend/v1/resources/list?resource_type=catalog&keyword=",
+        "data_struct": "string",
+        "operation": [
+            {
+                "id": "view_detail",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "查看"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "view_detail"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "查看"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "create",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "新建"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "create"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "新建"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type"
+                ]
+            },
+            {
+                "id": "modify",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "编辑"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "modify"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "編輯"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "delete",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "删除"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "delete"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "刪除"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "authorize",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "权限管理"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "authorize"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "權限管理"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "task_manage",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "扫描"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "scan"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "掃描"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "resource",
+        "name": "数据资源",
+        "description": "数据资源信息",
+        "instance_url": "GET /api/vega-backend/v1/resources/list?resource_type=resource&keyword=",
+        "data_struct": "string",
+        "operation": [
+            {
+                "id": "view_detail",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "查看"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "view_detail"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "查看"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "create",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "新建"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "create"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "新建"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type"
+                ]
+            },
+            {
+                "id": "modify",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "编辑"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "modify"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "編輯"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "delete",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "删除"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "delete"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "刪除"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "authorize",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "权限管理"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "authorize"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "權限管理"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            },
+            {
+                "id": "task_manage",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "构建"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "build"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "構建"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            }
+        ]
     }
 ]

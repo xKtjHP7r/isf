@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS `t_acs_owner` (                                      
     `f_owner_name` varchar(150) NOT NULL,                                                         -- 所有者显示名
     `f_type` tinyint(4) NOT NULL,                                                                 -- 用户类型, 1: 用户, 2: 组织/部门, 3: 联系人组, 4: 匿名用户, 5: 用户组， 6: 应用账户
     `f_modify_time` bigint(20) NOT NULL DEFAULT '0',                                              -- 记录修改时间, 微秒的时间戳
-    `f_deletable` tinyint(1) NOT NULL,                                                            -- 允许删除标记, 1: 允许删除, 0: 禁止删除
+    `f_deletable` BOOLEAN NOT NULL,                                                               -- 允许删除标记, 1: 允许删除, 0: 禁止删除
     PRIMARY KEY (`f_primary_id`),
     KEY `t_owner_f_gns_path_index` (`f_gns_path`(120)),
     KEY `t_owner_f_owner_id_index` (`f_owner_id`)

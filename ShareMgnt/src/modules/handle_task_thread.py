@@ -52,14 +52,6 @@ class HandleTaskThread(threading.Thread):
                 from src.modules.login_access_control_manage import LoginAccessControlManage
                 module_cls = LoginAccessControlManage()
 
-            if task.module_name == "limit_rate_manage":
-                from src.modules.limit_rate_manage import LimitRateManage
-                module_cls = LimitRateManage()
-
-            if task.module_name == "doc_download_limit_manage":
-                from src.modules.doc_download_limit_manage import DocDownloadLimitManage
-                module_cls = DocDownloadLimitManage()
-
             if task.module_name == "department_manage":
                 from src.modules.department_manage import DepartmentManage
                 module_cls = DepartmentManage()

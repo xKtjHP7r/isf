@@ -13,13 +13,11 @@ from src.common.http import test_connection
 from src.common.nc_senders import email_send, email_send_html_content
 from src.modules.config_manage import ConfigManage
 from src.modules.department_manage import DepartmentManage
-from src.modules.doc_download_limit_manage import DocDownloadLimitManage
 from src.modules.doc_watermark_manage import DocWatermarkManage
 from src.modules.domain_manage import DomainManage
 from src.modules.find_share_manage import FindShareManage
 from src.modules.group_manage import GroupManage
 from src.modules.leak_proof_manage import LeakProofManage
-from src.modules.limit_rate_manage import LimitRateManage
 from src.modules.link_share_manage import LinkShareManage
 from src.modules.link_template_manage import LinkTemplateManage
 from src.modules.login_access_control_manage import LoginAccessControlManage
@@ -54,7 +52,6 @@ from src.modules.doc_auto_archive_manage import DocAutoArchiveManage
 from src.modules.doc_auto_clean_manage import DocAutoCleanManage
 from src.modules.scan_virus_manage import ScanVirusManage
 from src.modules.local_sync_manage import LocalSyncManage
-from src.modules.space_report_manage import SpaceReportManage
 from eisoo.tclients import TClient
 
 
@@ -93,11 +90,9 @@ class ShareMgntHandler(object):
         self.third_openapi = OpenApi()
         self.third_party_tool = ThirdPartyToolManage()
         self.login_access_control_manage = LoginAccessControlManage()
-        self.limit_rate_manage = LimitRateManage()
         self.doc_watermark_manage = DocWatermarkManage()
         self.link_template_manage = LinkTemplateManage()
         self.net_docs_limit_manage = NetDocsLimitManage()
-        self.doc_download_limit_manage = DocDownloadLimitManage()
         self.device_manage = DeviceManage()
         self.antivirus_manage = AntivirusManage()
         self.hide_ou_manage = HideOuManage()
@@ -112,7 +107,6 @@ class ShareMgntHandler(object):
         self.doc_auto_clean_manage = DocAutoCleanManage()
         self.scan_virus_manage = ScanVirusManage()
         self.local_sync_manage = LocalSyncManage()
-        self.space_report_manage = SpaceReportManage()
 
     @warp_exception
     @check_args
@@ -1928,59 +1922,6 @@ class ShareMgntHandler(object):
         """
         return self.config_manage.get_secret_mode_status()
 
-####################################################################################
-#    限速管理
-####################################################################################
-
-    @warp_exception
-    def Usrm_AddLimitRateInfo(self, param):
-        """
-        增加一条限速信息
-        """
-        return self.limit_rate_manage.add(param)
-
-    @warp_exception
-    def Usrm_EditLimitRateInfo(self, param):
-        """
-        编辑一条限速信息
-        """
-        return self.limit_rate_manage.edit(param)
-
-    @warp_exception
-    def Usrm_DeleteLimitRateInfo(self, deleteId, limitType):
-        """
-        删除一条限速信息
-        """
-        return self.limit_rate_manage.delete(deleteId, limitType)
-
-    @warp_exception
-    def Usrm_GetLimitRateInfoCnt(self, limitType):
-        """
-        获取限速信息总数
-        """
-        return self.limit_rate_manage.get_cnt(limitType)
-
-    @warp_exception
-    def Usrm_SearchLimitRateInfoCnt(self, searchKey, limitType):
-        """
-        搜索限速信息总数
-        """
-        return self.limit_rate_manage.search_cnt(searchKey, limitType)
-
-    @warp_exception
-    def Usrm_GetLimitRateConfig(self):
-        """
-        获取限速配置信息
-        """
-        return self.limit_rate_manage.get_limit_rate_config()
-
-    @warp_exception
-    def Usrm_GetExistObjectInfo(self, userInfos, depInfos, limitType, limitId):
-        """
-        获取已存在其他限速规则的对象信息
-        """
-        return self.limit_rate_manage.get_exist_object_info(userInfos, depInfos, limitType, limitId)
-
     @warp_exception
     def GetThirdCSFSysConfig(self):
         """
@@ -2734,6 +2675,13 @@ class ShareMgntHandler(object):
         删除一条自动归档策略配置
         """
         self.doc_auto_clean_manage.delete_auto_clean_config(strategyId)
+
+    @warp_exception
+    def SearchAutoCleanConfigByPage(self, start, limit, searchKey):
+        """
+        分页搜索自动清理策略配置
+        """
+        return self.doc_auto_clean_manage.search_auto_clean_config_by_page(start, limit, searchKey)
 
     @warp_exception
     def GetAutoCleanConfigCount(self, searchKey):
