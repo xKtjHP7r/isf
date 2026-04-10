@@ -164,9 +164,8 @@ def main():
     delete_file_thread.start()
 
     # 重启服务获取开关设置自动更新病毒线程
-    if service_node:
-        enable_update_virus_db = ConfigManage().get_custom_config_of_bool("enable_update_virus_db")
-        ScanVirusManage().set_update_virusdb_thread_running(enable_update_virus_db)
+    enable_update_virus_db = ConfigManage().get_custom_config_of_bool("enable_update_virus_db")
+    ScanVirusManage().set_update_virusdb_thread_running(enable_update_virus_db)
 
     # 开启同步重试线程
     sync_retry_thread = SyncRetryThread()

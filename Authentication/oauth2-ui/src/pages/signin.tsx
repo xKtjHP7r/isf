@@ -47,6 +47,7 @@ import {
   getIsElectronOpenExternal,
   getIsMobile,
 } from "../common/getClientType";
+import { defaultOem, dipOem } from "src/common";
 
 interface ISigninProps {
   /**
@@ -702,8 +703,8 @@ export const SignInForm: FunctionComponent<Omit<ISigninProps, "error">> = ({
         ? "8px"
         : "0px"
       : oemconfig?.showUserAgreement || oemconfig?.showPrivacyPolicy
-      ? 0
-      : "12px";
+        ? 0
+        : "12px";
   };
 
   const switchLoginMode = (value: boolean) => {
@@ -1318,36 +1319,53 @@ export const getServerSideProps: GetI18nServerSideProps<ISigninProps> = async ({
             `[${Date()}] [INFO]  {/deploy-web-service/v1/oemconfig} get}  START`
           );
 
-          const {
-            data: {
-              hideLogo,
+          try {
+            const {
+              data: {
+                hideLogo,
+                loginBoxStyle,
+                theme,
+                showPortalBanner: showBanner,
+                showUserAgreement: showAgreement,
+                showPrivacyPolicy: showPolicy,
+                webTemplate,
+                desktopTemplate,
+                [`favicon.ico`]: favicon,
+              },
+            } = await deployPublicApi.get(
+              `/api/deploy-web-service/v1/oemconfig?section=${
+                isWebMobile ? "mobile" : "anyshare"
+              }${productId ? `&product=${productId}` : ""}`
+            );
+            oemConfig[productId][configSection].productOemConfig = {
+              isTransparentBoxStyle:
+                webTemplate === "regular" && loginBoxStyle === "transparent",
+              desktopTemplate,
               loginBoxStyle,
               theme,
-              showPortalBanner: showBanner,
-              showUserAgreement: showAgreement,
-              showPrivacyPolicy: showPolicy,
+              showBanner,
+              showAgreement,
+              showPolicy,
+              favicon,
               webTemplate,
-              desktopTemplate,
-              [`favicon.ico`]: favicon,
-            },
-          } = await deployPublicApi.get(
-            `/api/deploy-web-service/v1/oemconfig?section=${
-              isWebMobile ? "mobile" : "anyshare"
-            }${productId ? `&product=${productId}` : ""}`
-          );
-          oemConfig[productId][configSection].productOemConfig = {
-            isTransparentBoxStyle:
-              webTemplate === "regular" && loginBoxStyle === "transparent",
-            desktopTemplate,
-            loginBoxStyle,
-            theme,
-            showBanner,
-            showAgreement,
-            showPolicy,
-            favicon,
-            webTemplate,
-            hideLogo,
-          };
+              hideLogo,
+            };
+          } catch (error: any) {
+            console.error(
+              `[${Date()}] [ERROR]  {/deploy-web-service/v1/oemconfig} get}  ERROR`,
+              error
+            );
+            // 当状态码为404且product为dip时，使用默认值作为降级策略
+            if (error?.response?.status === 404 && productId === "dip") {
+              console.log(
+                `[${Date()}] [INFO]  product is dip and deploy-web-service not found`
+              );
+              oemConfig[productId][configSection].productOemConfig = dipOem.config;
+            } else {
+              // 其他错误情况，保持原有逻辑
+              oemConfig[productId][configSection].productOemConfig = defaultOem.config;
+            }
+          }
         }
         let section:
           | "shareweb_zh-cn"
@@ -1373,31 +1391,72 @@ export const getServerSideProps: GetI18nServerSideProps<ISigninProps> = async ({
         if (!oemConfig?.[productId]?.[section]) {
           oemConfig[productId][section] = {};
           // 获取oem配置
-          const {
-            data: {
-              [`logo.png`]: logo,
-              [`darklogo.png`]: darklogo,
+          try {
+            const {
+              data: {
+                [`logo.png`]: logo,
+                [`darklogo.png`]: darklogo,
+                product,
+                portalBanner,
+              },
+            } = await deployPublicApi.get(
+              `/api/deploy-web-service/v1/oemconfig?section=${section}${
+                productId ? `&product=${productId}` : ""
+              }`
+            );
+
+            oemConfig[productId][section].config = {
+              logo,
+              darklogo,
               product,
               portalBanner,
-            },
-          } = await deployPublicApi.get(
-            `/api/deploy-web-service/v1/oemconfig?section=${section}${
-              productId ? `&product=${productId}` : ""
-            }`
-          );
+            };
 
-          oemConfig[productId][section].config = {
-            logo,
-            darklogo,
-            product,
-            portalBanner,
-          };
+            console.log(
+              `[${Date()}] [INFO]  {/deploy-web-service/v1/oemconfig} get}  SUCCESS +${
+                Date.now() - lastTimestamp
+              }ms`
+            );
+          } catch (error: any) {
+            console.error(
+              `[${Date()}] [ERROR]  {/deploy-web-service/v1/oemconfig} get}  ERROR`,
+              error
+            );
+            // 当状态码为404且product为dip时，使用默认值作为降级策略
+            if (error?.response?.status === 404 && productId === "dip") {
+              console.log(
+                `[${Date()}] [INFO]  product is dip and deploy-web-service not found, use default oem config`
+              );
+              let portalBanner = ''
 
-          console.log(
-            `[${Date()}] [INFO]  {/deploy-web-service/v1/oemconfig} get}  SUCCESS +${
-              Date.now() - lastTimestamp
-            }ms`
-          );
+              switch(lang){
+                case "zh":
+                case "zh-cn":
+                  portalBanner = dipOem.sectionConfig.portalBanner?.["zh-cn"] || ''
+                  break;
+                case "zh-tw":
+                case "zh-hk":
+                  portalBanner = dipOem.sectionConfig.portalBanner?.["zh-tw"] || ''
+                  break;
+                default:
+                  portalBanner = dipOem.sectionConfig.portalBanner?.["en-us"] || ''
+                  break;
+              }
+              oemConfig[productId][section].config = {
+                logo: dipOem.sectionConfig.logo,
+                darklogo: dipOem.sectionConfig.darklogo,
+                product: dipOem.sectionConfig.product,
+                portalBanner,
+              };
+            } else {
+              oemConfig[productId][section].config = {
+                logo: defaultOem.sectionConfig.logo,
+                darklogo: defaultOem.sectionConfig.darklogo,
+                product: defaultOem.sectionConfig.product,
+                portalBanner: '',
+              };
+            }
+          }
         }
         const product = oemConfig?.[productId]?.[section]?.config?.product;
         const portalBanner =
@@ -1429,10 +1488,10 @@ export const getServerSideProps: GetI18nServerSideProps<ISigninProps> = async ({
         );
         const hiddenPage = Boolean(
           device?.client_type !== "console_web" &&
-            device?.client_type !== "deploy_web" &&
-            thirdauth &&
-            thirdauth.config &&
-            (sso === "true" || thirdauth.config.autoCasRedirect)
+          device?.client_type !== "deploy_web" &&
+          thirdauth &&
+          thirdauth.config &&
+          (sso === "true" || thirdauth.config.autoCasRedirect)
         );
         let remember_visible_value: boolean;
         try {
@@ -1486,10 +1545,10 @@ export const getServerSideProps: GetI18nServerSideProps<ISigninProps> = async ({
               thirdAuthFirst: Boolean(thirdauth?.config?.thirdAuthFirst),
               thirdPartyExists: Boolean(
                 client_hide_third_party !== "true" &&
-                  third_party_login_visible &&
-                  thirdauth &&
-                  thirdauth?.config &&
-                  !thirdauth?.config?.hideThirdLogin
+                third_party_login_visible &&
+                thirdauth &&
+                thirdauth?.config &&
+                !thirdauth?.config?.hideThirdLogin
               ),
               enable_secret_mode,
               rememberpass,
@@ -1499,12 +1558,12 @@ export const getServerSideProps: GetI18nServerSideProps<ISigninProps> = async ({
               thirdauth: thirdauth ? thirdauth : null,
               third_auth_only: Boolean(
                 client_hide_third_party !== "true" &&
-                  AccessThirdAuthOnlys.includes(device?.client_type) &&
-                  third_party_login_visible &&
-                  thirdauth &&
-                  thirdauth.config &&
-                  thirdauth.config.hideLogin &&
-                  !thirdauth.config.hideThirdLogin
+                AccessThirdAuthOnlys.includes(device?.client_type) &&
+                third_party_login_visible &&
+                thirdauth &&
+                thirdauth.config &&
+                thirdauth.config.hideLogin &&
+                !thirdauth.config.hideThirdLogin
               ),
               third_party_login_visible,
               remember_password_visible,

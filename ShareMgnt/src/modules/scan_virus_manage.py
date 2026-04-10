@@ -49,8 +49,22 @@ import urllib.request, urllib.parse, urllib.error
 import hashlib
 
 ftp_update_virus_db_thread = None          # FTP更新病毒库线程
-multi_site_update_virus_db_thread = None   # 多站点更新病毒库线程
 TEST_LICENSE = "test"
+
+
+def _get_update_virusdb_machine_id():
+    """
+    生成用于临时目录隔离的机器/Pod标识。
+    逻辑对齐：
+    mid := os.Getenv(conf.Service.PodID)
+    if mid == "" { mid = os.Hostname(); mid = utils.MD5(mid)[:8] }
+    """
+    # 部署模板目前注入的是 POD_IP；同时兼容常见的 POD_ID / PODID。
+    mid = os.getenv("POD_ID") or os.getenv("PODID") or os.getenv("POD_IP") or ""
+    if mid == "":
+        host = socket.gethostname() or ""
+        mid = hashlib.md5(host.encode("utf-8")).hexdigest()[:8]
+    return mid
 
 class AntivirusTaskStatus(IntEnum):
     TS_NOT_START = 0                # 未开始
@@ -508,19 +522,16 @@ class ScanVirusManage(DBConnector):
         """
         FTP方式更新病毒库或多站点更新病毒库
         """
-        service_node = check_service_node()
-        if service_node:
-            global ftp_update_virus_db_thread
-            global multi_site_update_virus_db_thread
+        global ftp_update_virus_db_thread
 
-            # 杀毒开关开启后判断采用FTP更新还是多站点病毒库更新
-            if enable_update_virus_db == ncTVirusUpdateMethodType.FTP_UPDATE:
-                if ftp_update_virus_db_thread:
-                    ftp_update_virus_db_thread.run_immediately()
-                else:
-                    ftp_update_virus_db_thread = UpdateVirusDBThread()
-                    ftp_update_virus_db_thread.daemon = True
-                    ftp_update_virus_db_thread.start()
+        # 杀毒开关开启后判断采用FTP更新还是多站点病毒库更新
+        if enable_update_virus_db == ncTVirusUpdateMethodType.FTP_UPDATE:
+            if ftp_update_virus_db_thread:
+                ftp_update_virus_db_thread.run_immediately()
+            else:
+                ftp_update_virus_db_thread = UpdateVirusDBThread()
+                ftp_update_virus_db_thread.daemon = True
+                ftp_update_virus_db_thread.start()
 
 class UpdateVirusDBThread(threading.Thread):
     """
@@ -528,7 +539,8 @@ class UpdateVirusDBThread(threading.Thread):
     """
     TERMINATE = False
     WAIT_TIME = 24 * 3600
-    TMPLOCALPATH = "/sysvol/cache/antivirus/rising/tmplocalpath"
+    _MID = _get_update_virusdb_machine_id()
+    TMPLOCALPATH = os.path.join("/sysvol/cache/antivirus/rising", f"tmplocalpath_{_MID}")
     FILELIST = []
 
     def __init__(self):

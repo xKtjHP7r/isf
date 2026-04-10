@@ -1,0 +1,74 @@
+trigger: none
+
+variables:
+  ImageName: acr.aishu.cn/public/thrift-base:ubuntu22.04.20260128
+
+jobs:
+  - job: BuildAndPush
+    displayName: "Build and Push Thrift Base Image"
+    workspace:
+      clean: all
+    strategy:
+      matrix:
+        amd64:
+          arch: amd64
+          poolAgentOSArchitecture: 'X64'
+        arm64:
+          arch: arm64
+          poolAgentOSArchitecture: 'ARM64'
+    pool:
+      name: DockerMultiplePlatforms
+      demands:
+        - Agent.OS -equals Linux
+        - Agent.OSArchitecture -equals $(poolAgentOSArchitecture)
+        - docker
+    steps:
+    - checkout: self
+      fetchDepth: 1
+
+    - task: Docker@2
+      displayName: Login Harbor
+      inputs:
+        containerRegistry: ACR
+        command: "login"
+
+    - bash: |
+        set -xue
+        IMAGE=$(ImageName)-$(ARCH)-$(Build.BuildNumber)
+        docker build --pull --no-cache -f Dockerfile \
+          --build-arg COMMIT_ID=$(Build.SourceVersion) \
+          --build-arg PIPELINE_URL="$(System.CollectionUri)$(System.TeamProject)/_build/results?buildId=$(Build.BuildId)" \
+          --tag $IMAGE .
+        docker push $IMAGE
+        docker rmi -f $IMAGE
+      displayName: 'Build and Push $(ARCH) Docker Image'
+      workingDirectory: $(Build.SourcesDirectory)/pipelines/thriftbase
+      name: BuildAndPush
+
+  - job: Manifest
+    displayName: "Manifest"
+    workspace:
+      clean: all
+    pool:
+      name: DockerMultiplePlatforms
+      demands:
+        - Agent.OS -equals Linux
+        - docker
+    dependsOn: BuildAndPush
+    steps:
+    - checkout: none
+
+    - task: Docker@2
+      displayName: Login Harbor
+      inputs:
+        containerRegistry: ACR
+        command: "login"
+
+    - script: |
+        set -ex
+        IMAGE=$(ImageName)
+        IMAGE_AMD64="$IMAGE-amd64-$(Build.BuildNumber)"
+        IMAGE_ARM64="$IMAGE-arm64-$(Build.BuildNumber)"
+        docker manifest create -a $IMAGE $IMAGE_AMD64 $IMAGE_ARM64
+        docker manifest push -p $IMAGE
+      displayName: 'Create and Push Docker Manifest'

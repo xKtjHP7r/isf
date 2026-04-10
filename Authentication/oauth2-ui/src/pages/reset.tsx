@@ -29,6 +29,7 @@ import {
   getIsElectronOpenExternal,
   getIsMobile,
 } from "../common/getClientType";
+import { defaultOem, dipOem } from "../common";
 
 export const ForgetPasswordForm: FunctionComponent<
   Omit<IForgetPasswordProps, "error">
@@ -187,23 +188,59 @@ export const getServerSideProps: GetServerSideProps<
     const isWebMobile = getIsMobile(client_type, userAgent);
 
     let lastTimestamp = Date.now();
+    let theme: string = defaultOem.config.theme;
+    let product: string = defaultOem.sectionConfig.product;
+    let favicon: string = defaultOem.config.favicon;
+    let loginBoxStyle: string = defaultOem.config.loginBoxStyle;
+    let webTemplate: string = defaultOem.config.webTemplate;
+    let desktopTemplate: string = defaultOem.config.desktopTemplate;
+
     console.log(
       `[${Date()}] [INFO]  {/api/deploy-web-service/v1/oemconfig} GET}  START`
     );
     // 获取通用配置
-    const {
-      data: {
-        loginBoxStyle,
-        webTemplate,
-        desktopTemplate,
-        theme,
-        [`favicon.ico`]: favicon,
-      },
-    } = await deployPublicApi.get(
-      `/api/deploy-web-service/v1/oemconfig?section=${
-        isWebMobile ? "mobile" : "anyshare"
-      }${productId ? `&product=${productId}` : ""}`
-    );
+    try {
+      const {
+        data: {
+          loginBoxStyle: currentLoginBoxStyle,
+          webTemplate: currentWebTemplate,
+          desktopTemplate: currentDesktopTemplate,
+          theme: currentTheme,
+          [`favicon.ico`]: currentFIcon,
+        },
+      } = await deployPublicApi.get(
+        `/api/deploy-web-service/v1/oemconfig?section=${
+          isWebMobile ? "mobile" : "anyshare"
+        }${productId ? `&product=${productId}` : ""}`
+      );
+      loginBoxStyle = currentLoginBoxStyle;
+      webTemplate = currentWebTemplate;
+      desktopTemplate = currentDesktopTemplate;
+      theme = currentTheme;
+      favicon = currentFIcon;
+    } catch (error: any) {
+      console.error(
+        `[${Date()}] [ERROR]  {/api/deploy-web-service/v1/oemconfig} GET}  ERROR`,
+        error
+      );
+      // 当状态码为404且product为dip时，使用dip默认值
+      if (error?.response?.status === 404 && productId === "dip") {
+        console.log(
+          `[${Date()}] [INFO]  product is dip and deploy-web-service not found`
+        );
+        theme = dipOem.config.theme;
+        favicon = dipOem.config.favicon;
+        loginBoxStyle = dipOem.config.loginBoxStyle;
+        webTemplate = dipOem.config.webTemplate;
+        desktopTemplate = dipOem.config.desktopTemplate;
+      } else {
+        theme = defaultOem.config.theme;
+        favicon = defaultOem.config.favicon;
+        loginBoxStyle = defaultOem.config.loginBoxStyle;
+        webTemplate = defaultOem.config.webTemplate;
+        desktopTemplate = defaultOem.config.desktopTemplate;
+      }
+    }
 
     let section: string;
 
@@ -222,13 +259,30 @@ export const getServerSideProps: GetServerSideProps<
     }
 
     // 获取oem配置
-    const {
-      data: { product },
-    } = await deployPublicApi.get(
-      `api/deploy-web-service/v1/oemconfig?section=${section}${
-        productId ? `&product=${productId}` : ""
-      }`
-    );
+    try {
+      const {
+        data: { product: currentProduct },
+      } = await deployPublicApi.get(
+        `api/deploy-web-service/v1/oemconfig?section=${section}${
+          productId ? `&product=${productId}` : ""
+        }`
+      );
+      product = currentProduct;
+    } catch (error: any) {
+      console.error(
+        `[${Date()}] [ERROR]  {/api/deploy-web-service/v1/oemconfig} GET}  ERROR`,
+        error
+      );
+      // 当状态码为404且product为dip时，使用默认值作为降级策略
+      if (error?.response?.status === 404 && productId === "dip") {
+        console.log(
+          `[${Date()}] [INFO]  product is dip and deploy-web-service not found, use default oem config`
+        );
+        product = dipOem.sectionConfig.product;
+      } else {
+        product = defaultOem.sectionConfig.product;
+      }
+    }
     console.log(
       `[${Date()}] [INFO]  {/api/deploy-web-service/v1/oemconfig} GET}  SUCCESS +${
         Date.now() - lastTimestamp

@@ -250,26 +250,26 @@
                 ]
             },
             {
-            "id": "see_trajectory_analysis",
-            "name": [
-              {
-                "language": "zh-cn",
-                "value": "查看轨迹分析"
-              },
-              {
-                "language": "en-us",
-                "value": "See trajectory analysis"
-              },
-              {
-                "language": "zh-tw",
-                "value": "查看軌跡分析"
-              }
-            ],
-            "description": "",
-            "scope": [
-              "type"
-            ]
-          }
+                "id": "see_trajectory_analysis",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "查看轨迹分析"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "See trajectory analysis"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "查看軌跡分析"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type"
+                ]
+            }
         ]
     },
     {
@@ -3886,6 +3886,37 @@
                     {
                         "language": "zh-tw",
                         "value": "構建"
+                    }
+                ],
+                "description": "",
+                "scope": [
+                    "type",
+                    "instance"
+                ]
+            }
+        ]
+    },
+    {
+        "id": "ops-robot-menu",
+        "name": "opsRobot菜单",
+        "description": "opsRobot工作台侧栏菜单",
+        "instance_url": "GET /api/dip-itops/auth/resource",
+        "data_struct": "tree",
+        "operation": [
+            {
+                "id": "display",
+                "name": [
+                    {
+                        "language": "zh-cn",
+                        "value": "显示"
+                    },
+                    {
+                        "language": "en-us",
+                        "value": "display"
+                    },
+                    {
+                        "language": "zh-tw",
+                        "value": "顯示"
                     }
                 ],
                 "description": "",
